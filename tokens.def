@@ -1,0 +1,42 @@
+AST_TOKEN(BLOCK) /* children: statement* string: */
+AST_TOKEN(NAMED_TYPE) /* children: string: ID */
+AST_TOKEN(SIZED_STRING_TYPE) /* children: string: size */
+AST_TOKEN(ARRAY_TYPE) /* children: type range+ string: */
+AST_TOKEN(RECORD_TYPE) /* children: decls* string: */
+AST_TOKEN(DEFERRED_TYPE) /* children: string: */
+AST_TOKEN(PUT_STAT) /* children: expr+ string: (.. if no newline) */
+AST_TOKEN(GET_STAT) /* children: assignableExpression string: (* if read whole line) */
+AST_TOKEN(VAR_DECL) /* children: decls value? string: */
+AST_TOKEN(CONST_DECL) /* children: decl value string: */
+AST_TOKEN(TYPE_DECL) /* children: type string: typeID */
+AST_TOKEN(RANGE) /* children: begin end string: */
+AST_TOKEN(IF_STAT) /* children: cond thenBlock elsifs* else? string: */
+AST_TOKEN(ELSIF_STAT) /* children: cond thenBlock string: */
+AST_TOKEN(ELSE_STAT) /* children: block string: */
+AST_TOKEN(FOR_STAT) /* children: range block string: counterVar */
+AST_TOKEN(LOOP_STAT) /* children: block string: */
+AST_TOKEN(CASE_LABEL) /* children: block expr* string: */
+AST_TOKEN(CASE_STAT) /* children: expr labels+ string: */
+AST_TOKEN(EXIT_STAT) /* children: string: */
+AST_TOKEN(RESULT_STAT) /* children: expr string: */
+AST_TOKEN(RETURN_STATEMENT) /* children: string: */
+AST_TOKEN(DECLARATIONS) /* children: decl* string: */
+AST_TOKEN(DECLARATION) /* children: type string: name */
+AST_TOKEN(FUNC_PROTO) /* children: returnType block string: name */
+AST_TOKEN(PROC_PROTO) /* children: block string: name */
+AST_TOKEN(FUNC_DEF) /* children: proto block string: */
+AST_TOKEN(MATH_OP) /* children: lhs rhs string: op */
+AST_TOKEN(COMPARISON_OP) /* children: lhs rhs string: op */
+AST_TOKEN(EQUALITY_OP) /* children: lhs rhs string: op */
+AST_TOKEN(CONDITIONAL_OP) /* children: lhs rhs string: op */
+AST_TOKEN(ASSIGN_OP) /* children: lhs rhs string: op */
+AST_TOKEN(UNARY_OP) /* children: operand string: operator */
+AST_TOKEN(INT_LITERAL) /* children: string: int */
+AST_TOKEN(REAL_LITERAL) /* children: string: real */
+AST_TOKEN(STRING_LITERAL) /* children: string: string without quotes */
+AST_TOKEN(CHAR_LITERAL) /* children: string: char without quotes */
+AST_TOKEN(BOOL_LITERAL) /* children: string: true or false */
+AST_TOKEN(CALL) /* children: assignableExpr arg* string: */
+AST_TOKEN(PTRDEREF) /* children: assignableExpr string: */
+AST_TOKEN(FIELD_REF_OP) /* children: lhs string: rhs */
+AST_TOKEN(VAR_REFERENCE) /* children: string: ID */
