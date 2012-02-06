@@ -51,16 +51,12 @@ int main(int argc, char *argv[]) {
         
         CodeGen gen(treeRoot);
         
-        if(gen.execute()) {
-            std::cout << "code generated" << std::endl;
-        } else {
+        if(!gen.execute()) {
             std::cout << "code gen failed" << std::endl;
         }
     } else {
         std::cout << "fail" << std::endl;
     }
-    
-    std::cout << "finished" << std::endl;
     
     delete[] s;
 }
