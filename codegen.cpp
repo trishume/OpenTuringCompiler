@@ -16,19 +16,19 @@ CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()) {
     Types.addDefaultTypes(getGlobalContext());
 }
 /*
-void CodeGen::pushBlock(BasicBlock *block) {
-    Blocks.push(new CodeGenBlock());
-    Blocks.top()->block = block;
-    Builder.SetInsertPoint(block);
-}
-void CodeGen::popBlock() {
-	CodeGenBlock *top = Blocks.top(); 
-	Blocks.pop(); 
-	delete top;
-	if(!Blocks.empty()) {
-		Builder.SetInsertPoint(Blocks.top()->block);
-	}
-}*/
+ void CodeGen::pushBlock(BasicBlock *block) {
+ Blocks.push(new CodeGenBlock());
+ Blocks.top()->block = block;
+ Builder.SetInsertPoint(block);
+ }
+ void CodeGen::popBlock() {
+ CodeGenBlock *top = Blocks.top(); 
+ Blocks.pop(); 
+ delete top;
+ if(!Blocks.empty()) {
+ Builder.SetInsertPoint(Blocks.top()->block);
+ }
+ }*/
 
 bool CodeGen::execute() {
 	LLVMContext &context = getGlobalContext();
@@ -44,17 +44,27 @@ bool CodeGen::execute() {
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
     
 	Builder.SetInsertPoint(mainBlock);
-	bool good = compileBlock(Root);
+    bool good = false;
+    try {
+        good = compileBlock(Root);
+    } catch (Message::Exception e) {
+        Message::error(e.Message);
+        
+    }
 	Builder.CreateRetVoid();
     
 	TheModule->dump();
+    
+    if (!good) { // code gen failed
+        return false;
+    }
     
     Message::log("JIT compiling and running...");
     Executor jit(TheModule);
     jit.optimize();
     jit.run();
     
-	return good; // success
+	return true; // success
 }
 
 //! transforms a declarations node into a vector of declarations. Throws exceptions.
@@ -108,18 +118,17 @@ bool CodeGen::compileStat(ASTNode *node) {
 		Message::error("Can not compile null node.");
         return false;
 	}
-    try {
-        switch(node->root) {
-            case Language::PROC_PROTO:
-                return compileProcPrototype(node) != NULL;
-            case Language::CALL:
-                compileCall(node,false); // special case allowing procedure calls
-                return true; // throws error on fail
-            default:
-                return compile(node) != NULL; // treat as an expression
-        }
-    } catch (Message::Exception e) {
-        Message::error(e.Message);
+    switch(node->root) {
+        case Language::PROC_PROTO:
+            return compileProcPrototype(node) != NULL;
+        case Language::CALL:
+            compileCall(node,false); // special case allowing procedure calls
+            return true; // throws error on fail
+        case Language::IF_STAT:
+            compileIfStat(node);
+            return true; // throws error on fail
+        default:
+            return compile(node) != NULL; // treat as an expression
     }
 	
 	return false; // should never reach here
@@ -128,27 +137,24 @@ bool CodeGen::compileStat(ASTNode *node) {
 //! dispatcher. Checks the type of the node and calls the correct compile function.
 Value *CodeGen::compile(ASTNode *node) {
 	if(node == NULL) {
-		Message::error("Can not compile null node.");
-        return NULL;
+		throw Message::Exception("Can not compile null node.");
 	}
-    try {
-        switch(node->root) {
-            case Language::MATH_OP:
-                return compileMathOp(node);
-            case Language::CALL:
-                return compileCall(node);
-            case Language::INT_LITERAL:
-                // apint can convert a string
-                return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
-            default:
-                Message::error(Twine("AST type ") + Language::getTokName(node->root) + " not recognized");
-                return NULL;
-        }
-    } catch (Message::Exception e) {
-        Message::error(e.Message);
+    switch(node->root) {
+        case Language::MATH_OP:
+            return compileMathOp(node);
+        case Language::COMPARISON_OP:
+            return compileComparisonOp(node);
+        case Language::CALL:
+            return compileCall(node);
+        case Language::INT_LITERAL:
+            // apint can convert a string
+            return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
+        case Language::BOOL_LITERAL:
+            // apint is used because booleans are one bit ints
+            return ConstantInt::get(getGlobalContext(), APInt(1,(node->str.compare("true") == 0) ? 1 : 0));
+        default:
+            throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " not recognized");
     }
-	
-	
 }
 
 // Compiles binary math operators. Anything with a signature num op num : num
@@ -156,8 +162,7 @@ Value *CodeGen::compileMathOp(ASTNode *node) {
 	Value *L = compile(node->children[0]);
 	Value *R = compile(node->children[1]);
 	if (L == 0 || R == 0) {
-        Message::error("Invalid operand for binary operator.");
-        return NULL;
+        throw Message::Exception("Invalid operand for binary operator.");
     }
 	
 	switch (node->str[0]) {
@@ -165,8 +170,30 @@ Value *CodeGen::compileMathOp(ASTNode *node) {
 		case '-': return Builder.CreateSub(L, R, "subtmp");
 		case '*': return Builder.CreateMul(L, R, "multmp");
 	}
-    Message::error("Invalid math operator.");
-    return NULL;
+    throw Message::Exception("Invalid math operator.");
+    return NULL; // never reaches here
+}
+
+// Compiles binary comparison operators. Anything with a signature num op num : boolean
+Value *CodeGen::compileComparisonOp(ASTNode *node) {
+	Value *L = compile(node->children[0]);
+	Value *R = compile(node->children[1]);
+	if (L == 0 || R == 0) {
+        throw Message::Exception("Invalid operand for binary operator.");
+    }
+	
+	if (node->str.compare(">") == 0) {
+        return Builder.CreateICmpUGT(L, R, "GTtmp");
+    } else if (node->str.compare("<") == 0) {
+        return Builder.CreateICmpULT(L, R, "LTtmp");
+    } else if (node->str.compare(">=") == 0) {
+        return Builder.CreateICmpUGE(L, R, "GEtmp");
+    } else if (node->str.compare("<=") == 0) {
+        return Builder.CreateICmpULE(L, R, "LEtmp");
+    }
+    
+    throw Message::Exception("Invalid comparison operator.");
+    return NULL; // never reaches here
 }
 
 //! Compile a function call
@@ -210,7 +237,7 @@ Function *CodeGen::compileProcPrototype(ASTNode *node) {
 /*! creates an llvm function with no implementation.
  
  Used for extern declarations and as part of the function/procedure creation process.
-    
+ 
  \param name The name of the function
  \param returnType The type the function returns. the void type if it is a procedure.
  \param params A DECLARATIONS ast node containing the formal parameters.
@@ -260,4 +287,51 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     }
     
     return f;
+}
+
+//! compiles an if statement as a series of blocks
+void CodeGen::compileIfStat(ASTNode *node) {
+    Value *cond = compile(node->children[0]);
+    
+    Function *theFunction = Builder.GetInsertBlock()->getParent();
+    
+    bool hasElse = node->children.size() > 2 && (node->children[node->children.size()-1]->root == Language::ELSE_STAT);
+    
+    // Create blocks for the then and else cases.  Insert the 'then' block at the
+    // end of the function.
+    BasicBlock *thenBB = BasicBlock::Create(getGlobalContext(), "then", theFunction);
+    BasicBlock *elseBB = NULL;
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "ifcont");
+    
+    // if it has an else then branch to it if the condition fails
+    // otherwise skip over it
+    if (hasElse) {
+        elseBB = BasicBlock::Create(getGlobalContext(), "else");
+        Builder.CreateCondBr(cond, thenBB, elseBB);
+    } else {
+        Builder.CreateCondBr(cond, thenBB, mergeBB);
+    }
+    
+    
+    // Emit then value.
+    Builder.SetInsertPoint(thenBB);
+    
+    compileBlock(node->children[1]);
+    
+    Builder.CreateBr(mergeBB);
+    
+    if (hasElse) {
+        // Emit else block.
+        theFunction->getBasicBlockList().push_back(elseBB);
+        Builder.SetInsertPoint(elseBB);
+        
+        compileBlock(node->children[node->children.size()-1]->children[0]); // first child of the ELSE_STAT is a block
+        
+        Builder.CreateBr(mergeBB);
+    }
+    
+    
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
 }

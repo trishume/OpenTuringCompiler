@@ -14,4 +14,7 @@ extern "C" {
     void TuringPrintInt(TInt num) {
         std::cout << num << std::endl;
     }
+    void TuringPrintBool(bool value) {
+        std::cout << (value ? "true" : "false") << std::endl;
+    }
 }

@@ -51,6 +51,8 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     addTypeLLVM("int8",(Type*)Type::getInt8Ty(c));
     addTypeLLVM("int32",(Type*)Type::getInt32Ty(c));
     
+    addTypeLLVM("boolean",(Type*)Type::getInt1Ty(c));
+    
     addTypeLLVM("real",(Type*)Type::getDoublePtrTy(c));
     
     addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE));

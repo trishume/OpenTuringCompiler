@@ -32,10 +32,13 @@ private:
 	llvm::Value *compile(ASTNode *node);
 
 	llvm::Value *compileMathOp(ASTNode *node);
+    llvm::Value *compileComparisonOp(ASTNode *node);
     
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
     llvm::Function *compileProcPrototype(ASTNode *node);
     llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, ASTNode *params);
+    
+    void compileIfStat(ASTNode *node);
     
 
 	//! block stack manipulation
