@@ -6,9 +6,11 @@ OBJS = language.o \
 	   ast.o  \
 	   codegen.o \
        Turing.g.d_parser.o \
+        StdLib.o \
+        Executor.o \
        main.o
 
-LLVM_MODULES = core jit native
+LLVM_MODULES = core jit native interpreter
 
 CPPFLAGS = `/usr/local/bin/llvm-config --cppflags $(LLVM_MODULES)`
 LDFLAGS = -L/usr/local/lib -ldparse `/usr/local/bin/llvm-config --ldflags $(LLVM_MODULES)`
@@ -18,7 +20,7 @@ clean:
 	$(RM) -rf Turing.g.d_parser.cpp $(OBJS)
 
 Turing.g.d_parser.cpp: Turing.g
-	make_dparser $^ -v -Xcpp
+	/usr/local/bin/make_dparser $^ -v -Xcpp
 
 %.o: %.cpp tokens.def
 	g++ -g -c $(CPPFLAGS) -o $@ $<

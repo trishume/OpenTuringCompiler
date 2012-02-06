@@ -18,6 +18,17 @@ namespace Message {
     bool warning(const llvm::Twine &message);
     bool log(const llvm::Twine &message);
     bool ifNull(void *cond, const llvm::Twine &message);
+    
+    struct Exception {
+        Exception(){
+            // TODO make it take on the message of the last Message::error
+            Message = "";
+        }
+        Exception(const llvm::Twine &message) {
+            Message = message.str();
+        }
+        std::string Message;
+    };
 }
 
 #endif

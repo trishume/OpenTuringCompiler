@@ -9,10 +9,15 @@
 #ifndef Turing_Compiler_Type_H
 #define Turing_Compiler_Type_H
 
+#include <string>
+
 #include <llvm/Type.h>
 
-class TuringType {
-    llvm::Type CompileType;
+#include "TuringType.h"
+
+struct TuringType {
+    TuringType(std::string n, llvm::Type *type) : LLVMType(type), Name(n) {}
+    llvm::Type *LLVMType;
     std::string Name;
 };
 

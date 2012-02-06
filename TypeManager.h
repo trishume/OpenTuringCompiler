@@ -9,16 +9,25 @@
 #ifndef Turing_Compiler_TypeManager__H
 #define Turing_Compiler_TypeManager__H
 
+#include <map>
+
 #include <llvm/Type.h>
 #include "TuringType.h"
+
+#define TURING_STRING_SIZE 255
 
 class TypeManager {
 public:
     TuringType *getType(std::string name);
     bool addType(std::string name,TuringType *turType);
-    bool addTypeLLVM(std::string name,Type *llvmType);
+    bool addTypeLLVM(std::string name,llvm::Type *llvmType);
     bool aliasType(std::string name, std::string aliasName);
     
-}
+    void addDefaultTypes(llvm::LLVMContext &c);
+    
+private:
+    
+    std::map<std::string,TuringType *> NameMap;
+};
 
 #endif
