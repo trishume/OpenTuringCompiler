@@ -225,28 +225,29 @@ range
 
 // control structures
 ifstat
-    :   'if' expr 'then' LT instructions LT* elsifstat* (elsestat?) 'end' 'if'
+    :   'if' expr 'then' LT instructions LT* (elsifstat?) 'end' 'if'
     { 
         $$ = new ASTNode(Language::IF_STAT,$n0.start_loc.line);
         $$->addChild($1); // cond
         $$->addChild($4); // block
-        addParseTokens(&$n6,$$); // elsifs
-        addParseTokens(&$n7,$$); // else
+        addParseTokens(&$n6,$$); // elsif
     }
     ;
+// semantically equivelant to (if then (else (if cond ...
 elsifstat   
-    :   'elsif' expr 'then' LT* instructions LT*
+    :   'elsif' expr 'then' LT* instructions LT* (elsifstat?)
     { 
-        $$ = new ASTNode(Language::ELSIF_STAT,$n0.start_loc.line);
-        $$->addChild($1); // cond
-        $$->addChild($4); // block
+        ASTNode *innerIf = new ASTNode(Language::IF_STAT);
+        innerIf->addChild($1); // cond
+        innerIf->addChild($4); // block
+        addParseTokens(&$n6,innerIf); // elsif
+
+        $$ = new ASTNode(Language::BLOCK,$n0.start_loc.line);
+        $$->addChild(innerIf);
     }
-    ;
-elsestat    
-    :   'else' LT* instructions LT*
+    |   'else' LT* instructions LT*
     { 
-        $$ = new ASTNode(Language::ELSE_STAT,$n0.start_loc.line);
-        $$->addChild($2); // block
+        $$ = $2;
     }
     ;
 

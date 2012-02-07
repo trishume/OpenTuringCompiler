@@ -10,9 +10,7 @@ AST_TOKEN(VAR_DECL) /* children: decls value? string: */
 AST_TOKEN(CONST_DECL) /* children: decl value string: */
 AST_TOKEN(TYPE_DECL) /* children: type string: typeID */
 AST_TOKEN(RANGE) /* children: begin end string: */
-AST_TOKEN(IF_STAT) /* children: cond thenBlock elsifs* else? string: */
-AST_TOKEN(ELSIF_STAT) /* children: cond thenBlock string: */
-AST_TOKEN(ELSE_STAT) /* children: block string: */
+AST_TOKEN(IF_STAT) /* children: cond thenBlock elseBlock? string: */
 AST_TOKEN(FOR_STAT) /* children: range block string: counterVar */
 AST_TOKEN(LOOP_STAT) /* children: block string: */
 AST_TOKEN(CASE_LABEL) /* children: block expr* string: */

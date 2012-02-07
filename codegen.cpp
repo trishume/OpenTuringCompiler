@@ -290,12 +290,13 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
 }
 
 //! compiles an if statement as a series of blocks
+//! works on IF_STAT or ELSIF_STAT nodes
 void CodeGen::compileIfStat(ASTNode *node) {
     Value *cond = compile(node->children[0]);
     
     Function *theFunction = Builder.GetInsertBlock()->getParent();
     
-    bool hasElse = node->children.size() > 2 && (node->children[node->children.size()-1]->root == Language::ELSE_STAT);
+    bool hasElse = node->children.size() > 2;
     
     // Create blocks for the then and else cases.  Insert the 'then' block at the
     // end of the function.
@@ -325,7 +326,7 @@ void CodeGen::compileIfStat(ASTNode *node) {
         theFunction->getBasicBlockList().push_back(elseBB);
         Builder.SetInsertPoint(elseBB);
         
-        compileBlock(node->children[node->children.size()-1]->children[0]); // first child of the ELSE_STAT is a block
+        compileBlock(node->children[2]);
         
         Builder.CreateBr(mergeBB);
     }
