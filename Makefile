@@ -3,6 +3,9 @@ all: compiler
 OBJS = language.o \
         Message.o \
         TypeManager.o \
+        Scope.o \
+        BasicScopes.o \
+        ScopeManager.o \
 	   ast.o  \
 	   codegen.o \
        Turing.g.d_parser.o \

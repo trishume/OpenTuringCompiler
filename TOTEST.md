@@ -9,3 +9,7 @@
  	* elses and elsifs
  	* lotsa different whitespace
  	* whitespace in records
+
+==Compiler==
+ * Variables
+    * Ensure variables in local scopes are declared in correct order.
