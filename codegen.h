@@ -14,6 +14,8 @@
 #include "TuringType.h"
 #include "TypeManager.h"
 #include "VarDecl.h"
+#include "Scope.h"
+#include "ScopeManager.h"
 
 class ASTNode;
 
@@ -30,13 +32,17 @@ private:
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);
 	llvm::Value *compile(ASTNode *node);
+    llvm::Value *compileLHS(ASTNode *node);
 
 	llvm::Value *compileMathOp(ASTNode *node);
     llvm::Value *compileComparisonOp(ASTNode *node);
+    llvm::Value *compileAssignOp(ASTNode *node);
+    
+    void compileVarDecl(ASTNode *node);
     
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
     llvm::Function *compileProcPrototype(ASTNode *node);
-    llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, ASTNode *params);
+    llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     
     void compileIfStat(ASTNode *node);
     
@@ -54,6 +60,7 @@ private:
 
 	//std::stack<CodeGenBlock *> Blocks;
     TypeManager Types;
+    ScopeManager *Scopes;
 };
 
 #endif

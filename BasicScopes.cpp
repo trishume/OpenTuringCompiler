@@ -9,6 +9,7 @@
 #include "BasicScopes.h"
 
 #include <llvm/Support/IRBuilder.h>
+#include <llvm/Constant.h>
 
 #include "Message.h"
 
@@ -34,22 +35,21 @@ Scope *GlobalScope::createChildScope() {
     return new GlobalScope(TheModule,this);
 }
 
-bool GlobalScope::declareVar(std::string name, TuringType *type) {
+Value *GlobalScope::declareVar(std::string name, TuringType *type) {
     if (isDeclaredThis(name)) {
-        Message::error(Twine("Variable ") + name + " is already defined");
-        return false;
+        throw Message::Exception(Twine("Variable ") + name + " is already defined.");
     }
     
     GlobalVariable* gvar = new GlobalVariable(/*Module=*/*TheModule, 
                                               /*Type=*/type->LLVMType,
                                               /*isConstant=*/false,
                                               /*Linkage=*/GlobalValue::CommonLinkage,
-                                              /*Initializer=*/0, // has initializer, specified below
+                                              /*Initializer=*/Constant::getNullValue(type->LLVMType), // has initializer, specified below
                                               /*Name=*/name);
     // store in the symbol table
     symbols[name] = gvar;
     
-    return true;
+    return gvar;
 }
 
 LocalScope::LocalScope(llvm::Function *func, Scope *parent) : TheFunction(func), BasicScope(parent) {
@@ -60,10 +60,9 @@ Scope *LocalScope::createChildScope() {
     return new LocalScope(TheFunction,this);
 }
 
-bool LocalScope::declareVar(std::string name, TuringType *type) {
+Value *LocalScope::declareVar(std::string name, TuringType *type) {
     if (isDeclaredThis(name)) {
-        Message::error(Twine("Variable ") + name + " is already defined");
-        return false;
+        throw Message::Exception(Twine("Variable ") + name + " is already defined.");
     }
     
     IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
@@ -74,5 +73,5 @@ bool LocalScope::declareVar(std::string name, TuringType *type) {
     // store in the symbol table
     symbols[name] = lvar;
     
-    return true;
+    return lvar;
 }

@@ -26,7 +26,7 @@ public:
     virtual bool isDeclared(std::string name);
     
     //! generates a variable declaration and adds it to the symbol table
-    virtual bool declareVar(std::string name, TuringType *type) = 0;
+    virtual llvm::Value *declareVar(std::string name, TuringType *type) = 0;
     //! returns a child scope of the correct type. Used for things like if statements.
     //! I.E global scopes have global children and locals have local children
     virtual Scope *createChildScope() = 0;

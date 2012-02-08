@@ -36,7 +36,7 @@ public:
     LocalScope(llvm::Function *curFunc, Scope *parent);
     virtual Scope *createChildScope();
     
-    virtual bool declareVar(std::string name, TuringType *type);
+    virtual llvm::Value *declareVar(std::string name, TuringType *type);
 protected:
     llvm::Function *TheFunction;
 };
@@ -47,7 +47,7 @@ public:
     GlobalScope(llvm::Module *mod, Scope *parent);
     virtual Scope *createChildScope();
     
-    virtual bool declareVar(std::string name, TuringType *type);
+    virtual llvm::Value *declareVar(std::string name, TuringType *type);
 protected:
     llvm::Module *TheModule;
 };

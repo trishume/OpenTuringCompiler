@@ -14,6 +14,8 @@ using namespace llvm;
 CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()) {
 	Root = tree;
     Types.addDefaultTypes(getGlobalContext());
+    TheModule = new Module("turing JIT module", getGlobalContext());
+    Scopes = new ScopeManager(TheModule);
 }
 /*
  void CodeGen::pushBlock(BasicBlock *block) {
@@ -35,7 +37,7 @@ bool CodeGen::execute() {
     
     Message::log("Generating code...");
     
-	TheModule = new Module("turing JIT module", context);
+	
     
 	/* Create the top level interpreter function to call as entry */
 	std::vector<Type*> argTypes;
@@ -59,9 +61,10 @@ bool CodeGen::execute() {
         return false;
     }
     
-    Message::log("JIT compiling and running...");
+    Message::log("JIT compiling and optimizing...");
     Executor jit(TheModule);
     jit.optimize();
+    Message::log("RUNNING...");
     jit.run();
     
 	return true; // success
@@ -124,6 +127,9 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::CALL:
             compileCall(node,false); // special case allowing procedure calls
             return true; // throws error on fail
+        case Language::VAR_DECL:
+            compileVarDecl(node);
+            return true; // throws error on fail
         case Language::IF_STAT:
             compileIfStat(node);
             return true; // throws error on fail
@@ -144,8 +150,12 @@ Value *CodeGen::compile(ASTNode *node) {
             return compileMathOp(node);
         case Language::COMPARISON_OP:
             return compileComparisonOp(node);
+        case Language::ASSIGN_OP:            
+            return compileAssignOp(node);
         case Language::CALL:
             return compileCall(node);
+        case Language::VAR_REFERENCE:
+            return Builder.CreateLoad(compileLHS(node),Twine(node->str) + "val");
         case Language::INT_LITERAL:
             // apint can convert a string
             return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
@@ -196,6 +206,34 @@ Value *CodeGen::compileComparisonOp(ASTNode *node) {
     return NULL; // never reaches here
 }
 
+Value *CodeGen::compileLHS(ASTNode *node) {
+    switch (node->root) {
+        case Language::VAR_REFERENCE:
+            return Scopes->curScope()->resolve(node->str);
+        default:
+            throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
+                                     " not recognized");
+    }
+    return NULL; // never reaches here
+}
+
+Value *CodeGen::compileAssignOp(ASTNode *node) {
+    Value *val = compile(node->children[1]);
+    Builder.CreateStore(val,compileLHS(node->children[0]));
+    return val;
+}
+
+void CodeGen::compileVarDecl(ASTNode *node) {
+    std::vector<VarDecl> args = getDecls(node->children[0]);
+    
+    for (int i = 0; i < args.size();++i) {
+        Value *declared = Scopes->curScope()->declareVar(args[i].Name,args[i].Type);
+        if (node->children.size() > 1) {
+            Builder.CreateStore(compile(node->children[1]),declared);
+        }
+    }
+}
+
 //! Compile a function call
 //! \param wantReturn  Wether the return value is ignored. 
 //!                    Should always be true for procedures.
@@ -231,7 +269,7 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
 }
 
 Function *CodeGen::compileProcPrototype(ASTNode *node) {
-    return compilePrototype(node->str,Types.getType("void"),node->children[0]);
+    return compilePrototype(node->str,Types.getType("void"),getDecls(node->children[0]));
 }
 
 /*! creates an llvm function with no implementation.
@@ -243,9 +281,7 @@ Function *CodeGen::compileProcPrototype(ASTNode *node) {
  \param params A DECLARATIONS ast node containing the formal parameters.
  
  */
-Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, ASTNode *params) {
-    
-    std::vector<VarDecl> args = getDecls(params);
+Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args) {
     
     // Make the function type:  double(double,double) etc.
     std::vector<Type*> argTypes;
@@ -317,7 +353,9 @@ void CodeGen::compileIfStat(ASTNode *node) {
     // Emit then value.
     Builder.SetInsertPoint(thenBB);
     
+    Scopes->pushScope();
     compileBlock(node->children[1]);
+    Scopes->popScope();
     
     Builder.CreateBr(mergeBB);
     
@@ -326,7 +364,9 @@ void CodeGen::compileIfStat(ASTNode *node) {
         theFunction->getBasicBlockList().push_back(elseBB);
         Builder.SetInsertPoint(elseBB);
         
+        Scopes->pushScope();
         compileBlock(node->children[2]);
+        Scopes->popScope();
         
         Builder.CreateBr(mergeBB);
     }
