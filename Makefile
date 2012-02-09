@@ -26,11 +26,11 @@ Turing.g.d_parser.cpp: Turing.g
 	/usr/local/bin/make_dparser $^ -v -Xcpp
 
 %.o: %.cpp tokens.def
-	g++ -g -c $(CPPFLAGS) -o $@ $<
+	clang++ -g -c $(CPPFLAGS) -o $@ $<
 
 
 compiler: $(OBJS)
-	g++ -g -o $@ $(LDFLAGS) $(OBJS) $(LIBS)
+	clang++ -g -o $@ $(LDFLAGS) $(OBJS) $(LIBS)
 
 test: compiler
 	./compiler testcompile.txt
