@@ -26,6 +26,8 @@ public:
 	bool execute();
 
 private:
+    void importStdLib();
+    
     TuringType *getType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
     
@@ -34,10 +36,11 @@ private:
 	llvm::Value *compile(ASTNode *node);
     llvm::Value *compileLHS(ASTNode *node);
 
-	llvm::Value *compileMathOp(ASTNode *node);
-    llvm::Value *compileComparisonOp(ASTNode *node);
+	llvm::Value *compileBinaryOp(ASTNode *node);
     llvm::Value *compileAssignOp(ASTNode *node);
+    llvm::Value *compileLogicOp(ASTNode *node, bool isAnd);
     
+    void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);

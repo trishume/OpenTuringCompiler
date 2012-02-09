@@ -7,6 +7,7 @@
     
     #include <string>
     #include <iostream>
+    #include <set>
 
     ASTNode *treeRoot;
     
@@ -86,6 +87,21 @@
             }
         }
     }
+
+    //! checks if an identifier is a keyword so that put (5)
+    //! doesn't interperet put as a function. Etcetera...
+    bool isKeyword(std::string ident) {
+        std::set<std::string> keywords;
+        keywords.insert("else");
+        keywords.insert("put");
+        keywords.insert("if");
+        keywords.insert("for");
+        keywords.insert("loop");
+        keywords.insert("class");
+        keywords.insert("var");
+
+        return keywords.find(ident) != keywords.end();
+    }
 }
 
 // first rule is root
@@ -158,7 +174,7 @@ type
     }
     ;
 
-put : 'put' (':' assignableExpression ',')? expr (',' expr)* ('.' '.')?
+put : 'put' (':' assignableExpression ',')? expr (',' expr)* ('.' '.')? 
   {
         // TODO streams
         $$ = new ASTNode(Language::PUT_STAT);
@@ -398,7 +414,7 @@ ID  :   "[a-zA-Z_][a-zA-Z0-9_]*"
         // otherwise else is parsed as a function call
         // TODO make it reject all keywords
         std::string ident = nodeString($n0);
-        if (ident == "else") {
+        if (isKeyword(ident)) {
             ${reject};
         } 
     ]
@@ -436,7 +452,7 @@ ESC_SEQ
     :   '\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')
     ;
 
-MATH_OP 
+BIN_OP 
     :   '**' $binary_op_left 70
     |   '*' $binary_op_left 60
     |   '/' $binary_op_left 60
@@ -444,24 +460,18 @@ MATH_OP
     |   'mod' $binary_op_left 60
     |   '+' $binary_op_left 50
     |   '-' $binary_op_left 50
-    ;
-
-COMPARISON_OP
-    :   '<=' $binary_op_left 40
+    |   '<=' $binary_op_left 40
     |   '>=' $binary_op_left 40
     |   '<' $binary_op_left 40
     |   '>' $binary_op_left 40
+    |   'or' $binary_op_left 20
+    |   'and' $binary_op_left 20
     ;
-    
+
 EQUALITY_OP
     :   '=' $binary_op_left 30
     |   '~=' $binary_op_left 30
     |   'not=' $binary_op_left 30
-    ;
-    
-COND_OP
-    :   'or' $binary_op_left 20
-    |   'and' $binary_op_left 20
     ;
 
 ASSIGN_OP   
@@ -473,8 +483,8 @@ ASSIGN_OP
     ;
     
 UNARY_OPERATOR
-    : '-'
-    | 'not'
+    : '-' $unary_op_right 100
+    | 'not' $unary_op_right 90
     ;
 POINTER_FIELD_REF_OPERATOR
     : '->' $binary_op_left 80
@@ -493,16 +503,9 @@ expr
         $$->str = nodeString($n1); // op string
         $$->addChild($1);
     }
-    | expr LT* MATH_OP LT* expr 
+    | expr LT* BIN_OP LT* expr 
     {
-        $$ = new ASTNode(Language::MATH_OP,$n0.start_loc.line);
-        $$->str = nodeString($n2); // op string
-        $$->addChild($0);
-        $$->addChild($4);
-    }
-    | expr LT* COMPARISON_OP LT* expr
-    {
-        $$ = new ASTNode(Language::COMPARISON_OP,$n0.start_loc.line);
+        $$ = new ASTNode(Language::BIN_OP,$n0.start_loc.line);
         $$->str = nodeString($n2); // op string
         $$->addChild($0);
         $$->addChild($4);
@@ -510,13 +513,6 @@ expr
     | expr LT* EQUALITY_OP LT* expr
     {
         $$ = new ASTNode(Language::EQUALITY_OP,$n0.start_loc.line);
-        $$->str = nodeString($n2); // op string
-        $$->addChild($0);
-        $$->addChild($4);
-    }
-    | expr LT* COND_OP LT* expr
-    {
-        $$ = new ASTNode(Language::CONDITIONAL_OP,$n0.start_loc.line);
         $$->str = nodeString($n2); // op string
         $$->addChild($0);
         $$->addChild($4);

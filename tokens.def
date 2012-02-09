@@ -23,10 +23,8 @@ AST_TOKEN(DECLARATION) /* children: type string: name */
 AST_TOKEN(FUNC_PROTO) /* children: returnType block string: name */
 AST_TOKEN(PROC_PROTO) /* children: block string: name */
 AST_TOKEN(FUNC_DEF) /* children: proto block string: */
-AST_TOKEN(MATH_OP) /* children: lhs rhs string: op */
-AST_TOKEN(COMPARISON_OP) /* children: lhs rhs string: op */
+AST_TOKEN(BIN_OP) /* children: lhs rhs string: op */
 AST_TOKEN(EQUALITY_OP) /* children: lhs rhs string: op */
-AST_TOKEN(CONDITIONAL_OP) /* children: lhs rhs string: op */
 AST_TOKEN(ASSIGN_OP) /* children: lhs rhs string: op */
 AST_TOKEN(UNARY_OP) /* children: operand string: operator */
 AST_TOKEN(INT_LITERAL) /* children: string: int */

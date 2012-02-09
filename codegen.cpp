@@ -1,5 +1,7 @@
 #include "codegen.h"
 
+#include <llvm/Instruction.h>
+
 #include "language.h"
 #include "ast.h"
 
@@ -17,20 +19,22 @@ CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()) {
     TheModule = new Module("turing JIT module", getGlobalContext());
     Scopes = new ScopeManager(TheModule);
 }
-/*
- void CodeGen::pushBlock(BasicBlock *block) {
- Blocks.push(new CodeGenBlock());
- Blocks.top()->block = block;
- Builder.SetInsertPoint(block);
- }
- void CodeGen::popBlock() {
- CodeGenBlock *top = Blocks.top(); 
- Blocks.pop(); 
- delete top;
- if(!Blocks.empty()) {
- Builder.SetInsertPoint(Blocks.top()->block);
- }
- }*/
+
+void CodeGen::importStdLib() {
+    std::vector<VarDecl> *params;
+    
+    params = new std::vector<VarDecl>(1,VarDecl("num",Types.getType("int")));
+    compilePrototype("TuringPrintInt",Types.getType("void"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("boolean")));
+    compilePrototype("TuringPrintBool",Types.getType("void"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
+    compilePrototype("TuringPower",Types.getType("int"),*params);
+    delete params;
+}
 
 bool CodeGen::execute() {
 	LLVMContext &context = getGlobalContext();
@@ -48,6 +52,7 @@ bool CodeGen::execute() {
 	Builder.SetInsertPoint(mainBlock);
     bool good = false;
     try {
+        importStdLib();
         good = compileBlock(Root);
     } catch (Message::Exception e) {
         Message::error(e.Message);
@@ -77,6 +82,8 @@ TuringType *CodeGen::getType(ASTNode *node) {
     switch(node->root) {
 		case Language::NAMED_TYPE:
 			return Types.getType(node->str); // can't be NULL
+        case Language::DEFERRED_TYPE:
+            return Types.getType("auto");
             // TODO other type nodes
 	}
     throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " can't be compiled into a type.");
@@ -133,6 +140,9 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::IF_STAT:
             compileIfStat(node);
             return true; // throws error on fail
+        case Language::PUT_STAT:
+            compilePutStat(node);
+            return true;
         default:
             return compile(node) != NULL; // treat as an expression
     }
@@ -146,10 +156,8 @@ Value *CodeGen::compile(ASTNode *node) {
 		throw Message::Exception("Can not compile null node.");
 	}
     switch(node->root) {
-        case Language::MATH_OP:
-            return compileMathOp(node);
-        case Language::COMPARISON_OP:
-            return compileComparisonOp(node);
+        case Language::BIN_OP:
+            return compileBinaryOp(node);
         case Language::ASSIGN_OP:            
             return compileAssignOp(node);
         case Language::CALL:
@@ -167,25 +175,8 @@ Value *CodeGen::compile(ASTNode *node) {
     }
 }
 
-// Compiles binary math operators. Anything with a signature num op num : num
-Value *CodeGen::compileMathOp(ASTNode *node) {
-	Value *L = compile(node->children[0]);
-	Value *R = compile(node->children[1]);
-	if (L == 0 || R == 0) {
-        throw Message::Exception("Invalid operand for binary operator.");
-    }
-	
-	switch (node->str[0]) {
-		case '+': return Builder.CreateAdd(L, R, "addtmp");
-		case '-': return Builder.CreateSub(L, R, "subtmp");
-		case '*': return Builder.CreateMul(L, R, "multmp");
-	}
-    throw Message::Exception("Invalid math operator.");
-    return NULL; // never reaches here
-}
-
-// Compiles binary comparison operators. Anything with a signature num op num : boolean
-Value *CodeGen::compileComparisonOp(ASTNode *node) {
+// Compiles binary operators.
+Value *CodeGen::compileBinaryOp(ASTNode *node) {
 	Value *L = compile(node->children[0]);
 	Value *R = compile(node->children[1]);
 	if (L == 0 || R == 0) {
@@ -200,10 +191,70 @@ Value *CodeGen::compileComparisonOp(ASTNode *node) {
         return Builder.CreateICmpUGE(L, R, "GEtmp");
     } else if (node->str.compare("<=") == 0) {
         return Builder.CreateICmpULE(L, R, "LEtmp");
+    } else if (node->str.compare("and") == 0) {
+        return compileLogicOp(node,true);
+    } else if (node->str.compare("or") == 0) {
+        return compileLogicOp(node,false);
+    } else if (node->str.compare("+") == 0) {
+        return Builder.CreateAdd(L, R, "addtmp");
+    } else if (node->str.compare("-") == 0) {
+        return Builder.CreateSub(L, R, "subtmp");
+    } else if (node->str.compare("*") == 0) {
+        return Builder.CreateMul(L, R, "multmp");
+    } else if (node->str.compare("div") == 0) {
+        return Builder.CreateSDiv(L, R, "divtmp");
+    } else if (node->str.compare("mod") == 0) {
+        return Builder.CreateSRem(L, R, "modtmp");
+    } else if (node->str.compare("**") == 0) {
+        std::vector<Value*> argVals;
+        argVals.push_back(L);
+        argVals.push_back(R);
+        return Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
     }
     
-    throw Message::Exception("Invalid comparison operator.");
+    throw Message::Exception("Invalid binary operator.");
     return NULL; // never reaches here
+}
+
+//! compiles a properly short-circuiting logic operator
+//! \param isAnd false for 'or' true for 'and'
+Value *CodeGen::compileLogicOp(ASTNode *node, bool isAnd) {
+    Value *cond1 = compile(node->children[0]);
+    
+    BasicBlock *startBlock = Builder.GetInsertBlock();
+    Function *theFunction = startBlock->getParent();
+    
+    // Create blocks for the then and else cases.  Insert the 'then' block at the
+    // end of the function.
+    BasicBlock *secondBB = BasicBlock::Create(getGlobalContext(), "cond2", theFunction);
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "andmerge");
+    
+    //! and continues if the first is true and or short-circuits
+    if (isAnd) {
+        Builder.CreateCondBr(cond1, secondBB, mergeBB);
+    } else {
+        Builder.CreateCondBr(cond1, mergeBB, secondBB);
+    }
+    
+    
+    
+    // Emit second condition
+    Builder.SetInsertPoint(secondBB);
+    
+    Value *cond2 = compile(node->children[1]);
+    
+    Builder.CreateBr(mergeBB);
+    
+    
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
+    
+    PHINode *resPhi = Builder.CreatePHI(Types.getType("boolean")->LLVMType,2,"andresult");
+    resPhi->addIncoming(cond1,startBlock);
+    resPhi->addIncoming(cond2,secondBB);
+    
+    return resPhi;
 }
 
 Value *CodeGen::compileLHS(ASTNode *node) {
@@ -223,13 +274,50 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     return val;
 }
 
+void CodeGen::compilePutStat(ASTNode *node) {
+    Value *val = compile(node->children[0]);
+    TuringType *type = Types.getTypeLLVM(val->getType());
+    
+    Function *calleeFunc;
+    std::vector<Value*> argVals;
+    argVals.push_back(val);
+    
+    if (type->Name.compare("int") == 0) {
+        calleeFunc = TheModule->getFunction("TuringPrintInt");
+        
+    } else if (type->Name.compare("boolean") == 0) {
+        calleeFunc = TheModule->getFunction("TuringPrintBool");
+    } else {
+        throw Message::Exception(Twine("Can't put type ") + type->Name);
+    }
+        
+    Builder.CreateCall(calleeFunc,argVals);
+}
+
 void CodeGen::compileVarDecl(ASTNode *node) {
     std::vector<VarDecl> args = getDecls(node->children[0]);
     
     for (int i = 0; i < args.size();++i) {
-        Value *declared = Scopes->curScope()->declareVar(args[i].Name,args[i].Type);
-        if (node->children.size() > 1) {
-            Builder.CreateStore(compile(node->children[1]),declared);
+        bool hasInitial = node->children.size() > 1;
+        
+        TuringType *type = args[i].Type;
+        Value *initializer = NULL;
+        
+        if (hasInitial) {
+            initializer = compile(node->children[1]);
+        }
+        
+        
+        if (type->Name == "auto") {
+            if (!hasInitial) {
+                throw Message::Exception("Can't infer the type of a declaration with no initial value.");
+            }
+            type = Types.getTypeLLVM(initializer->getType());
+        }
+        
+        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type);
+        if (hasInitial) {
+            Builder.CreateStore(initializer,declared);
         }
     }
 }
@@ -245,7 +333,7 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
     // TODO rewrite to get function from scope once implimented
     Function *calleeFunc = TheModule->getFunction(node->str);
     if (calleeFunc == NULL) {
-        throw Message::Exception("Unknown function referenced.");
+        throw Message::Exception(Twine("Unknown function '") + node->str + "' referenced.");
     }
     
     // If argument mismatch error.

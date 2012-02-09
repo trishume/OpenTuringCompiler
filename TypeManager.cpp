@@ -20,6 +20,20 @@ TuringType *TypeManager::getType(std::string name){
     }
     return NameMap[name];
 }
+
+//! finds an existing TuringType of the specified LLVM Type.
+TuringType *TypeManager::getTypeLLVM(Type *llvmType){
+    std::map<std::string,TuringType*>::const_iterator it;
+    for (it = NameMap.begin(); it != NameMap.end(); ++it) {
+        TuringType *type = it->second;
+        if (type->LLVMType == llvmType) {
+            return type;
+        }
+    }
+    // couldn't find it, throw exception    
+    throw Message::Exception("Can't find correct type.");
+    return NULL;
+}
 bool TypeManager::addType(std::string name,TuringType *turType){
     if (NameMap.find(name) != NameMap.end()) {
         Message::error(llvm::Twine("Type ") + name + " already exists.");
@@ -58,4 +72,5 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE));
     
     addTypeLLVM("void",(Type*)Type::getVoidTy(c));
+    addTypeLLVM("auto",(Type*)Type::getVoidTy(c));
 }

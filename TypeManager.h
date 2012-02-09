@@ -19,6 +19,7 @@
 class TypeManager {
 public:
     TuringType *getType(std::string name);
+    TuringType *getTypeLLVM(llvm::Type *llvmType);
     bool addType(std::string name,TuringType *turType);
     bool addTypeLLVM(std::string name,llvm::Type *llvmType);
     bool aliasType(std::string name, std::string aliasName);
