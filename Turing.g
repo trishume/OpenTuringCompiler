@@ -99,6 +99,9 @@
         keywords.insert("loop");
         keywords.insert("class");
         keywords.insert("var");
+        keywords.insert("return");
+        keywords.insert("result");
+        keywords.insert("label");
 
         return keywords.find(ident) != keywords.end();
     }
@@ -389,8 +392,9 @@ prototype
     }
     | ('proc'|'procedure') ID '('? formalargs ')'?
     {
-        $$ = new ASTNode(Language::PROC_PROTO,$n0.start_loc.line);
+        $$ = new ASTNode(Language::FUNC_PROTO,$n0.start_loc.line);
         $$->str = nodeString($n1); // func name
+        $$->addChild(new ASTNode(Language::VOID_TYPE));
         $$->addChild($3);
     }
     ;
@@ -480,6 +484,9 @@ ASSIGN_OP
     |   '-=' $binary_op_right 10
     |   '/=' $binary_op_right 10
     |   '*=' $binary_op_right 10
+    |   '**=' $binary_op_right 10
+    |   'div=' $binary_op_right 10
+    |   'mod=' $binary_op_right 10
     ;
     
 UNARY_OPERATOR

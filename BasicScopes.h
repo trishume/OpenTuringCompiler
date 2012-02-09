@@ -22,6 +22,8 @@
 //! simple common functionality
 class BasicScope : public Scope {
     virtual llvm::Value *resolveVarThis(std::string name);
+    //! sets a variable name to reference a specific value
+    virtual void setVar(std::string name, llvm::Value *val);
     
 protected:
     BasicScope(Scope *parent) : Scope(parent) {}

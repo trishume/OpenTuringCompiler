@@ -17,6 +17,8 @@
 #include "Scope.h"
 #include "ScopeManager.h"
 
+#define MAIN_FUNC_NAME "main"
+
 class ASTNode;
 
 class CodeGen {
@@ -28,6 +30,9 @@ public:
 private:
     void importStdLib();
     
+    llvm::Function *currentFunction();
+    bool isProcedure(llvm::Function *f);
+    
     TuringType *getType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
     
@@ -37,15 +42,18 @@ private:
     llvm::Value *compileLHS(ASTNode *node);
 
 	llvm::Value *compileBinaryOp(ASTNode *node);
+    llvm::Value *abstractCompileBinaryOp(llvm::Value *L, 
+                                         llvm::Value *R, std::string op);
     llvm::Value *compileAssignOp(ASTNode *node);
-    llvm::Value *compileLogicOp(ASTNode *node, bool isAnd);
+    llvm::Value *compileLogicOp(ASTNode *node);
     
     void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
-    llvm::Function *compileProcPrototype(ASTNode *node);
+    llvm::Function *compileFunctionPrototype(ASTNode *node);
     llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
+    llvm::Function *compileFunction(ASTNode *node);
     
     void compileIfStat(ASTNode *node);
     

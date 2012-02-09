@@ -13,6 +13,8 @@ for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->
 
 using namespace llvm;
 
+#pragma mark Construction
+
 CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()) {
 	Root = tree;
     Types.addDefaultTypes(getGlobalContext());
@@ -36,6 +38,8 @@ void CodeGen::importStdLib() {
     delete params;
 }
 
+#pragma mark Execution
+
 bool CodeGen::execute() {
 	LLVMContext &context = getGlobalContext();
     
@@ -46,7 +50,7 @@ bool CodeGen::execute() {
 	/* Create the top level interpreter function to call as entry */
 	std::vector<Type*> argTypes;
 	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
-	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, "main", TheModule);
+	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
     
 	Builder.SetInsertPoint(mainBlock);
@@ -75,6 +79,21 @@ bool CodeGen::execute() {
 	return true; // success
 }
 
+#pragma mark Utilities
+
+Function *CodeGen::currentFunction() {
+    BasicBlock *startBlock = Builder.GetInsertBlock();
+    Function *theFunction = startBlock->getParent();
+    return theFunction;
+}
+
+bool CodeGen::isProcedure(Function *f) {
+    return f->getReturnType()->isVoidTy() && f->getName().compare(MAIN_FUNC_NAME) != 0;
+}
+
+
+#pragma mark Transformation
+
 //! transforms a declarations node into a vector of declarations. Throws exceptions.
 //! \param node A ASTNode that can come from the "type" rule.
 //! \return the TuringType for a node.
@@ -84,9 +103,12 @@ TuringType *CodeGen::getType(ASTNode *node) {
 			return Types.getType(node->str); // can't be NULL
         case Language::DEFERRED_TYPE:
             return Types.getType("auto");
+        case Language::VOID_TYPE:
+            return Types.getType("void");
+        default:
+            throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " can't be compiled into a type.");
             // TODO other type nodes
-	}
-    throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " can't be compiled into a type.");
+	}    
     return NULL; // never gets here
 }
 
@@ -104,6 +126,8 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls) {
     
     return decls;
 }
+
+#pragma mark Compilation
 
 //! Compiles a block of instructions
 //! Returns success
@@ -129,8 +153,10 @@ bool CodeGen::compileStat(ASTNode *node) {
         return false;
 	}
     switch(node->root) {
-        case Language::PROC_PROTO:
-            return compileProcPrototype(node) != NULL;
+        case Language::FUNC_PROTO: // extern declaration
+            return compileFunctionPrototype(node) != NULL;
+        case Language::FUNC_DEF:
+            return compileFunction(node);
         case Language::CALL:
             compileCall(node,false); // special case allowing procedure calls
             return true; // throws error on fail
@@ -163,7 +189,15 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::CALL:
             return compileCall(node);
         case Language::VAR_REFERENCE:
+        {
+            // TODO maybe do as clang does and alloca and assign all params instead of this
+            Value *var = compileLHS(node);
+            if (!(var->getType()->isPointerTy())) {
+                // if it is not a reference return it straight up. Used for arguments.
+                return var;
+            }
             return Builder.CreateLoad(compileLHS(node),Twine(node->str) + "val");
+        }
         case Language::INT_LITERAL:
             // apint can convert a string
             return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
@@ -177,35 +211,39 @@ Value *CodeGen::compile(ASTNode *node) {
 
 // Compiles binary operators.
 Value *CodeGen::compileBinaryOp(ASTNode *node) {
-	Value *L = compile(node->children[0]);
-	Value *R = compile(node->children[1]);
-	if (L == 0 || R == 0) {
+    if (node->str.compare("and") == 0 || node->str.compare("or") == 0) {
+        return compileLogicOp(node);
+    } else {
+        Value *L = compile(node->children[0]);
+        Value *R = compile(node->children[1]);
+        return abstractCompileBinaryOp(L,R,node->str);
+    }
+}
+
+Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
+    if (L == 0 || R == 0) {
         throw Message::Exception("Invalid operand for binary operator.");
     }
 	
-	if (node->str.compare(">") == 0) {
+	if (op.compare(">") == 0) {
         return Builder.CreateICmpUGT(L, R, "GTtmp");
-    } else if (node->str.compare("<") == 0) {
+    } else if (op.compare("<") == 0) {
         return Builder.CreateICmpULT(L, R, "LTtmp");
-    } else if (node->str.compare(">=") == 0) {
+    } else if (op.compare(">=") == 0) {
         return Builder.CreateICmpUGE(L, R, "GEtmp");
-    } else if (node->str.compare("<=") == 0) {
+    } else if (op.compare("<=") == 0) {
         return Builder.CreateICmpULE(L, R, "LEtmp");
-    } else if (node->str.compare("and") == 0) {
-        return compileLogicOp(node,true);
-    } else if (node->str.compare("or") == 0) {
-        return compileLogicOp(node,false);
-    } else if (node->str.compare("+") == 0) {
+    } else if (op.compare("+") == 0) {
         return Builder.CreateAdd(L, R, "addtmp");
-    } else if (node->str.compare("-") == 0) {
+    } else if (op.compare("-") == 0) {
         return Builder.CreateSub(L, R, "subtmp");
-    } else if (node->str.compare("*") == 0) {
+    } else if (op.compare("*") == 0) {
         return Builder.CreateMul(L, R, "multmp");
-    } else if (node->str.compare("div") == 0) {
+    } else if (op.compare("div") == 0) {
         return Builder.CreateSDiv(L, R, "divtmp");
-    } else if (node->str.compare("mod") == 0) {
+    } else if (op.compare("mod") == 0) {
         return Builder.CreateSRem(L, R, "modtmp");
-    } else if (node->str.compare("**") == 0) {
+    } else if (op.compare("**") == 0) {
         std::vector<Value*> argVals;
         argVals.push_back(L);
         argVals.push_back(R);
@@ -218,7 +256,7 @@ Value *CodeGen::compileBinaryOp(ASTNode *node) {
 
 //! compiles a properly short-circuiting logic operator
 //! \param isAnd false for 'or' true for 'and'
-Value *CodeGen::compileLogicOp(ASTNode *node, bool isAnd) {
+Value *CodeGen::compileLogicOp(ASTNode *node) {
     Value *cond1 = compile(node->children[0]);
     
     BasicBlock *startBlock = Builder.GetInsertBlock();
@@ -230,9 +268,9 @@ Value *CodeGen::compileLogicOp(ASTNode *node, bool isAnd) {
     BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "andmerge");
     
     //! and continues if the first is true and or short-circuits
-    if (isAnd) {
+    if (node->str.compare("and") == 0) {
         Builder.CreateCondBr(cond1, secondBB, mergeBB);
-    } else {
+    } else { // or
         Builder.CreateCondBr(cond1, mergeBB, secondBB);
     }
     
@@ -270,7 +308,33 @@ Value *CodeGen::compileLHS(ASTNode *node) {
 
 Value *CodeGen::compileAssignOp(ASTNode *node) {
     Value *val = compile(node->children[1]);
-    Builder.CreateStore(val,compileLHS(node->children[0]));
+    
+    std::string op = node->str.substr(0,node->str.size() - 1);
+    // check for += div= etc...
+    // convert to form "var := var op val
+    if ((op.compare("+") == 0) ||
+        (op.compare("-") == 0) ||
+        (op.compare("*") == 0) ||
+        (op.compare("/") == 0) ||
+        (op.compare("**") == 0) ||
+        (op.compare("mod") == 0) ||
+        (op.compare("div") == 0)) {
+        val = abstractCompileBinaryOp(compile(node->children[0]),val,op);
+    } else if (op.compare(":") != 0) {
+        throw Message::Exception(Twine("Can't find operator ") + op);
+    }
+    Value *assignVar = compileLHS(node->children[0]);
+    
+    if (isa<Argument>(assignVar)) {
+        throw Message::Exception("Can't assign to an argument.");
+    }
+    
+    // store needs a pointer
+    if (!(assignVar->getType()->isPointerTy())) {
+        throw Message::Exception("Can't assign to something that is not a variable");
+    }
+    
+    Builder.CreateStore(val,assignVar);
     return val;
 }
 
@@ -356,8 +420,8 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
     return Builder.CreateCall(calleeFunc, argVals, "calltmp");
 }
 
-Function *CodeGen::compileProcPrototype(ASTNode *node) {
-    return compilePrototype(node->str,Types.getType("void"),getDecls(node->children[0]));
+Function *CodeGen::compileFunctionPrototype(ASTNode *node) {
+    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]));
 }
 
 /*! creates an llvm function with no implementation.
@@ -406,9 +470,45 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     for (Function::arg_iterator ai = f->arg_begin(); idx != args.size();
          ++ai, ++idx) {
         ai->setName(args[idx].Name);
-        
-        // TODO Add arguments to variable symbol table.
     }
+    
+    return f;
+}
+
+Function *CodeGen::compileFunction(ASTNode *node) {
+    Function *f = compileFunctionPrototype(node->children[0]);
+    
+    // TODO add separate scope for arguments so they can be redefined?
+    Scopes->pushLocalScope(f);
+    // add arguments to the scope
+    for (Function::arg_iterator ai = f->arg_begin(); ai != f->arg_end();++ai) {
+        // TODO llvm may auto-rename the arguments. The renamed version should not be the one added.
+        Scopes->curScope()->setVar(ai->getName(),&(*ai));
+    }
+    
+    // save these for later
+    BasicBlock *prevBlock = Builder.GetInsertBlock();
+    BasicBlock::iterator prevPoint = Builder.GetInsertPoint();
+    
+    BasicBlock *entryBB = BasicBlock::Create(getGlobalContext(), "entry", f);
+    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock", f);
+    Builder.SetInsertPoint(entryBB);
+    
+    compileBlock(node->children[1]);
+    Builder.CreateBr(endBB);
+    
+    // procedures have an implicit "return"
+    if (isProcedure(f)) {
+        Builder.SetInsertPoint(endBB);
+        Builder.CreateRetVoid();
+    }
+    
+    Scopes->popScope();
+    
+    // back to normal programming...
+    Builder.SetInsertPoint(prevBlock,prevPoint);
+    
+    verifyFunction(*f);
     
     return f;
 }

@@ -22,8 +22,7 @@ Value *Scope::resolve(std::string name) {
     } else if(Parent != NULL) {
         return Parent->resolve(name);
     } else {
-        Message::error(Twine("could not find variable ") + name);
-        return NULL;
+        throw Message::Exception(Twine("could not find variable ") + name);
     }
 }
 

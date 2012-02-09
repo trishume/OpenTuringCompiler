@@ -27,6 +27,8 @@ public:
     
     //! generates a variable declaration and adds it to the symbol table
     virtual llvm::Value *declareVar(std::string name, TuringType *type) = 0;
+    //! sets a variable name to reference a specific value
+    virtual void setVar(std::string name, llvm::Value *val) = 0;
     //! returns a child scope of the correct type. Used for things like if statements.
     //! I.E global scopes have global children and locals have local children
     virtual Scope *createChildScope() = 0;

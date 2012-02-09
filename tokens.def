@@ -4,6 +4,7 @@ AST_TOKEN(SIZED_STRING_TYPE) /* children: string: size */
 AST_TOKEN(ARRAY_TYPE) /* children: type range+ string: */
 AST_TOKEN(RECORD_TYPE) /* children: decls* string: */
 AST_TOKEN(DEFERRED_TYPE) /* children: string: */
+AST_TOKEN(VOID_TYPE) /* children: */
 AST_TOKEN(PUT_STAT) /* children: expr+ string: (.. if no newline) */
 AST_TOKEN(GET_STAT) /* children: assignableExpression string: (* if read whole line) */
 AST_TOKEN(VAR_DECL) /* children: decls value? string: */
@@ -21,7 +22,6 @@ AST_TOKEN(RETURN_STATEMENT) /* children: string: */
 AST_TOKEN(DECLARATIONS) /* children: decl* string: */
 AST_TOKEN(DECLARATION) /* children: type string: name */
 AST_TOKEN(FUNC_PROTO) /* children: returnType block string: name */
-AST_TOKEN(PROC_PROTO) /* children: block string: name */
 AST_TOKEN(FUNC_DEF) /* children: proto block string: */
 AST_TOKEN(BIN_OP) /* children: lhs rhs string: op */
 AST_TOKEN(EQUALITY_OP) /* children: lhs rhs string: op */

@@ -17,10 +17,15 @@ using namespace llvm;
 
 Value *BasicScope::resolveVarThis(std::string name) {
     if (symbols.find(name) == symbols.end()) {
-        Message::error(Twine("Could not find variable ") + name);
-        return NULL;
+        throw Message::Exception(Twine("Could not find variable ") + name);
     }
     return symbols[name];
+}
+
+//! sets a variable name to reference a specific value
+void BasicScope::setVar(std::string name, llvm::Value *val) {
+    // TODO check if it already exists?
+    symbols[name] = val;
 }
 
 bool BasicScope::isDeclaredThis(std::string name) {
