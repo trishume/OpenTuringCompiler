@@ -15,7 +15,7 @@ using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()) {
+CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()), BlockEarlyExitFlag(false) {
 	Root = tree;
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
@@ -52,6 +52,7 @@ bool CodeGen::execute() {
 	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
 	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
+    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock", MainFunction);
     
 	Builder.SetInsertPoint(mainBlock);
     bool good = false;
@@ -62,6 +63,9 @@ bool CodeGen::execute() {
         Message::error(e.Message);
         
     }
+    
+    Builder.CreateBr(endBB);
+    Builder.SetInsertPoint(endBB);
 	Builder.CreateRetVoid();
     
 	TheModule->dump();
@@ -88,7 +92,11 @@ Function *CodeGen::currentFunction() {
 }
 
 bool CodeGen::isProcedure(Function *f) {
-    return f->getReturnType()->isVoidTy() && f->getName().compare(MAIN_FUNC_NAME) != 0;
+    return f->getReturnType()->isVoidTy();
+}
+
+bool CodeGen::isMainFunction(Function *f) {
+    return f == MainFunction;
 }
 
 
@@ -137,7 +145,11 @@ bool CodeGen::compileBlock(ASTNode *node) {
 			if(!compileStat(*child)) {
 				return false; // failure
 			}
+            // used for returns and exits
+            // instructions past this point will be unreachable so quit early
+            if (BlockEarlyExitFlag) break;
 		}
+        BlockEarlyExitFlag = false; // now that the block is finished
 		return true;
 	} else {
         Message::error("Node is not a block");
@@ -168,6 +180,16 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true; // throws error on fail
         case Language::PUT_STAT:
             compilePutStat(node);
+            return true;
+        case Language::RETURN_STAT:
+            compileReturn();
+            return true;
+        case Language::RESULT_STAT:
+            if (RetVal == NULL) {
+                throw Message::Exception("Result can only be used inside a function.");
+            }
+            Builder.CreateStore(compile(node->children[0]),RetVal);
+            compileReturn();
             return true;
         default:
             return compile(node) != NULL; // treat as an expression
@@ -487,30 +509,47 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     }
     
     // save these for later
-    BasicBlock *prevBlock = Builder.GetInsertBlock();
-    BasicBlock::iterator prevPoint = Builder.GetInsertPoint();
+    IRBuilderBase::InsertPoint prevPoint = Builder.saveIP();
     
     BasicBlock *entryBB = BasicBlock::Create(getGlobalContext(), "entry", f);
     BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock", f);
     Builder.SetInsertPoint(entryBB);
+
+    if (!isProcedure(f)) {
+        RetVal = Builder.CreateAlloca(f->getReturnType(), 0,"returnval");
+    }
     
     compileBlock(node->children[1]);
-    Builder.CreateBr(endBB);
+    
+    if (Builder.GetInsertBlock()->getTerminator() == NULL) {
+        Builder.CreateBr(endBB);
+    }
     
     // procedures have an implicit "return"
-    if (isProcedure(f)) {
-        Builder.SetInsertPoint(endBB);
+    Builder.SetInsertPoint(endBB);
+    if (isProcedure(f)) {        
         Builder.CreateRetVoid();
+    } else { // function
+        // TODO check if RetVal is ever set
+        Builder.CreateRet(Builder.CreateLoad(RetVal));
     }
     
     Scopes->popScope();
     
+    RetVal = NULL; // only does anything in functions
     // back to normal programming...
-    Builder.SetInsertPoint(prevBlock,prevPoint);
+    Builder.restoreIP(prevPoint);
     
-    verifyFunction(*f);
+    //verifyFunction(*f);
     
     return f;
+}
+// compiles the "return" and "result" statements.
+// the last block in a function contains the return statement
+void CodeGen::compileReturn() {
+    Function *f = currentFunction();
+    Builder.CreateBr(&(f->getBasicBlockList().back()));
+    BlockEarlyExitFlag = true;
 }
 
 //! compiles an if statement as a series of blocks

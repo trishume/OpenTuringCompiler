@@ -32,6 +32,7 @@ private:
     
     llvm::Function *currentFunction();
     bool isProcedure(llvm::Function *f);
+    bool isMainFunction(llvm::Function *f);
     
     TuringType *getType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
@@ -54,13 +55,10 @@ private:
     llvm::Function *compileFunctionPrototype(ASTNode *node);
     llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     llvm::Function *compileFunction(ASTNode *node);
+    void compileReturn();
     
     void compileIfStat(ASTNode *node);
     
-
-	//! block stack manipulation
-    //void pushBlock(llvm::BasicBlock *block);
-    //void popBlock();
 
 	ASTNode *Root;
 
@@ -68,6 +66,12 @@ private:
     llvm::Function *MainFunction;
     
 	llvm::IRBuilder<> Builder;
+    
+    //! the current value to be returned. NULL if not a valid place to return from.
+    llvm::Value *RetVal;
+    //! used for "exit" "return" and "result"
+    //! signals the block compiler to not compile instructions after the early exit
+    bool BlockEarlyExitFlag;
 
 	//std::stack<CodeGenBlock *> Blocks;
     TypeManager Types;

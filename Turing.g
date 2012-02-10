@@ -341,7 +341,7 @@ resultstat
     }
     |   'return'
     { 
-        $$ = new ASTNode(Language::RETURN_STATEMENT,$n0.start_loc.line);
+        $$ = new ASTNode(Language::RETURN_STAT,$n0.start_loc.line);
     }
     ;
 
