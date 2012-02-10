@@ -15,7 +15,7 @@ using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()), BlockEarlyExitFlag(false) {
+CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
 	Root = tree;
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
@@ -66,7 +66,9 @@ bool CodeGen::execute() {
     
     Builder.CreateBr(endBB);
     Builder.SetInsertPoint(endBB);
-	Builder.CreateRetVoid();
+    if (!isCurBlockTerminated()) {
+        Builder.CreateRetVoid();
+    }
     
 	TheModule->dump();
     
@@ -97,6 +99,10 @@ bool CodeGen::isProcedure(Function *f) {
 
 bool CodeGen::isMainFunction(Function *f) {
     return f == MainFunction;
+}
+
+bool CodeGen::isCurBlockTerminated() {
+    return Builder.GetInsertBlock()->getTerminator() != NULL;
 }
 
 
@@ -147,9 +153,8 @@ bool CodeGen::compileBlock(ASTNode *node) {
 			}
             // used for returns and exits
             // instructions past this point will be unreachable so quit early
-            if (BlockEarlyExitFlag) break;
+            if (isCurBlockTerminated()) break;
 		}
-        BlockEarlyExitFlag = false; // now that the block is finished
 		return true;
 	} else {
         Message::error("Node is not a block");
@@ -512,7 +517,9 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     IRBuilderBase::InsertPoint prevPoint = Builder.saveIP();
     
     BasicBlock *entryBB = BasicBlock::Create(getGlobalContext(), "entry", f);
-    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock", f);
+    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock");
+    RetBlock = endBB;
+    
     Builder.SetInsertPoint(entryBB);
 
     if (!isProcedure(f)) {
@@ -521,9 +528,11 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     
     compileBlock(node->children[1]);
     
-    if (Builder.GetInsertBlock()->getTerminator() == NULL) {
+    if (!isCurBlockTerminated()) {
         Builder.CreateBr(endBB);
     }
+    
+    f->getBasicBlockList().push_back(endBB);
     
     // procedures have an implicit "return"
     Builder.SetInsertPoint(endBB);
@@ -537,6 +546,7 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     Scopes->popScope();
     
     RetVal = NULL; // only does anything in functions
+    RetBlock = NULL;
     // back to normal programming...
     Builder.restoreIP(prevPoint);
     
@@ -547,9 +557,7 @@ Function *CodeGen::compileFunction(ASTNode *node) {
 // compiles the "return" and "result" statements.
 // the last block in a function contains the return statement
 void CodeGen::compileReturn() {
-    Function *f = currentFunction();
-    Builder.CreateBr(&(f->getBasicBlockList().back()));
-    BlockEarlyExitFlag = true;
+    Builder.CreateBr(RetBlock);
 }
 
 //! compiles an if statement as a series of blocks
@@ -584,7 +592,9 @@ void CodeGen::compileIfStat(ASTNode *node) {
     compileBlock(node->children[1]);
     Scopes->popScope();
     
-    Builder.CreateBr(mergeBB);
+    if (!isCurBlockTerminated()) {
+        Builder.CreateBr(mergeBB);
+    }    
     
     if (hasElse) {
         // Emit else block.
@@ -595,7 +605,9 @@ void CodeGen::compileIfStat(ASTNode *node) {
         compileBlock(node->children[2]);
         Scopes->popScope();
         
-        Builder.CreateBr(mergeBB);
+        if (!isCurBlockTerminated()) {
+            Builder.CreateBr(mergeBB);
+        }
     }
     
     

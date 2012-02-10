@@ -33,6 +33,7 @@ private:
     llvm::Function *currentFunction();
     bool isProcedure(llvm::Function *f);
     bool isMainFunction(llvm::Function *f);
+    bool isCurBlockTerminated();
     
     TuringType *getType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
@@ -69,9 +70,7 @@ private:
     
     //! the current value to be returned. NULL if not a valid place to return from.
     llvm::Value *RetVal;
-    //! used for "exit" "return" and "result"
-    //! signals the block compiler to not compile instructions after the early exit
-    bool BlockEarlyExitFlag;
+    llvm::BasicBlock *RetBlock;
 
 	//std::stack<CodeGenBlock *> Blocks;
     TypeManager Types;
