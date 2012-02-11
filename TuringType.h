@@ -15,8 +15,13 @@
 
 #include "TuringType.h"
 
-struct TuringType {
+class TuringType {
+public:
     TuringType(std::string n, llvm::Type *type) : LLVMType(type), Name(n) {}
+    virtual llvm::Type *getLLVMType();
+    virtual std::string getName();
+    
+protected:
     llvm::Type *LLVMType;
     std::string Name;
 };

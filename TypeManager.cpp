@@ -9,6 +9,7 @@
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/DerivedTypes.h>
+#include <llvm/LLVMContext.h>
 
 #include "Message.h"
 
@@ -20,16 +21,25 @@ TuringType *TypeManager::getType(std::string name){
     }
     return NameMap[name];
 }
+/*TuringType *TypeManager::getArrayType(int upper, int size, TuringType *elementType) {
+    return ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)
+}*/
 
 //! finds an existing TuringType of the specified LLVM Type.
 TuringType *TypeManager::getTypeLLVM(Type *llvmType){
     std::map<std::string,TuringType*>::const_iterator it;
     for (it = NameMap.begin(); it != NameMap.end(); ++it) {
         TuringType *type = it->second;
-        if (type->LLVMType == llvmType) {
+        if (type->getLLVMType() == llvmType) {
             return type;
         }
     }
+    
+    // if it is an array of characters it must be a string, because actual arrays are structs
+    /*if (llvmType->isArrayTy() && (cast<ArrayType>(llvmType)->getTypeAtIndex((unsigned)0) == Type::getInt8Ty(getGlobalContext()))) {
+        return getType("string");
+    }*/
+    
     // couldn't find it, throw exception    
     throw Message::Exception("Can't find correct type.");
     return NULL;
@@ -55,7 +65,7 @@ bool TypeManager::aliasType(std::string name, std::string aliasName){
         Message::error(llvm::Twine("Can't alias type named ") + name);
         return false;
     }
-    NameMap[aliasName] = new TuringType(aliasName,NameMap[name]->LLVMType);
+    NameMap[aliasName] = new TuringType(aliasName,NameMap[name]->getLLVMType());
     return true;
 }
 
@@ -69,7 +79,8 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     
     addTypeLLVM("real",(Type*)Type::getDoublePtrTy(c));
     
-    addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE));
+    //addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)); // char[255]
+    addTypeLLVM("string",(Type*)Type::getInt8Ty(c)->getPointerTo()); // char*
     
     addTypeLLVM("void",(Type*)Type::getVoidTy(c));
     addTypeLLVM("auto",(Type*)Type::getVoidTy(c));

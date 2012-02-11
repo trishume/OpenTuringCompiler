@@ -1,6 +1,7 @@
 #include "codegen.h"
 
 #include <llvm/Instruction.h>
+#include <llvm/Constants.h>
 
 #include "language.h"
 #include "ast.h"
@@ -31,6 +32,14 @@ void CodeGen::importStdLib() {
     
     params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("boolean")));
     compilePrototype("TuringPrintBool",Types.getType("void"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("string")));
+    compilePrototype("TuringPrintString",Types.getType("void"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>();
+    compilePrototype("TuringPrintNewline",Types.getType("void"),*params);
     delete params;
     
     params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
@@ -225,6 +234,8 @@ Value *CodeGen::compile(ASTNode *node) {
             }
             return Builder.CreateLoad(compileLHS(node),Twine(node->str) + "val");
         }
+        case Language::STRING_LITERAL:
+            return Builder.CreateGlobalStringPtr(node->str);
         case Language::INT_LITERAL:
             // apint can convert a string
             return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
@@ -315,7 +326,7 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     theFunction->getBasicBlockList().push_back(mergeBB);
     Builder.SetInsertPoint(mergeBB);
     
-    PHINode *resPhi = Builder.CreatePHI(Types.getType("boolean")->LLVMType,2,"andresult");
+    PHINode *resPhi = Builder.CreatePHI(Types.getType("boolean")->getLLVMType(),2,"andresult");
     resPhi->addIncoming(cond1,startBlock);
     resPhi->addIncoming(cond2,secondBB);
     
@@ -373,16 +384,23 @@ void CodeGen::compilePutStat(ASTNode *node) {
     std::vector<Value*> argVals;
     argVals.push_back(val);
     
-    if (type->Name.compare("int") == 0) {
+    if (type->getName().compare("int") == 0) {
         calleeFunc = TheModule->getFunction("TuringPrintInt");
         
-    } else if (type->Name.compare("boolean") == 0) {
+    } else if (type->getName().compare("boolean") == 0) {
         calleeFunc = TheModule->getFunction("TuringPrintBool");
+    } else if (type->getName().compare("string") == 0) {
+        calleeFunc = TheModule->getFunction("TuringPrintString");
     } else {
-        throw Message::Exception(Twine("Can't put type ") + type->Name);
+        throw Message::Exception(Twine("Can't 'put' type ") + type->getName());
     }
         
     Builder.CreateCall(calleeFunc,argVals);
+    
+    // if the string is not ".." print a newline
+    if (node->str.compare("..") != 0) {
+        Builder.CreateCall(TheModule->getFunction("TuringPrintNewline"),std::vector<Value*>());
+    }
 }
 
 void CodeGen::compileVarDecl(ASTNode *node) {
@@ -399,7 +417,7 @@ void CodeGen::compileVarDecl(ASTNode *node) {
         }
         
         
-        if (type->Name == "auto") {
+        if (type->getName() == "auto") {
             if (!hasInitial) {
                 throw Message::Exception("Can't infer the type of a declaration with no initial value.");
             }
@@ -466,10 +484,10 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     std::vector<Type*> argTypes;
     // extract argument types
     for (int i = 0; i < args.size(); ++i) {
-        argTypes.push_back(args[i].Type->LLVMType);
+        argTypes.push_back(args[i].Type->getLLVMType());
     }
     
-    FunctionType *FT = FunctionType::get(returnType->LLVMType,
+    FunctionType *FT = FunctionType::get(returnType->getLLVMType(),
                                          argTypes, false);
     
     Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
