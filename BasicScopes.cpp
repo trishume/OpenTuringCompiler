@@ -15,9 +15,9 @@
 
 using namespace llvm;
 
-Value *BasicScope::resolveVarThis(std::string name) {
+Symbol BasicScope::resolveVarThis(std::string name) {
     if (symbols.find(name) == symbols.end()) {
-        throw Message::Exception(Twine("Could not find variable ") + name);
+        throw Message::Exception(Twine("Could not find variable or function \"") + name + "\".");
     }
     return symbols[name];
 }
@@ -25,7 +25,7 @@ Value *BasicScope::resolveVarThis(std::string name) {
 //! sets a variable name to reference a specific value
 void BasicScope::setVar(std::string name, llvm::Value *val) {
     // TODO check if it already exists?
-    symbols[name] = val;
+    symbols[name] = Symbol(val,NULL);
 }
 
 bool BasicScope::isDeclaredThis(std::string name) {
@@ -40,7 +40,7 @@ Scope *GlobalScope::createChildScope() {
     return new GlobalScope(TheModule,this);
 }
 
-Value *GlobalScope::declareVar(std::string name, TuringType *type) {
+Symbol GlobalScope::declareVar(std::string name, TuringType *type) {
     if (isDeclaredThis(name)) {
         throw Message::Exception(Twine("Variable ") + name + " is already defined.");
     }
@@ -51,10 +51,12 @@ Value *GlobalScope::declareVar(std::string name, TuringType *type) {
                                               /*Linkage=*/GlobalValue::CommonLinkage,
                                               /*Initializer=*/Constant::getNullValue(type->getLLVMType()), // has initializer, specified below
                                               /*Name=*/name);
-    // store in the symbol table
-    symbols[name] = gvar;
+    Symbol sym(gvar,type);
     
-    return gvar;
+    // store in the symbol table
+    symbols[name] = sym;
+    
+    return sym;
 }
 
 LocalScope::LocalScope(llvm::Function *func, Scope *parent) : TheFunction(func), BasicScope(parent) {
@@ -65,7 +67,7 @@ Scope *LocalScope::createChildScope() {
     return new LocalScope(TheFunction,this);
 }
 
-Value *LocalScope::declareVar(std::string name, TuringType *type) {
+Symbol LocalScope::declareVar(std::string name, TuringType *type) {
     if (isDeclaredThis(name)) {
         throw Message::Exception(Twine("Variable ") + name + " is already defined.");
     }
@@ -74,9 +76,10 @@ Value *LocalScope::declareVar(std::string name, TuringType *type) {
                      TheFunction->getEntryBlock().begin());
     Value *lvar = TmpB.CreateAlloca(type->getLLVMType(), 0,name);
     
+    Symbol sym(lvar,type);
     
     // store in the symbol table
-    symbols[name] = lvar;
+    symbols[name] = sym;
     
-    return lvar;
+    return sym;
 }

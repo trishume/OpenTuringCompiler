@@ -548,17 +548,10 @@ primaryExpression
     |   '\'' CHAR  '\'' { $$ = new ASTNode(Language::CHAR_LITERAL,$n0.start_loc.line); $$->str = nodeString($n1);}
     |   'true' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}
     |   'false' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}
-    |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args
-    {
-        $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
-        $$->str = nodeString($n0); // op string
-        $$->addChild($2);
-        addParseGroupItems(&$n3,$$,2); // rest of args
-    }
     |   assignableExpression '(' ')' // function call with no args
     {
-        $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
-        $$->str = nodeString($n0); // op string
+    $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
+    $$->addChild($0);
     }
     |   assignableExpression {$$ = $0; /* pass up */}
     |   '(' expr')' {$$ = $1; /* pass up */}
@@ -584,6 +577,13 @@ assignableExpression
         $$ = new ASTNode(Language::FIELD_REF_OP,$n0.start_loc.line);
         $$->addChild($0);
         $$->str = nodeString($n2); // right operand
+    }
+    |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args or array index
+    {
+    $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
+    $$->addChild($0);
+    $$->addChild($2);
+    addParseGroupItems(&$n3,$$,2); // rest of args
     }
     |   ID
     {

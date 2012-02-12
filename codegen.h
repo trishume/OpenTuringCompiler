@@ -36,12 +36,13 @@ private:
     bool isCurBlockTerminated();
     
     TuringType *getType(ASTNode *node);
+    TuringType *getArrayType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
     
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);
 	llvm::Value *compile(ASTNode *node);
-    llvm::Value *compileLHS(ASTNode *node);
+    Symbol compileLHS(ASTNode *node);
 
 	llvm::Value *compileBinaryOp(ASTNode *node);
     llvm::Value *abstractCompileBinaryOp(llvm::Value *L, 
@@ -52,7 +53,11 @@ private:
     void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
+    llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
+    
+    llvm::Value *compileCallSyntax(ASTNode *node);
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
+    llvm::Value *compileCall(llvm:: Value *callee,ASTNode *node, bool wantReturn);
     llvm::Function *compileFunctionPrototype(ASTNode *node);
     llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     llvm::Function *compileFunction(ASTNode *node);

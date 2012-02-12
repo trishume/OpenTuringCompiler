@@ -21,9 +21,10 @@ TuringType *TypeManager::getType(std::string name){
     }
     return NameMap[name];
 }
-/*TuringType *TypeManager::getArrayType(int upper, int size, TuringType *elementType) {
-    return ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)
-}*/
+TuringType *TypeManager::getArrayType(TuringType *elementType, unsigned int upper) {
+    //TODO LEAK this may never get released
+    return new TuringArrayType(elementType, upper);
+}
 
 //! finds an existing TuringType of the specified LLVM Type.
 TuringType *TypeManager::getTypeLLVM(Type *llvmType){
@@ -35,10 +36,20 @@ TuringType *TypeManager::getTypeLLVM(Type *llvmType){
         }
     }
     
-    // if it is an array of characters it must be a string, because actual arrays are structs
-    /*if (llvmType->isArrayTy() && (cast<ArrayType>(llvmType)->getTypeAtIndex((unsigned)0) == Type::getInt8Ty(getGlobalContext()))) {
-        return getType("string");
-    }*/
+    /*if (llvmType->isPointerTy()) {
+        TuringType *sub = getTypeLLVM(cast<PointerType>(llvmType)->getElementType());
+        return BasicTuringType(Twine("pointer to ") + sub->getName(),
+     }*/
+    
+    // is it an array
+    if (llvmType->isStructTy() && cast<StructType>(llvmType)->getNumElements() == 2 && 
+        cast<StructType>(llvmType)->getElementType(0) == getType("int")->getLLVMType() &&
+        cast<StructType>(llvmType)->getElementType(1)->isArrayTy()) 
+    {
+        // it's an array so construct a type for it
+        ArrayType *arrTy = cast<ArrayType>(cast<StructType>(llvmType)->getElementType(1));
+        return getArrayType(getTypeLLVM(arrTy->getElementType()), arrTy->getNumElements());
+    }
     
     // couldn't find it, throw exception    
     throw Message::Exception("Can't find correct type.");

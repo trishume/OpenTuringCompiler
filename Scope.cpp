@@ -16,7 +16,7 @@ Scope::Scope(Scope *parent) : Parent(parent) {
     
 }
 
-Value *Scope::resolve(std::string name) {
+Symbol Scope::resolve(std::string name) {
     if (isDeclaredThis(name)){
         return resolveVarThis(name);
     } else if(Parent != NULL) {

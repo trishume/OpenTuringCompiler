@@ -21,7 +21,7 @@
 
 //! simple common functionality
 class BasicScope : public Scope {
-    virtual llvm::Value *resolveVarThis(std::string name);
+    virtual Symbol resolveVarThis(std::string name);
     //! sets a variable name to reference a specific value
     virtual void setVar(std::string name, llvm::Value *val);
     
@@ -29,7 +29,7 @@ protected:
     BasicScope(Scope *parent) : Scope(parent) {}
     virtual bool isDeclaredThis(std::string name);
     
-    std::map<std::string,llvm::Value*> symbols;
+    std::map<std::string,Symbol> symbols;
 };
 
 class LocalScope : public BasicScope {
@@ -38,7 +38,7 @@ public:
     LocalScope(llvm::Function *curFunc, Scope *parent);
     virtual Scope *createChildScope();
     
-    virtual llvm::Value *declareVar(std::string name, TuringType *type);
+    virtual Symbol declareVar(std::string name, TuringType *type);
 protected:
     llvm::Function *TheFunction;
 };
@@ -49,7 +49,7 @@ public:
     GlobalScope(llvm::Module *mod, Scope *parent);
     virtual Scope *createChildScope();
     
-    virtual llvm::Value *declareVar(std::string name, TuringType *type);
+    virtual Symbol declareVar(std::string name, TuringType *type);
 protected:
     llvm::Module *TheModule;
 };

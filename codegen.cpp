@@ -124,6 +124,8 @@ TuringType *CodeGen::getType(ASTNode *node) {
     switch(node->root) {
 		case Language::NAMED_TYPE:
 			return Types.getType(node->str); // can't be NULL
+        case Language::ARRAY_TYPE:
+            return getArrayType(node);
         case Language::DEFERRED_TYPE:
             return Types.getType("auto");
         case Language::VOID_TYPE:
@@ -133,6 +135,30 @@ TuringType *CodeGen::getType(ASTNode *node) {
             // TODO other type nodes
 	}    
     return NULL; // never gets here
+}
+
+// TODO TEST fancy logic. Test this.
+TuringType *CodeGen::getArrayType(ASTNode *node) {
+    TuringType *arrayType = getType(node->children[0]);
+    // the node can contain multiple ranges. These denote multi-dimensional arrays.
+    // Since these are just arrays in arrays. We keep wrapping the previous type
+    // in an array until there are no more ranges. Starting from the end so that
+    // 1..5, 1..4 is [5 x [4 x type]] instead of vice-versa.
+    for (int i = node->children.size() - 1; i > 0; --i) {
+        ASTNode *range = node->children[i];
+        Value *upperVal = compile(range->children[1]);
+        
+        // we don't want someone putting "array bob..upper(bob) of int" because
+        // we have to know the size at compile time.
+        if (!isa<ConstantInt>(upperVal)) {
+            throw Message::Exception("Bounds of array must be int constants");
+        }
+        // *ConstantInt -> APInt -> uint_64
+        int upper = cast<ConstantInt>(upperVal)->getValue().getLimitedValue();
+        // wrap it up
+        arrayType = Types.getArrayType(arrayType,upper);
+    }
+    return arrayType;
 }
 
 //! transforms a declarations node into a vector of declarations. 
@@ -223,16 +249,16 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::ASSIGN_OP:            
             return compileAssignOp(node);
         case Language::CALL:
-            return compileCall(node);
+            return compileCallSyntax(node);
         case Language::VAR_REFERENCE:
         {
             // TODO maybe do as clang does and alloca and assign all params instead of this
-            Value *var = compileLHS(node);
+            Value *var = compileLHS(node).getVal();
             if (!(var->getType()->isPointerTy())) {
                 // if it is not a reference return it straight up. Used for arguments.
                 return var;
             }
-            return Builder.CreateLoad(compileLHS(node),Twine(node->str) + "val");
+            return Builder.CreateLoad(var,Twine(node->str) + "val");
         }
         case Language::STRING_LITERAL:
             return Builder.CreateGlobalStringPtr(node->str);
@@ -333,15 +359,27 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     return resPhi;
 }
 
-Value *CodeGen::compileLHS(ASTNode *node) {
+Symbol CodeGen::compileLHS(ASTNode *node) {
     switch (node->root) {
         case Language::VAR_REFERENCE:
             return Scopes->curScope()->resolve(node->str);
+        case Language::CALL:
+        {
+            // must be an array reference
+            Symbol callee = compileLHS(node->children[0]);
+            if (!callee.getType() || !callee.getType()->isArrayTy()) {
+                throw Message::Exception("Can't index something that isn't an array.");
+            }
+            
+            TuringArrayType *arr = static_cast<TuringArrayType*>(callee.getType());
+            
+            return Symbol(compileIndex(callee.getVal(),node),arr->getElementType());
+        }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
                                      " not recognized");
     }
-    return NULL; // never reaches here
+    return Symbol(); // never reaches here
 }
 
 Value *CodeGen::compileAssignOp(ASTNode *node) {
@@ -361,7 +399,7 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     } else if (op.compare(":") != 0) {
         throw Message::Exception(Twine("Can't find operator ") + op);
     }
-    Value *assignVar = compileLHS(node->children[0]);
+    Value *assignVar = compileLHS(node->children[0]).getVal();
     
     if (isa<Argument>(assignVar)) {
         throw Message::Exception("Can't assign to an argument.");
@@ -424,11 +462,49 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             type = Types.getTypeLLVM(initializer->getType());
         }
         
-        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type);
+        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type).getVal();
         if (hasInitial) {
             Builder.CreateStore(initializer,declared);
         }
     }
+}
+
+//! \param node  a CALL node
+//! \returns a pointer to the element
+Value *CodeGen::compileIndex(Value *indexed,ASTNode *node) {
+    std::vector<Value*> indices;
+    // depointerize
+    indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
+    // get the array part of the turing array struct
+    indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
+    // index it
+    indices.push_back(compile(node->children[1]));
+    return Builder.CreateInBoundsGEP(indexed,indices,"indextemp");
+}
+
+//! in turing, the call syntax is used for array indexes, calls and other things
+//! this function dispatches the call to the correct compile function
+Value *CodeGen::compileCallSyntax(ASTNode *node) {
+    Symbol callee = compileLHS(node->children[0]);
+    if (isa<Function>(callee.getVal())) {
+        return compileCall(callee.getVal(),node,true);
+    }
+    
+    if (callee.getType() == NULL) {
+        // FIXME EEEEVVVVIIIIILLLL!!!!
+        goto fail;
+    }
+    
+    if (callee.getType()->isArrayTy()) {
+        return Builder.CreateLoad(compileIndex(callee.getVal(),node),"indexloadtemp");
+    }
+    
+fail:        
+    throw Message::Exception("Only functions and procedures can be called.");
+    return NULL; // never reaches here
+}
+Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
+    return compileCall(compileLHS(node->children[0]).getVal(),node,wantReturn);
 }
 
 //! Compile a function call
@@ -436,22 +512,25 @@ void CodeGen::compileVarDecl(ASTNode *node) {
 //!                    Should always be true for procedures.
 //! \return the return value of the function
 //!         unless the wantReturn parameter is null
-//!         in wich case NULL is returned
-Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
-    // Look up the name in the global module table.
-    // TODO rewrite to get function from scope once implimented
-    Function *calleeFunc = TheModule->getFunction(node->str);
-    if (calleeFunc == NULL) {
-        throw Message::Exception(Twine("Unknown function '") + node->str + "' referenced.");
+//!         in wich case NULL is returned.
+//!         defaults to true.
+Value *CodeGen::compileCall(Value *callee,ASTNode *node, bool wantReturn) {
+    
+    if (!isa<Function>(callee)) {
+        throw Message::Exception("Only functions and procedures can be called.");
     }
     
+    // must be a function
+    Function *calleeFunc = cast<Function>(callee);
+    
     // If argument mismatch error.
-    if (calleeFunc->arg_size() != node->children.size()) {
+    if (calleeFunc->arg_size() != (node->children.size()-1)) {
         throw Message::Exception(Twine(node->children.size()) + " arguments passed to a function that takes " + Twine(calleeFunc->arg_size()));
     }
     
     std::vector<Value*> argVals;
-    for (unsigned i = 0, e = node->children.size(); i < e; ++i) {
+    // args start at second child
+    for (unsigned i = 1, e = node->children.size(); i < e; ++i) {
         argVals.push_back(compile(node->children[i]));
     }
     
@@ -487,7 +566,7 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
         argTypes.push_back(args[i].Type->getLLVMType());
     }
     
-    FunctionType *FT = FunctionType::get(returnType->getLLVMType(),
+    FunctionType *FT = FunctionType::get(returnType->getLLVMType(true), // true = it is a parameter
                                          argTypes, false);
     
     Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
@@ -517,6 +596,12 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
         ai->setName(args[idx].Name);
     }
     
+    // add it to the LOCAL scope
+    // WARNING this allows some interesting
+    // functionality that normal turing does not
+    // support
+    Scopes->curScope()->setVar(name,f);
+    
     return f;
 }
 
@@ -530,6 +615,14 @@ Function *CodeGen::compileFunction(ASTNode *node) {
         // TODO llvm may auto-rename the arguments. The renamed version should not be the one added.
         Scopes->curScope()->setVar(ai->getName(),&(*ai));
     }
+    
+    /* using allocas, allows modification of parameters. Saving the code in case it is needed
+    // add arguments to the scope
+    unsigned idx = 0;
+    for (Function::arg_iterator ai = f->arg_begin(); idx != args.size();
+         ++ai, ++idx) {
+        Symbol arg = Scopes->curScope()->declareVar(args[idx].Name,args[idx].Type);
+    }*/
     
     // save these for later
     IRBuilderBase::InsertPoint prevPoint = Builder.saveIP();
