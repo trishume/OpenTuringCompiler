@@ -238,7 +238,7 @@ Value *CodeGen::compile(ASTNode *node) {
             return Builder.CreateGlobalStringPtr(node->str);
         case Language::INT_LITERAL:
             // apint can convert a string
-            return ConstantInt::get(getGlobalContext(), APInt(64,node->str,10));
+            return ConstantInt::get(getGlobalContext(), APInt(32,node->str,10));
         case Language::BOOL_LITERAL:
             // apint is used because booleans are one bit ints
             return ConstantInt::get(getGlobalContext(), APInt(1,(node->str.compare("true") == 0) ? 1 : 0));

@@ -57,7 +57,7 @@ bool TypeManager::addTypeLLVM(std::string name,Type *llvmType){
         Message::error(Twine("Type ") + name + " already exists.");
         return false;
     }
-    NameMap[name] = new TuringType(name,llvmType);
+    NameMap[name] = new BasicTuringType(name,llvmType);
     return true;
 }
 bool TypeManager::aliasType(std::string name, std::string aliasName){
@@ -65,15 +65,15 @@ bool TypeManager::aliasType(std::string name, std::string aliasName){
         Message::error(llvm::Twine("Can't alias type named ") + name);
         return false;
     }
-    NameMap[aliasName] = new TuringType(aliasName,NameMap[name]->getLLVMType());
+    NameMap[aliasName] = new BasicTuringType(aliasName,NameMap[name]->getLLVMType());
     return true;
 }
 
 void TypeManager::addDefaultTypes(LLVMContext &c) {
     // ints
-    addTypeLLVM("int",(Type*)Type::getInt64Ty(c));
+    addTypeLLVM("int",(Type*)Type::getInt32Ty(c));
     addTypeLLVM("int8",(Type*)Type::getInt8Ty(c));
-    addTypeLLVM("int32",(Type*)Type::getInt32Ty(c));
+    addTypeLLVM("int64",(Type*)Type::getInt64Ty(c));
     
     addTypeLLVM("boolean",(Type*)Type::getInt1Ty(c));
     

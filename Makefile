@@ -2,6 +2,7 @@ all: compiler
 
 OBJS = language.o \
         Message.o \
+        TuringType.o \
         TypeManager.o \
         Scope.o \
         BasicScopes.o \

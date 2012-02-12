@@ -8,15 +8,23 @@
 
 #include <iostream>
 
-typedef long TInt;
+#include "TypeManager.h"
+
+typedef int TInt;
 
 
 extern "C" {
     void TuringPrintInt(TInt num) {
-        std::cout << num << std::endl;
+        std::cout << num;
     }
     void TuringPrintBool(bool value) {
-        std::cout << (value ? "true" : "false") << std::endl;
+        std::cout << (value ? "true" : "false");
+    }
+    void TuringPrintString(char *str) {
+        std::cout << str;
+    }
+    void TuringPrintNewline() {
+        std::cout << std::endl;
     }
     int TuringPower(TInt a,TInt ex) {
         if ( 0==ex )  return 1;
