@@ -41,16 +41,30 @@ protected:
 
 class TuringArrayType : public TuringType {
 public:
-    TuringArrayType(TuringType *elementType, unsigned int upper) : ElementType(elementType), Size(upper) {}
+    TuringArrayType(TuringType *elementType, unsigned int upper);
     //! \param isReference returns {i32, [Size x Type]} normally {i32, [0 x Type]} by reference
     virtual llvm::Type *getLLVMType(bool isReference = false);
     TuringType *getElementType() {return ElementType;};
+    unsigned int getSize() {return Size;}
+    
     virtual std::string getName();
+    //! set a nickname for this array type, used for strings
+    void setName(std::string str) {
+        Name = str;
+    }
     
     virtual bool isArrayTy() {return true;}
 protected:
     TuringType *ElementType;
     unsigned int Size;
+    std::string Name;
 };
+
+class TuringPointerType : public BasicTuringType {
+public:
+    virtual llvm::Type *getLLVMType(bool isReference = false);
+    virtual std::string getName();
+};
+
 
 #endif

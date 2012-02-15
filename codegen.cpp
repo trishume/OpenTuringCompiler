@@ -45,6 +45,18 @@ void CodeGen::importStdLib() {
     params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
     compilePrototype("TuringPower",Types.getType("int"),*params);
     delete params;
+    
+    params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
+    compilePrototype("TuringIndexArray",Types.getType("int"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>();
+    params->push_back(VarDecl("from",Types.getType("pointer to void")));
+    params->push_back(VarDecl("to",Types.getType("pointer to void")));
+    params->push_back(VarDecl("fromLength",Types.getType("int")));
+    params->push_back(VarDecl("toLength",Types.getType("int")));
+    compilePrototype("TuringCopyArray",Types.getType("void"),*params);
+    delete params;
 }
 
 #pragma mark Execution
@@ -114,6 +126,27 @@ bool CodeGen::isCurBlockTerminated() {
     return Builder.GetInsertBlock()->getTerminator() != NULL;
 }
 
+Value *CodeGen::compileArrayByteSize(Value *arrayRef) {
+    std::vector<Value*> indices;
+    // depointerize
+    indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
+    // get the array part of the turing array struct
+    indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
+    // index it with the length
+    indices.push_back(compileArrayLength(arrayRef));
+    
+    // double checking, this should never happen
+    if (!arrayRef->getType()->isPointerTy()) {
+        throw Message::Exception("Can't find the length of a non-referenced array.");
+    }
+    
+    Value *sizePtr = Builder.CreateGEP(ConstantPointerNull::get(cast<PointerType>(arrayRef->getType())),indices,"arraysizeptr");
+    return Builder.CreatePointerCast(sizePtr,Types.getType("int")->getLLVMType(),"arrlengthint");
+}
+
+Value *CodeGen::compileArrayLength(Value *arrayRef) {
+    return Builder.CreateLoad(Builder.CreateConstGEP2_32(arrayRef,0,0,"arrlengthptr"),"arraylengthval");
+}
 
 #pragma mark Transformation
 
@@ -251,17 +284,9 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::VAR_REFERENCE:
-        {
-            // TODO maybe do as clang does and alloca and assign all params instead of this
-            Value *var = compileLHS(node).getVal();
-            if (!(var->getType()->isPointerTy())) {
-                // if it is not a reference return it straight up. Used for arguments.
-                return var;
-            }
-            return Builder.CreateLoad(var,Twine(node->str) + "val");
-        }
+            return compileVarReference(node);
         case Language::STRING_LITERAL:
-            return Builder.CreateGlobalStringPtr(node->str);
+            return compileStringLiteral(node->str);
         case Language::INT_LITERAL:
             // apint can convert a string
             return ConstantInt::get(getGlobalContext(), APInt(32,node->str,10));
@@ -271,6 +296,46 @@ Value *CodeGen::compile(ASTNode *node) {
         default:
             throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " not recognized");
     }
+}
+//! creates a constant struct to represent a string literal
+//! \returns an array reference to the string literal
+Value *CodeGen::compileStringLiteral(const std::string &str) {
+    std::vector<Constant*> arrayStructVals,arrayVals;
+    
+    // string length
+    arrayStructVals.push_back(ConstantInt::get(getGlobalContext(),APInt(32,str.size()+1)));
+    
+    // create string array
+    
+    // iterate and add the characters, C STYLE!
+    // TODO maybe make this not use C style pointer iteration
+    const char *cstr = str.c_str();
+    while (*cstr != 0) {
+        arrayVals.push_back(ConstantInt::get(getGlobalContext(),APInt(8,*cstr)));
+        ++cstr;
+    }    
+    
+    // add null terminator
+    arrayVals.push_back(ConstantInt::get(getGlobalContext(),APInt(8,0)));
+    
+    // add the string to the struct
+    ArrayType *arrTy = ArrayType::get(Types.getType("int8")->getLLVMType(),str.size()+1);
+    arrayStructVals.push_back(ConstantArray::get(arrTy,arrayVals));
+    
+    std::vector<Type *> structTypes;
+    structTypes.push_back(Types.getType("int")->getLLVMType());
+    structTypes.push_back(arrTy);
+    StructType *structTy = StructType::get(getGlobalContext(),structTypes);
+    
+    Constant *structConst = ConstantStruct::get(structTy,arrayStructVals);
+    
+    Value *gvar = new GlobalVariable(/*Type=*/structTy,
+                                     /*isConstant=*/true,
+                                     /*Linkage=*/GlobalValue::CommonLinkage,
+                                     /*Initializer=*/structConst);
+    Type *stringRefType = Types.getType("string")->getLLVMType(true);
+    
+    return Builder.CreatePointerCast(gvar,stringRefType,"castedstringconstant");
 }
 
 // Compiles binary operators.
@@ -399,7 +464,8 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     } else if (op.compare(":") != 0) {
         throw Message::Exception(Twine("Can't find operator ") + op);
     }
-    Value *assignVar = compileLHS(node->children[0]).getVal();
+    Symbol assignSym = compileLHS(node->children[0]);
+    Value *assignVar = assignSym.getVal();
     
     if (isa<Argument>(assignVar)) {
         throw Message::Exception("Can't assign to an argument.");
@@ -410,13 +476,32 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
         throw Message::Exception("Can't assign to something that is not a variable");
     }
     
+    // assigning an array to an array copies it
+    if (assignSym.getType()->isArrayTy()) {
+        compileArrayCopy(val,assignSym);
+        return val;
+    }
+    
+    // assert asignee is a pointer to the type being assigned
+    if (cast<PointerType>(assignVar->getType())->getElementType() != val->getType()) {
+        throw Message::Exception("Things being assigned must be the same type.");
+    }
+    
     Builder.CreateStore(val,assignVar);
     return val;
 }
 
+void CodeGen::compileArrayCopy(Value *from, Symbol to) {
+    Value *srcSize = compileArrayByteSize(from);
+    Value *destSize = compileArrayByteSize(to.getVal());
+    Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("pointer to void")->getLLVMType(),"fromptr");
+    Value *toPtr = Builder.CreatePointerCast(to.getVal(),Types.getType("pointer to void")->getLLVMType(),"toptr");
+    Builder.CreateCall4(TheModule->getFunction("TuringCopyArray"),fromPtr,toPtr,srcSize,destSize);
+}
+
 void CodeGen::compilePutStat(ASTNode *node) {
     Value *val = compile(node->children[0]);
-    TuringType *type = Types.getTypeLLVM(val->getType());
+    TuringType *type = Types.getTypeLLVM(val->getType(),true);
     
     Function *calleeFunc;
     std::vector<Value*> argVals;
@@ -466,19 +551,51 @@ void CodeGen::compileVarDecl(ASTNode *node) {
         if (hasInitial) {
             Builder.CreateStore(initializer,declared);
         }
+        
+        // must initialize the length part of the array struct
+        if (type->isArrayTy()) {
+            TuringArrayType *arrtype = static_cast<TuringArrayType*>(type);
+            Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared,0,0,"arrlengthptr");
+            Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
+            Builder.CreateStore(length,arrLengthPtr);
+        }
     }
+}
+
+Value *CodeGen::compileVarReference(ASTNode *node) {
+    // TODO maybe do as clang does and alloca and assign all params instead of this
+    Symbol var = compileLHS(node);
+    if (!(var.getVal()->getType()->isPointerTy())) {
+        // if it is not a reference return it straight up. Used for arguments.
+        return var.getVal();
+    }
+    // arrays are referenced
+    if (var.getType()->isArrayTy()) {
+        return Builder.CreateBitCast(var.getVal(),var.getType()->getLLVMType(true),"arrayref");
+    }
+    
+    return Builder.CreateLoad(var.getVal(),Twine(node->str) + "val");
 }
 
 //! \param node  a CALL node
 //! \returns a pointer to the element
 Value *CodeGen::compileIndex(Value *indexed,ASTNode *node) {
+    
+    if (node->children.size() == 0) {
+        throw Message::Exception("Must have at least one array index in brackets.");
+    }
+    
     std::vector<Value*> indices;
     // depointerize
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
     // index it
-    indices.push_back(compile(node->children[1]));
+    Value *index = compile(node->children[1]);
+    // take the 1-based index, bounds-check it and return the 0-based index
+    Value *realIndex = Builder.CreateCall2(TheModule->getFunction("TuringIndexArray"),index,
+                                            compileArrayLength(indexed));
+    indices.push_back(realIndex);
     return Builder.CreateInBoundsGEP(indexed,indices,"indextemp");
 }
 
@@ -563,10 +680,10 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     std::vector<Type*> argTypes;
     // extract argument types
     for (int i = 0; i < args.size(); ++i) {
-        argTypes.push_back(args[i].Type->getLLVMType());
+        argTypes.push_back(args[i].Type->getLLVMType(true));  // true = it is a parameter
     }
     
-    FunctionType *FT = FunctionType::get(returnType->getLLVMType(true), // true = it is a parameter
+    FunctionType *FT = FunctionType::get(returnType->getLLVMType(),
                                          argTypes, false);
     
     Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
@@ -606,14 +723,17 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
 }
 
 Function *CodeGen::compileFunction(ASTNode *node) {
-    Function *f = compileFunctionPrototype(node->children[0]);
+    ASTNode *proto = node->children[0];
+    std::vector<VarDecl> args = getDecls(proto->children[1]);
+    Function *f = compilePrototype(proto->str,getType(proto->children[0]),args);
     
     // TODO add separate scope for arguments so they can be redefined?
     Scopes->pushLocalScope(f);
     // add arguments to the scope
-    for (Function::arg_iterator ai = f->arg_begin(); ai != f->arg_end();++ai) {
-        // TODO llvm may auto-rename the arguments. The renamed version should not be the one added.
-        Scopes->curScope()->setVar(ai->getName(),&(*ai));
+    unsigned idx = 0;
+    for (Function::arg_iterator ai = f->arg_begin(); idx != args.size();
+         ++ai, ++idx) {
+        Scopes->curScope()->setVar(args[idx].Name,&(*ai),args[idx].Type);
     }
     
     /* using allocas, allows modification of parameters. Saving the code in case it is needed

@@ -27,11 +27,11 @@ TuringType *TypeManager::getArrayType(TuringType *elementType, unsigned int uppe
 }
 
 //! finds an existing TuringType of the specified LLVM Type.
-TuringType *TypeManager::getTypeLLVM(Type *llvmType){
+TuringType *TypeManager::getTypeLLVM(Type *llvmType, bool isReference){
     std::map<std::string,TuringType*>::const_iterator it;
     for (it = NameMap.begin(); it != NameMap.end(); ++it) {
         TuringType *type = it->second;
-        if (type->getLLVMType() == llvmType) {
+        if (type->getLLVMType(isReference) == llvmType) {
             return type;
         }
     }
@@ -76,7 +76,7 @@ bool TypeManager::aliasType(std::string name, std::string aliasName){
         Message::error(llvm::Twine("Can't alias type named ") + name);
         return false;
     }
-    NameMap[aliasName] = new BasicTuringType(aliasName,NameMap[name]->getLLVMType());
+    NameMap[aliasName] = NameMap[name];
     return true;
 }
 
@@ -91,7 +91,12 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     addTypeLLVM("real",(Type*)Type::getDoublePtrTy(c));
     
     //addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)); // char[255]
-    addTypeLLVM("string",(Type*)Type::getInt8Ty(c)->getPointerTo()); // char*
+    TuringArrayType *strType = new TuringArrayType(getType("int8"),256);
+    strType->setName("string");
+    addType("string",strType); // char*
+    
+    addTypeLLVM("pointer to void",(Type*)Type::getInt8Ty(c)->getPointerTo());
+    //aliasType("string","pointer to void");
     
     addTypeLLVM("void",(Type*)Type::getVoidTy(c));
     addTypeLLVM("auto",(Type*)Type::getVoidTy(c));

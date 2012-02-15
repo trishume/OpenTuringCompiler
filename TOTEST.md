@@ -13,3 +13,5 @@
 ==Compiler==
  * Variables
     * Ensure variables in local scopes are declared in correct order.
+ * Arrays
+    * Returning an array

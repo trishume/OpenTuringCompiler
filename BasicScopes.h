@@ -23,7 +23,7 @@
 class BasicScope : public Scope {
     virtual Symbol resolveVarThis(std::string name);
     //! sets a variable name to reference a specific value
-    virtual void setVar(std::string name, llvm::Value *val);
+    virtual void setVar(std::string name, llvm::Value *val, TuringType *type = NULL);
     
 protected:
     BasicScope(Scope *parent) : Scope(parent) {}

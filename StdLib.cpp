@@ -8,10 +8,20 @@
 
 #include <iostream>
 
+#include <llvm/ADT/Twine.h>
+
 #include "TypeManager.h"
+#include "Message.h"
 
 typedef int TInt;
 
+using namespace llvm;
+
+
+typedef struct {
+    int length;
+    char strdata[255]; // length is dummy, can be anything
+} TString;
 
 extern "C" {
     void TuringPrintInt(TInt num) {
@@ -20,8 +30,8 @@ extern "C" {
     void TuringPrintBool(bool value) {
         std::cout << (value ? "true" : "false");
     }
-    void TuringPrintString(char *str) {
-        std::cout << str;
+    void TuringPrintString(TString *string) {
+        std::cout << string->strdata;
     }
     void TuringPrintNewline() {
         std::cout << std::endl;
@@ -41,5 +51,32 @@ extern "C" {
             }
             return y;
         }
+    }
+    void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
+//        Message::log(Twine("copying array of length ") + Twine(fromLength) + 
+//                     " to one of length " + Twine(toLength));
+        if (fromLength > toLength) {
+            // TODO better runtime error handling
+            Message::error("Tried to copy an array to a smaller one.");
+            exit(1);
+        }
+        size_t fromLen = 0; // int and size_t may be different sizes so make sure the passed value is correct
+        fromLen = fromLength;
+        memcpy(to,from,fromLen);
+    }
+    
+    //! \param index the 1-based index, unchecked
+    //! \param length the length of the array
+    //! \returns the 0-based index, stops program if there is an index problem
+    int TuringIndexArray(int index, int length) {
+        if (index <= 0) {
+            Message::error(Twine("Can't index an array with the negative value of ") + Twine(index));
+            exit(1);
+        }
+        if (index > length) {
+            Message::error(Twine("Can't index an array of size") + Twine(length) +  " with the number " + Twine(index));
+            exit(1);
+        }
+        return index - 1;
     }
 }

@@ -23,9 +23,9 @@ Symbol BasicScope::resolveVarThis(std::string name) {
 }
 
 //! sets a variable name to reference a specific value
-void BasicScope::setVar(std::string name, llvm::Value *val) {
+void BasicScope::setVar(std::string name, llvm::Value *val, TuringType *type) {
     // TODO check if it already exists?
-    symbols[name] = Symbol(val,NULL);
+    symbols[name] = Symbol(val,type);
 }
 
 bool BasicScope::isDeclaredThis(std::string name) {

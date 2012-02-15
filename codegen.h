@@ -7,6 +7,7 @@
 #include <llvm/Function.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/IRBuilder.h>
+#include <llvm/Target/TargetData.h>
 
 #include <iostream>
 #include <stack>
@@ -34,6 +35,8 @@ private:
     bool isProcedure(llvm::Function *f);
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
+    llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
+    llvm::Value *compileArrayLength(llvm::Value *arrayRef);
     
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
@@ -43,16 +46,20 @@ private:
     bool compileStat(ASTNode *node);
 	llvm::Value *compile(ASTNode *node);
     Symbol compileLHS(ASTNode *node);
+    
+    llvm::Value *compileStringLiteral(const std::string &str);
 
 	llvm::Value *compileBinaryOp(ASTNode *node);
     llvm::Value *abstractCompileBinaryOp(llvm::Value *L, 
                                          llvm::Value *R, std::string op);
     llvm::Value *compileAssignOp(ASTNode *node);
+    void compileArrayCopy(llvm::Value *from, Symbol to);
     llvm::Value *compileLogicOp(ASTNode *node);
     
     void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
+    llvm::Value *compileVarReference(ASTNode *node);
     llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
     
     llvm::Value *compileCallSyntax(ASTNode *node);
