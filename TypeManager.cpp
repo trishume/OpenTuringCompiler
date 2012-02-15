@@ -80,6 +80,10 @@ bool TypeManager::aliasType(std::string name, std::string aliasName){
     return true;
 }
 
+bool TypeManager::isType(Value *val, std::string typeName) {
+    return val->getType() == getType(typeName)->getLLVMType(true);
+}
+
 void TypeManager::addDefaultTypes(LLVMContext &c) {
     // ints
     addTypeLLVM("int",(Type*)Type::getInt32Ty(c));

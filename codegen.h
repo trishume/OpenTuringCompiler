@@ -35,8 +35,10 @@ private:
     bool isProcedure(llvm::Function *f);
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
+    
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
+    std::pair<llvm::Value*,llvm::Value*> compileRange(ASTNode *node);
     
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
@@ -55,6 +57,7 @@ private:
     llvm::Value *compileAssignOp(ASTNode *node);
     void compileArrayCopy(llvm::Value *from, Symbol to);
     llvm::Value *compileLogicOp(ASTNode *node);
+    llvm::Value *compileEqualityOp(ASTNode *node);
     
     void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
@@ -72,6 +75,7 @@ private:
     
     void compileIfStat(ASTNode *node);
     void compileLoopStat(ASTNode *node);
+    void compileForStat(ASTNode *node);
     
 
 	ASTNode *Root;

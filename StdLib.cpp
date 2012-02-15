@@ -64,6 +64,16 @@ extern "C" {
         fromLen = fromLength;
         memcpy(to,from,fromLen);
     }
+    bool TuringCompareArray(void *from, void *to, int fromLength, int toLength) {
+        //        Message::log(Twine("copying array of length ") + Twine(fromLength) + 
+        //                     " to one of length " + Twine(toLength));
+        if (fromLength != toLength) {
+            return false;
+        }
+        size_t fromLen = 0; // int and size_t may be different sizes so make sure the passed value is correct
+        fromLen = fromLength;
+        return memcmp(to,from,fromLen) == 0;
+    }
     
     //! \param index the 1-based index, unchecked
     //! \param length the length of the array

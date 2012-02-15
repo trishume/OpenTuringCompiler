@@ -1,5 +1,8 @@
 #include "codegen.h"
 
+// for std::pair
+#include <utility>
+
 #include <llvm/Instruction.h>
 #include <llvm/Constants.h>
 
@@ -56,6 +59,7 @@ void CodeGen::importStdLib() {
     params->push_back(VarDecl("fromLength",Types.getType("int")));
     params->push_back(VarDecl("toLength",Types.getType("int")));
     compilePrototype("TuringCopyArray",Types.getType("void"),*params);
+    compilePrototype("TuringCompareArray",Types.getType("boolean"),*params);
     delete params;
 }
 
@@ -148,6 +152,17 @@ Value *CodeGen::compileArrayLength(Value *arrayRef) {
     return Builder.CreateLoad(Builder.CreateConstGEP2_32(arrayRef,0,0,"arrlengthptr"),"arraylengthval");
 }
 
+std::pair<Value*,Value*> CodeGen::compileRange(ASTNode *node) {
+    Value *start = compile(node->children[0]);
+    Value *end = compile(node->children[1]);
+    
+    if (! start->getType()->isIntegerTy() && !end->getType()->isIntegerTy() ) {
+        throw Message::Exception("The start and end of a range must be 'int's.");
+    }
+    
+    return std::pair<Value*,Value*>(start,end);
+}
+
 #pragma mark Transformation
 
 //! transforms a declarations node into a vector of declarations. Throws exceptions.
@@ -217,17 +232,16 @@ bool CodeGen::compileBlock(ASTNode *node) {
 	if(node->root == Language::BLOCK) {
 		ITERATE_CHILDREN(node,child) {
 			if(!compileStat(*child)) {
-				return false; // failure
+				throw Message::Exception("Failed to compile statement in block.");
 			}
             // used for returns and exits
             // instructions past this point will be unreachable so quit early
             if (isCurBlockTerminated()) break;
 		}
-		return true;
 	} else {
-        Message::error("Node is not a block");
-		return false;
+        throw Message::Exception("Node is not a block");
 	}
+    return true;
 }
 
 //! dispatcher for statements. Checks the type of the node and calls the correct compile function.
@@ -253,6 +267,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true; // throws error on fail
         case Language::LOOP_STAT:
             compileLoopStat(node);
+            return true;
+        case Language::FOR_STAT:
+            compileForStat(node);
             return true;
         case Language::PUT_STAT:
             compilePutStat(node);
@@ -287,6 +304,8 @@ Value *CodeGen::compile(ASTNode *node) {
             return compileBinaryOp(node);
         case Language::ASSIGN_OP:            
             return compileAssignOp(node);
+        case Language::EQUALITY_OP:
+            return compileEqualityOp(node);
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::VAR_REFERENCE:
@@ -394,6 +413,10 @@ Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
 Value *CodeGen::compileLogicOp(ASTNode *node) {
     Value *cond1 = compile(node->children[0]);
     
+    if (!Types.isType(cond1,"boolean")) {
+        throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
+    }
+    
     BasicBlock *startBlock = Builder.GetInsertBlock();
     Function *theFunction = startBlock->getParent();
     
@@ -416,6 +439,10 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     
     Value *cond2 = compile(node->children[1]);
     
+    if (!Types.isType(cond2,"boolean")) {
+        throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
+    }
+    
     Builder.CreateBr(mergeBB);
     
     
@@ -428,6 +455,38 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     resPhi->addIncoming(cond2,secondBB);
     
     return resPhi;
+}
+
+Value *CodeGen::compileEqualityOp(ASTNode *node) {
+    Value *L = compile(node->children[0]);
+    Value *R = compile(node->children[1]);
+    if (L->getType() != R->getType()) {
+        throw Message::Exception("Arguments of comparison must be the same type.");
+    }
+    
+    TuringType *type = Types.getTypeLLVM(L->getType(),true);
+    
+    Value *ret = NULL;
+    
+    if (type->getName().compare("int") == 0 || type->getName().compare("boolean") == 0) {
+        ret = Builder.CreateICmpEQ(L,R,"equal");        
+    } else if (type->isArrayTy()) { // strings and arrays
+        Value *srcSize = compileArrayByteSize(L);
+        Value *destSize = compileArrayByteSize(R);
+        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("pointer to void")->getLLVMType(),"fromptr");
+        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("pointer to void")->getLLVMType(),"toptr");
+        ret = Builder.CreateCall4(TheModule->getFunction("TuringCompareArray"),fromPtr,toPtr,srcSize,destSize);
+    } else {
+        throw Message::Exception(Twine("Can't compare type ") + type->getName());
+    }
+
+    // if it is not =, it is ~= so invert it
+    if (node->str.compare("=") != 0) {
+        // bool == 0 is the same as not bool
+        ret = Builder.CreateICmpEQ(ret,ConstantInt::get(getGlobalContext(), APInt(1,0)));
+    }
+    
+    return ret;
 }
 
 Symbol CodeGen::compileLHS(ASTNode *node) {
@@ -821,8 +880,6 @@ void CodeGen::compileIfStat(ASTNode *node) {
         Builder.CreateCondBr(cond, thenBB, mergeBB);
     }
     
-    
-    // Emit then value.
     Builder.SetInsertPoint(thenBB);
     
     Scopes->pushScope();
@@ -859,15 +916,11 @@ void CodeGen::compileLoopStat(ASTNode *node) {
     
     Function *theFunction = Builder.GetInsertBlock()->getParent();
     
-    // Create blocks for the then and else cases.  Insert the 'then' block at the
-    // end of the function.
     BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "loop", theFunction);
     BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "loopcont");
     
     Builder.CreateBr(loopBB);
     
-    
-    // Emit then value.
     Builder.SetInsertPoint(loopBB);
     
     // set the block the "exit" statement should continue to
@@ -884,6 +937,57 @@ void CodeGen::compileLoopStat(ASTNode *node) {
     if (!isCurBlockTerminated()) {
         // not conditional, only exit can escape!
         Builder.CreateBr(loopBB);
+    }
+    
+    
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
+}
+
+//! compiles an if statement as a series of blocks
+//! works on LOOP_STAT nodes
+void CodeGen::compileForStat(ASTNode *node) {
+    
+    Function *theFunction = Builder.GetInsertBlock()->getParent();
+    
+    BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "for", theFunction);
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "forcont");
+    
+    Scopes->pushScope();
+    
+    // loop induction variable. node->str is the name
+    Symbol inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
+    
+    std::pair<Value*,Value*> range = compileRange(node->children[0]);
+    
+    // starting at the first number
+    Builder.CreateStore(range.first,inductionVar.getVal());
+    
+    Builder.CreateBr(loopBB);
+    
+    Builder.SetInsertPoint(loopBB);
+    
+    // set the block the "exit" statement should continue to
+    BasicBlock *prevExitBlock = ExitBlock;
+    ExitBlock = mergeBB;
+    
+    compileBlock(node->children[1]);
+    Scopes->popScope();
+    
+    // stack like. return to previous one
+    ExitBlock = prevExitBlock;
+    
+    if (!isCurBlockTerminated()) {
+        // increment = load -> add 1 -> store
+        Value *oneConst = ConstantInt::get(getGlobalContext(), APInt(32,1));
+        Value *incremented = Builder.CreateAdd(Builder.CreateLoad(inductionVar.getVal(),"inductvarval"),
+                                               oneConst,"incremented");
+        Builder.CreateStore(incremented,inductionVar.getVal());
+        
+        // finished yet?
+        Value *done = Builder.CreateICmpUGT(incremented,range.second);
+        Builder.CreateCondBr(done,mergeBB,loopBB);
     }
     
     
