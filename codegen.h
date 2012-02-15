@@ -71,6 +71,7 @@ private:
     void compileReturn();
     
     void compileIfStat(ASTNode *node);
+    void compileLoopStat(ASTNode *node);
     
 
 	ASTNode *Root;
@@ -83,6 +84,8 @@ private:
     //! the current value to be returned. NULL if not a valid place to return from.
     llvm::Value *RetVal;
     llvm::BasicBlock *RetBlock;
+    //! the block that is the end of the most recent loop
+    llvm::BasicBlock *ExitBlock;
 
 	//std::stack<CodeGenBlock *> Blocks;
     TypeManager Types;

@@ -251,11 +251,17 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::IF_STAT:
             compileIfStat(node);
             return true; // throws error on fail
+        case Language::LOOP_STAT:
+            compileLoopStat(node);
+            return true;
         case Language::PUT_STAT:
             compilePutStat(node);
             return true;
         case Language::RETURN_STAT:
             compileReturn();
+            return true;
+        case Language::EXIT_STAT:
+            Builder.CreateBr(ExitBlock);
             return true;
         case Language::RESULT_STAT:
             if (RetVal == NULL) {
@@ -839,6 +845,45 @@ void CodeGen::compileIfStat(ASTNode *node) {
         if (!isCurBlockTerminated()) {
             Builder.CreateBr(mergeBB);
         }
+    }
+    
+    
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
+}
+
+//! compiles an if statement as a series of blocks
+//! works on LOOP_STAT nodes
+void CodeGen::compileLoopStat(ASTNode *node) {
+    
+    Function *theFunction = Builder.GetInsertBlock()->getParent();
+    
+    // Create blocks for the then and else cases.  Insert the 'then' block at the
+    // end of the function.
+    BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "loop", theFunction);
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "loopcont");
+    
+    Builder.CreateBr(loopBB);
+    
+    
+    // Emit then value.
+    Builder.SetInsertPoint(loopBB);
+    
+    // set the block the "exit" statement should continue to
+    BasicBlock *prevExitBlock = ExitBlock;
+    ExitBlock = mergeBB;
+    
+    Scopes->pushScope();
+    compileBlock(node->children[0]);
+    Scopes->popScope();
+    
+    // stack like. return to previous one
+    ExitBlock = prevExitBlock;
+    
+    if (!isCurBlockTerminated()) {
+        // not conditional, only exit can escape!
+        Builder.CreateBr(loopBB);
     }
     
     
