@@ -1,0 +1,231 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXFileReference section */
+		6A6F500214D9F1B900168A80 /* quotinate_util.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = quotinate_util.rb; sourceTree = "<group>"; };
+		6A6F500414D9F46C00168A80 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		6AC33E9F14D9E945000263D9 /* ast.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ast.cpp; sourceTree = "<group>"; };
+		6AC33EA014D9E945000263D9 /* ast.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ast.h; sourceTree = "<group>"; };
+		6AC33EA114D9E945000263D9 /* codegen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = codegen.cpp; sourceTree = "<group>"; };
+		6AC33EA214D9E945000263D9 /* codegen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = codegen.h; sourceTree = "<group>"; };
+		6AC33EA314D9E945000263D9 /* language.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = language.cpp; sourceTree = "<group>"; };
+		6AC33EA414D9E945000263D9 /* language.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = language.h; sourceTree = "<group>"; };
+		6AC33EA514D9E945000263D9 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		6AC33EA614D9E945000263D9 /* Turing.g */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Turing.g; sourceTree = "<group>"; };
+		6AC33EA814D9E955000263D9 /* testast.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = testast.txt; sourceTree = "<group>"; };
+		6AC33EA914D9E955000263D9 /* testcompile.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = testcompile.txt; sourceTree = "<group>"; };
+		6AC33EAA14D9E955000263D9 /* testparse.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = testparse.txt; sourceTree = "<group>"; };
+		6AC33EAB14D9E955000263D9 /* tokens.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = tokens.def; sourceTree = "<group>"; };
+		6AC33EAC14D9E955000263D9 /* TOTEST.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = TOTEST.md; sourceTree = "<group>"; };
+		6ADA7ACA14DA032400007D43 /* TuringType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TuringType.h; sourceTree = "<group>"; };
+		6ADA7ACB14DA047900007D43 /* TypeManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TypeManager.cpp; sourceTree = "<group>"; };
+		6ADA7ACC14DA047900007D43 /* TypeManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TypeManager.h; sourceTree = "<group>"; };
+		6ADA7ACD14DA06D000007D43 /* Message.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Message.cpp; sourceTree = "<group>"; };
+		6ADA7ACE14DA06D000007D43 /* Message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Message.h; sourceTree = "<group>"; };
+		6ADA7ACF14DB584600007D43 /* VarDecl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VarDecl.h; sourceTree = "<group>"; };
+		6ADA7AD014DF398100007D43 /* StdLib.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StdLib.cpp; sourceTree = "<group>"; };
+		6ADA7AD114DF416500007D43 /* Executor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Executor.cpp; sourceTree = "<group>"; };
+		6ADA7AD214DF416500007D43 /* Executor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Executor.h; sourceTree = "<group>"; };
+		6ADA7AD414E1CB2C00007D43 /* Scope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Scope.h; sourceTree = "<group>"; };
+		6ADA7AD514E1CE6000007D43 /* Scope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Scope.cpp; sourceTree = "<group>"; };
+		6ADA7AD614E1D3C700007D43 /* BasicScopes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BasicScopes.cpp; sourceTree = "<group>"; };
+		6ADA7AD714E1D3C700007D43 /* BasicScopes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BasicScopes.h; sourceTree = "<group>"; };
+		6ADA7AD814E1DAE300007D43 /* ScopeManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ScopeManager.cpp; sourceTree = "<group>"; };
+		6ADA7AD914E1DAE300007D43 /* ScopeManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScopeManager.h; sourceTree = "<group>"; };
+		6AF22F4914E71737007B91AB /* TuringType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TuringType.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		6AC33E7E14D9E7E6000263D9 = {
+			isa = PBXGroup;
+			children = (
+				6AC33E8B14D9E81F000263D9 /* Source */,
+				6AC33E8C14D9E833000263D9 /* Resources */,
+			);
+			sourceTree = "<group>";
+		};
+		6AC33E8B14D9E81F000263D9 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				6AC33E9F14D9E945000263D9 /* ast.cpp */,
+				6AC33EA014D9E945000263D9 /* ast.h */,
+				6AC33EA114D9E945000263D9 /* codegen.cpp */,
+				6AC33EA214D9E945000263D9 /* codegen.h */,
+				6AC33EA314D9E945000263D9 /* language.cpp */,
+				6AC33EA414D9E945000263D9 /* language.h */,
+				6AC33EA514D9E945000263D9 /* main.cpp */,
+				6AC33EA614D9E945000263D9 /* Turing.g */,
+				6ADA7ACA14DA032400007D43 /* TuringType.h */,
+				6AF22F4914E71737007B91AB /* TuringType.cpp */,
+				6ADA7ACC14DA047900007D43 /* TypeManager.h */,
+				6ADA7ACB14DA047900007D43 /* TypeManager.cpp */,
+				6ADA7ACD14DA06D000007D43 /* Message.cpp */,
+				6ADA7ACE14DA06D000007D43 /* Message.h */,
+				6ADA7ACF14DB584600007D43 /* VarDecl.h */,
+				6ADA7AD214DF416500007D43 /* Executor.h */,
+				6ADA7AD114DF416500007D43 /* Executor.cpp */,
+				6ADA7AD414E1CB2C00007D43 /* Scope.h */,
+				6ADA7AD514E1CE6000007D43 /* Scope.cpp */,
+				6ADA7AD714E1D3C700007D43 /* BasicScopes.h */,
+				6ADA7AD614E1D3C700007D43 /* BasicScopes.cpp */,
+				6ADA7AD914E1DAE300007D43 /* ScopeManager.h */,
+				6ADA7AD814E1DAE300007D43 /* ScopeManager.cpp */,
+				6ADA7AD014DF398100007D43 /* StdLib.cpp */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		6AC33E8C14D9E833000263D9 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6A6F500414D9F46C00168A80 /* Makefile */,
+				6AC33EA814D9E955000263D9 /* testast.txt */,
+				6AC33EA914D9E955000263D9 /* testcompile.txt */,
+				6AC33EAA14D9E955000263D9 /* testparse.txt */,
+				6AC33EAB14D9E955000263D9 /* tokens.def */,
+				6A6F500214D9F1B900168A80 /* quotinate_util.rb */,
+				6AC33EAC14D9E955000263D9 /* TOTEST.md */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXLegacyTarget section */
+		6AC33E8514D9E7E9000263D9 /* Turing Compiler */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "$(ACTION)";
+			buildConfigurationList = 6AC33E8814D9E7E9000263D9 /* Build configuration list for PBXLegacyTarget "Turing Compiler" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
+			dependencies = (
+			);
+			name = "Turing Compiler";
+			passBuildSettingsInEnvironment = 0;
+			productName = "Turing Compiler";
+		};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXProject section */
+		6AC33E8014D9E7E6000263D9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				ORGANIZATIONNAME = "15 Norwich Way";
+			};
+			buildConfigurationList = 6AC33E8314D9E7E6000263D9 /* Build configuration list for PBXProject "Turing Compiler" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 6AC33E7E14D9E7E6000263D9;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6AC33E8514D9E7E9000263D9 /* Turing Compiler */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		6AC33E8614D9E7E9000263D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		6AC33E8714D9E7E9000263D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		6AC33E8914D9E7E9000263D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEBUGGING_SYMBOLS = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		6AC33E8A14D9E7E9000263D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6AC33E8314D9E7E6000263D9 /* Build configuration list for PBXProject "Turing Compiler" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6AC33E8614D9E7E9000263D9 /* Debug */,
+				6AC33E8714D9E7E9000263D9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6AC33E8814D9E7E9000263D9 /* Build configuration list for PBXLegacyTarget "Turing Compiler" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6AC33E8914D9E7E9000263D9 /* Debug */,
+				6AC33E8A14D9E7E9000263D9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 6AC33E8014D9E7E6000263D9 /* Project object */;
+}
