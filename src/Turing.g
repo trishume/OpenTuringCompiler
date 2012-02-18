@@ -244,7 +244,7 @@ range
 
 // control structures
 ifstat
-    :   'if' expr 'then' LT instructions LT* (elsifstat?) 'end' 'if'
+    :   'if' expr 'then' LT+ instructions LT* (elsifstat?) 'end' 'if'
     { 
         $$ = new ASTNode(Language::IF_STAT,$n0.start_loc.line);
         $$->addChild($1); // cond

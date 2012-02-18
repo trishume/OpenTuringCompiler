@@ -14,6 +14,7 @@
 #include "Message.h"
 
 typedef int TInt;
+typedef double TReal;
 
 using namespace llvm;
 
@@ -25,6 +26,9 @@ typedef struct {
 
 extern "C" {
     void TuringPrintInt(TInt num) {
+        std::cout << num;
+    }
+    void TuringPrintReal(TReal num) {
         std::cout << num;
     }
     void TuringPrintBool(bool value) {

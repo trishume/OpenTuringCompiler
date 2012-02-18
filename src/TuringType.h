@@ -30,7 +30,7 @@ class BasicTuringType : public TuringType {
 public:
     BasicTuringType(std::string n, llvm::Type *type) : LLVMType(type), Name(n) {}
     //! \param isReference has no effect for basic types
-    virtual llvm::Type *getLLVMType(bool isReference = false);
+    virtual llvm::Type *getLLVMType(bool isReference = true);
     virtual std::string getName();
     
     virtual bool isArrayTy() {return false;}

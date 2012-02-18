@@ -46,10 +46,10 @@ Symbol GlobalScope::declareVar(std::string name, TuringType *type) {
     }
     
     GlobalVariable* gvar = new GlobalVariable(/*Module=*/*TheModule, 
-                                              /*Type=*/type->getLLVMType(),
+                                              /*Type=*/type->getLLVMType(false),
                                               /*isConstant=*/false,
                                               /*Linkage=*/GlobalValue::CommonLinkage,
-                                              /*Initializer=*/Constant::getNullValue(type->getLLVMType()), // has initializer, specified below
+                                              /*Initializer=*/Constant::getNullValue(type->getLLVMType(false)), // has initializer, specified below
                                               /*Name=*/name);
     Symbol sym(gvar,type);
     
@@ -72,7 +72,7 @@ Symbol LocalScope::declareVar(std::string name, TuringType *type) {
     
     IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
                      TheFunction->getEntryBlock().begin());
-    Value *lvar = TmpB.CreateAlloca(type->getLLVMType(), 0,name);
+    Value *lvar = TmpB.CreateAlloca(type->getLLVMType(false), 0,name);
     
     Symbol sym(lvar,type);
     

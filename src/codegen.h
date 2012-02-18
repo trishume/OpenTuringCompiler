@@ -43,6 +43,7 @@ private:
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
+    llvm::Value *promoteType(llvm::Value *val, TuringType *destType);
     
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);

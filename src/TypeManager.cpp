@@ -36,10 +36,9 @@ TuringType *TypeManager::getTypeLLVM(Type *llvmType, bool isReference){
         }
     }
     
-    /*if (llvmType->isPointerTy()) {
-        TuringType *sub = getTypeLLVM(cast<PointerType>(llvmType)->getElementType());
-        return BasicTuringType(Twine("pointer to ") + sub->getName(),
-     }*/
+    if (llvmType->isPointerTy() && isReference) { // unwrap for array ref
+        llvmType = cast<PointerType>(llvmType)->getElementType();
+    }
     
     // is it an array
     if (llvmType->isStructTy() && cast<StructType>(llvmType)->getNumElements() == 2 && 
@@ -51,7 +50,8 @@ TuringType *TypeManager::getTypeLLVM(Type *llvmType, bool isReference){
         return getArrayType(getTypeLLVM(arrTy->getElementType()), arrTy->getNumElements());
     }
     
-    // couldn't find it, throw exception    
+    // couldn't find it, throw exception
+    llvmType->dump();
     throw Message::Exception("Can't find correct type.");
     return NULL;
 }
@@ -92,7 +92,7 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     
     addTypeLLVM("boolean",(Type*)Type::getInt1Ty(c));
     
-    addTypeLLVM("real",(Type*)Type::getDoublePtrTy(c));
+    addTypeLLVM("real",(Type*)Type::getDoubleTy(c));
     
     //addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)); // char[255]
     TuringArrayType *strType = new TuringArrayType(getType("int8"),256);

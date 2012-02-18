@@ -5,6 +5,7 @@
 
 #include <llvm/Instruction.h>
 #include <llvm/Constants.h>
+#include <llvm/InstrTypes.h>
 
 #include "language.h"
 #include "ast.h"
@@ -31,6 +32,10 @@ void CodeGen::importStdLib() {
     
     params = new std::vector<VarDecl>(1,VarDecl("num",Types.getType("int")));
     compilePrototype("TuringPrintInt",Types.getType("void"),*params);
+    delete params;
+    
+    params = new std::vector<VarDecl>(1,VarDecl("num",Types.getType("real")));
+    compilePrototype("TuringPrintReal",Types.getType("void"),*params);
     delete params;
     
     params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("boolean")));
@@ -223,6 +228,26 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls) {
     return decls;
 }
 
+Value *CodeGen::promoteType(Value *val, TuringType *destType) {
+    Type *type = val->getType();
+    Type *llvmDestType = destType->getLLVMType(true);
+    
+    // if they are the same, no casting needed
+    if (type == llvmDestType) {
+        return val;
+    }
+    
+    if (type->isIntegerTy() && llvmDestType->isFloatingPointTy()) {
+        return Builder.CreateSIToFP(val, llvmDestType, "promotedint");
+    }
+    
+    // if it gets this far, it's an error
+    throw Message::Exception(Twine("Can't convert expression to type ") + destType->getName());
+    
+    return NULL; // never reaches here
+    
+}
+
 #pragma mark Compilation
 
 //! Compiles a block of instructions
@@ -314,6 +339,9 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::INT_LITERAL:
             // apint can convert a string
             return ConstantInt::get(getGlobalContext(), APInt(32,node->str,10));
+        case Language::REAL_LITERAL:
+            // apint can convert a string
+            return ConstantFP::get(Types.getType("real")->getLLVMType(), node->str);
         case Language::BOOL_LITERAL:
             // apint is used because booleans are one bit ints
             return ConstantInt::get(getGlobalContext(), APInt(1,(node->str.compare("true") == 0) ? 1 : 0));
@@ -377,34 +405,55 @@ Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
     if (L == 0 || R == 0) {
         throw Message::Exception("Invalid operand for binary operator.");
     }
+    
+    bool fp = false;
+    if (L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) {
+        fp = true;
+        L = promoteType(L, Types.getType("real"));
+        R = promoteType(R, Types.getType("real"));
+    }
+    
+    Instruction::BinaryOps binOp;
 	
+    // COMPARISONS
 	if (op.compare(">") == 0) {
-        return Builder.CreateICmpUGT(L, R, "GTtmp");
+        return fp ? Builder.CreateFCmpOGT(L, R) : Builder.CreateICmpSGT(L, R);
     } else if (op.compare("<") == 0) {
-        return Builder.CreateICmpULT(L, R, "LTtmp");
+        return fp ? Builder.CreateFCmpOLT(L, R) : Builder.CreateICmpSLT(L, R);
     } else if (op.compare(">=") == 0) {
-        return Builder.CreateICmpUGE(L, R, "GEtmp");
+        return fp ? Builder.CreateFCmpOGE(L, R) : Builder.CreateICmpSGE(L, R);
     } else if (op.compare("<=") == 0) {
-        return Builder.CreateICmpULE(L, R, "LEtmp");
-    } else if (op.compare("+") == 0) {
-        return Builder.CreateAdd(L, R, "addtmp");
+        return fp ? Builder.CreateFCmpOLE(L, R) : Builder.CreateICmpSLE(L, R);
+    } else if (op.compare("+") == 0) { // MATH
+        binOp = fp ? Instruction::FAdd : Instruction::Add;
     } else if (op.compare("-") == 0) {
-        return Builder.CreateSub(L, R, "subtmp");
+        binOp = fp ? Instruction::FSub : Instruction::Sub;
     } else if (op.compare("*") == 0) {
-        return Builder.CreateMul(L, R, "multmp");
+        binOp = fp ? Instruction::FMul : Instruction::Mul;
+    } else if (op.compare("/") == 0) {
+        if (!fp) { // this one is always floating point
+            L = promoteType(L, Types.getType("real")); R = promoteType(R, Types.getType("real"));
+        }
+        binOp = Instruction::FDiv;
     } else if (op.compare("div") == 0) {
-        return Builder.CreateSDiv(L, R, "divtmp");
+        if (fp) { // TODO resolve this
+            throw Message::Exception("Can't use 'div' on real numbers yet. Try using '/' and then rounding");
+        }
+        binOp = Instruction::SDiv;
     } else if (op.compare("mod") == 0) {
-        return Builder.CreateSRem(L, R, "modtmp");
+        binOp = fp ? Instruction::FRem : Instruction::SRem;
     } else if (op.compare("**") == 0) {
+        if (fp) throw Message::Exception("Can't use '**' on real numbers.");
         std::vector<Value*> argVals;
         argVals.push_back(L);
         argVals.push_back(R);
         return Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
+    } else {
+        throw Message::Exception("Invalid binary operator.");
     }
     
-    throw Message::Exception("Invalid binary operator.");
-    return NULL; // never reaches here
+    // if it hasn't returned by now it must be a normal binop
+    return BinaryOperator::Create(binOp, L, R,"binOpRes",Builder.GetInsertBlock());
 }
 
 //! compiles a properly short-circuiting logic operator
@@ -459,7 +508,13 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
 Value *CodeGen::compileEqualityOp(ASTNode *node) {
     Value *L = compile(node->children[0]);
     Value *R = compile(node->children[1]);
-    if (L->getType() != R->getType()) {
+    
+    bool fp = false;
+    if (L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) {
+        fp = true;
+        L = promoteType(L, Types.getType("real"));
+        R = promoteType(R, Types.getType("real"));
+    } else if (L->getType() != R->getType()) {
         throw Message::Exception("Arguments of comparison must be the same type.");
     }
     
@@ -469,6 +524,8 @@ Value *CodeGen::compileEqualityOp(ASTNode *node) {
     
     if (type->getName().compare("int") == 0 || type->getName().compare("boolean") == 0) {
         ret = Builder.CreateICmpEQ(L,R,"equal");        
+    } else if (fp) {
+        ret = Builder.CreateFCmpOEQ(L, R,"fpequal");
     } else if (type->isArrayTy()) { // strings and arrays
         Value *srcSize = compileArrayByteSize(L);
         Value *destSize = compileArrayByteSize(R);
@@ -564,25 +621,29 @@ void CodeGen::compileArrayCopy(Value *from, Symbol to) {
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {
-    Value *val = compile(node->children[0]);
-    TuringType *type = Types.getTypeLLVM(val->getType(),true);
-    
-    Function *calleeFunc;
-    std::vector<Value*> argVals;
-    argVals.push_back(val);
-    
-    if (type->getName().compare("int") == 0) {
-        calleeFunc = TheModule->getFunction("TuringPrintInt");
+    // print out all the comma separated expressions
+    ITERATE_CHILDREN(node, curNode) {
+        Value *val = compile(*curNode);
+        TuringType *type = Types.getTypeLLVM(val->getType(),true);
         
-    } else if (type->getName().compare("boolean") == 0) {
-        calleeFunc = TheModule->getFunction("TuringPrintBool");
-    } else if (type->getName().compare("string") == 0) {
-        calleeFunc = TheModule->getFunction("TuringPrintString");
-    } else {
-        throw Message::Exception(Twine("Can't 'put' type ") + type->getName());
+        Function *calleeFunc;
+        std::vector<Value*> argVals;
+        argVals.push_back(val);
+        
+        if (type->getName().compare("int") == 0) {
+            calleeFunc = TheModule->getFunction("TuringPrintInt");
+        } else if (type->getName().compare("real") == 0) {
+            calleeFunc = TheModule->getFunction("TuringPrintReal");
+        } else if (type->getName().compare("boolean") == 0) {
+            calleeFunc = TheModule->getFunction("TuringPrintBool");
+        } else if (type->getName().compare("string") == 0) {
+            calleeFunc = TheModule->getFunction("TuringPrintString");
+        } else {
+            throw Message::Exception(Twine("Can't 'put' type ") + type->getName());
+        }
+            
+        Builder.CreateCall(calleeFunc,argVals);        
     }
-        
-    Builder.CreateCall(calleeFunc,argVals);
     
     // if the string is not ".." print a newline
     if (node->str.compare("..") != 0) {
@@ -711,8 +772,12 @@ Value *CodeGen::compileCall(Value *callee,ASTNode *node, bool wantReturn) {
     
     std::vector<Value*> argVals;
     // args start at second child
-    for (unsigned i = 1, e = node->children.size(); i < e; ++i) {
-        argVals.push_back(compile(node->children[i]));
+    unsigned idx = 1;
+    for (Function::arg_iterator ai = calleeFunc->arg_begin(), 
+         e = calleeFunc->arg_end(); ai != e;++ai, ++idx) {
+        Value *val = compile(node->children[idx]);
+        TuringType *typ = Types.getTypeLLVM(ai->getType(),true);
+        argVals.push_back(promoteType(val, typ));
     }
     
     if (calleeFunc->getReturnType()->isVoidTy() && wantReturn) {
@@ -747,7 +812,7 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
         argTypes.push_back(args[i].Type->getLLVMType(true));  // true = it is a parameter
     }
     
-    FunctionType *FT = FunctionType::get(returnType->getLLVMType(),
+    FunctionType *FT = FunctionType::get(returnType->getLLVMType(false),
                                          argTypes, false);
     
     Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
