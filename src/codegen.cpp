@@ -66,7 +66,6 @@ void CodeGen::importStdLib() {
 #pragma mark Execution
 
 bool CodeGen::execute() {
-	LLVMContext &context = getGlobalContext();
     
     Message::log("Generating code...");
     
@@ -594,7 +593,7 @@ void CodeGen::compilePutStat(ASTNode *node) {
 void CodeGen::compileVarDecl(ASTNode *node) {
     std::vector<VarDecl> args = getDecls(node->children[0]);
     
-    for (int i = 0; i < args.size();++i) {
+    for (unsigned int i = 0; i < args.size();++i) {
         bool hasInitial = node->children.size() > 1;
         
         TuringType *type = args[i].Type;
@@ -744,7 +743,7 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     // Make the function type:  double(double,double) etc.
     std::vector<Type*> argTypes;
     // extract argument types
-    for (int i = 0; i < args.size(); ++i) {
+    for (unsigned int i = 0; i < args.size(); ++i) {
         argTypes.push_back(args[i].Type->getLLVMType(true));  // true = it is a parameter
     }
     

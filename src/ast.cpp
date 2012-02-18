@@ -1,7 +1,7 @@
 #include "ast.h"
 
 // get the line number of the node (or try to derive it from the child node)
-ASTNode::ASTNode(Language::Token tok, int line) : _line(line), root(tok) {}
+ASTNode::ASTNode(Language::Token tok, int line) : root(tok) , _line(line) {}
 
 //! deep copy constructor
 ASTNode::ASTNode(ASTNode *other) {

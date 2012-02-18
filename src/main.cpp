@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     std::cout << input << std::endl;
     std::cout << "--- parsing ---" << std::endl;
     
-    char *s,*ss;
+    char *s;
     
     // kinda hackish, because new_D_parser does not accept const strings
     // we have to copy it

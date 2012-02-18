@@ -32,7 +32,7 @@ bool BasicScope::isDeclaredThis(std::string name) {
     return symbols.find(name) != symbols.end();
 }
 
-GlobalScope::GlobalScope(llvm::Module *mod, Scope *parent) : TheModule(mod), BasicScope(parent) {
+GlobalScope::GlobalScope(llvm::Module *mod, Scope *parent) : BasicScope(parent), TheModule(mod) {
     
 }
 
@@ -59,9 +59,7 @@ Symbol GlobalScope::declareVar(std::string name, TuringType *type) {
     return sym;
 }
 
-LocalScope::LocalScope(llvm::Function *func, Scope *parent) : TheFunction(func), BasicScope(parent) {
-    
-}
+LocalScope::LocalScope(llvm::Function *func, Scope *parent) : BasicScope(parent), TheFunction(func)  {}
 
 Scope *LocalScope::createChildScope() {
     return new LocalScope(TheFunction,this);
