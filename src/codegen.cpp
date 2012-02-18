@@ -275,6 +275,9 @@ bool CodeGen::compileStat(ASTNode *node) {
 		Message::error("Can not compile null node.");
         return false;
 	}
+    
+    Message::setCurLine(node->getLine());
+    
     switch(node->root) {
         case Language::FUNC_PROTO: // extern declaration
             return compileFunctionPrototype(node) != NULL;

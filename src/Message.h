@@ -13,6 +13,10 @@
 #include <llvm/ADT/Twine.h>
 
 namespace Message {
+    //! sets the line number to be used for subsequent error messages.
+    //! set to 0 for no line number.
+    void setCurLine(int line);
+    
     //! returns false on fatality (false for Error true for others)
     bool error(const llvm::Twine &message);
     bool warning(const llvm::Twine &message);

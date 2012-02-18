@@ -10,12 +10,28 @@
 #include <iostream>
 
 namespace Message {
+    static int curLine = 0;
+    
+    void setCurLine(int line) {
+        curLine = line;
+    }
+    
     bool error(const llvm::Twine &message) {
-        std::cerr << "ERROR: " << message.str() << std::endl;
-        return false;
+        if (curLine < 1) {
+            std::cerr << "ERROR: ";
+        } else {
+            std::cerr << "ERROR on line " << curLine << ": ";
+        }
+        std::cerr << message.str() << std::endl;
+        return true;
     }
     bool warning(const llvm::Twine &message) {
-        std::cerr << "WARNING: " << message.str() << std::endl;
+        if (curLine < 1) {
+            std::cerr << "WARNING: ";
+        } else {
+            std::cerr << "WARNING on line " << curLine << ": ";
+        }
+        std::cerr << message.str() << std::endl;
         return false;
     }
     bool log(const llvm::Twine &message) {
