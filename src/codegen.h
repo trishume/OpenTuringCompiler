@@ -28,7 +28,7 @@ public:
 
 	bool execute();
 
-private:
+protected:
     void importStdLib();
     
     llvm::Function *currentFunction();
@@ -39,6 +39,7 @@ private:
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
     std::pair<llvm::Value*,llvm::Value*> compileRange(ASTNode *node);
+    void compileInitializeComplex(llvm::Value *declared, TuringType *type);
     
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
@@ -72,7 +73,7 @@ private:
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
     llvm::Value *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
     llvm::Function *compileFunctionPrototype(ASTNode *node);
-    llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
+    FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     llvm::Function *compileFunction(ASTNode *node);
     void compileReturn();
     

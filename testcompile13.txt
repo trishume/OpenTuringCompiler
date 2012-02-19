@@ -5,13 +5,21 @@
 var bob := 6
 var lolArr,lolArr2 : array 1..13 of int
 
+% test complex type returns
+fcn RetPrintingStr () : string
+    result "PRINTING "
+end RetPrintingStr
+
+var assignStr : string
+assignStr := RetPrintingStr()
+
 var hovering : real := 7.0
 hovering := 0.1 * 3 / 3 + 0.9
 
 %test equality checking
 if 6 = 6 and 9 ~= 7 and "bob" = "bob" and "lol" ~= "hi" and hovering = 1 then
     %test no newline
-    put "PRINTING " ..
+    put assignStr ..
     %test multi-expr
     put 13,"..."
 end if
@@ -39,13 +47,7 @@ end PutStuff
 fcn Second( arr : array 1..2 of int ) : int
     result arr(2)
 end Second
-/*
-fcn RetStr () : string
-    result "lol"
-end RetStr
 
-put RetStr ()
-*/
 for i : 1..13
     lolArr(i) := i
 end for

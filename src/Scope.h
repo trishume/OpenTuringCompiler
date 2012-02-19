@@ -36,6 +36,8 @@ public:
     //! I.E global scopes have global children and locals have local children
     virtual Scope *createChildScope() = 0;
     
+    virtual ~Scope() {};
+    
     Scope *Parent;
 protected:
     //! resolves a variable in the current scope only

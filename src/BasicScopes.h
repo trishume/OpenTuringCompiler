@@ -21,10 +21,13 @@
 
 //! simple common functionality
 class BasicScope : public Scope {
+public:
     virtual Symbol *resolveVarThis(std::string name);
     //! sets a variable name to reference a specific value
     virtual void setVar(std::string name, llvm::Value *val, TuringType *type = NULL);
     virtual void setVar(std::string name, Symbol *val);
+    
+    virtual ~BasicScope() {}
     
 protected:
     BasicScope(Scope *parent) : Scope(parent) {}
@@ -37,6 +40,7 @@ class LocalScope : public BasicScope {
 public:
     //! \param curFunc Function in wich the variables should be allocated
     LocalScope(llvm::Function *curFunc, Scope *parent);
+    
     virtual Scope *createChildScope();
     
     virtual Symbol *declareVar(std::string name, TuringType *type);

@@ -46,8 +46,11 @@ protected:
 //! represents a function. getType is the return type and getVal is the Function*
 class FunctionSymbol : public Symbol {
 public:
-    FunctionSymbol(llvm::Value *val, TuringType *type) : Symbol(val,type), IsSRet(false) {}
+    FunctionSymbol(llvm::Value *val, TuringType *type) : Symbol(val,type), IsSRet(false) {
+        assert(llvm::isa<llvm::Function>(getVal()));
+    }
     virtual bool isFunction() {return true;}
+    llvm::Function *getFunc() {return llvm::cast<llvm::Function>(getVal());}
     
     //! is the first parameter a pointer to where the return value should go?
     bool IsSRet;

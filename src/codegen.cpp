@@ -6,6 +6,7 @@
 #include <llvm/Instruction.h>
 #include <llvm/Constants.h>
 #include <llvm/InstrTypes.h>
+#include <llvm/Attributes.h>
 
 #include "language.h"
 #include "ast.h"
@@ -83,7 +84,7 @@ bool CodeGen::execute() {
 	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
 	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
-    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock", MainFunction);
+    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock");
     
 	Builder.SetInsertPoint(mainBlock);
     bool good = false;
@@ -96,6 +97,7 @@ bool CodeGen::execute() {
     }
     
     Builder.CreateBr(endBB);
+    MainFunction->getBasicBlockList().push_back(endBB);
     Builder.SetInsertPoint(endBB);
     if (!isCurBlockTerminated()) {
         Builder.CreateRetVoid();
@@ -167,6 +169,16 @@ std::pair<Value*,Value*> CodeGen::compileRange(ASTNode *node) {
     }
     
     return std::pair<Value*,Value*>(start,end);
+}
+
+void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
+    // must initialize the length part of the array struct
+    if (type->isArrayTy()) {
+        TuringArrayType *arrtype = static_cast<TuringArrayType*>(type);
+        Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared,0,0,"arrlengthptr");
+        Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
+        Builder.CreateStore(length,arrLengthPtr);
+    }
 }
 
 #pragma mark Transformation
@@ -398,10 +410,12 @@ Value *CodeGen::compileStringLiteral(const std::string &str) {
     
     Constant *structConst = ConstantStruct::get(structTy,arrayStructVals);
     
-    Value *gvar = new GlobalVariable(/*Type=*/structTy,
+    Value *gvar = new GlobalVariable(/*Module=*/*TheModule,
+                                     /*Type=*/structTy,
                                      /*isConstant=*/true,
-                                     /*Linkage=*/GlobalValue::CommonLinkage,
-                                     /*Initializer=*/structConst);
+                                     /*Linkage=*/GlobalValue::InternalLinkage,
+                                     /*Initializer=*/structConst,
+                                     "stringConst");
     Type *stringRefType = Types.getType("string")->getLLVMType(true);
     
     return Builder.CreatePointerCast(gvar,stringRefType,"castedstringconstant");
@@ -612,7 +626,9 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
 void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
     Value *assignVar = assignSym->getVal();
     
-    if (isa<Argument>(assignVar)) {
+    // can't assign to arguments unless they are actual structure returns
+    if (isa<Argument>(assignVar) && !(cast<Argument>(assignVar)->hasStructRetAttr())) {
+        
         throw Message::Exception("Can't assign to an argument.");
     }
     
@@ -701,11 +717,8 @@ void CodeGen::compileVarDecl(ASTNode *node) {
         }
         
         // must initialize the length part of the array struct
-        if (type->isArrayTy()) {
-            TuringArrayType *arrtype = static_cast<TuringArrayType*>(type);
-            Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared,0,0,"arrlengthptr");
-            Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
-            Builder.CreateStore(length,arrLengthPtr);
+        if (type->isComplexTy()) {
+            compileInitializeComplex(declared, type);
         }
     }
 }
@@ -790,21 +803,45 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
     Function *calleeFunc = cast<Function>(calleeFuncSym->getVal());
     
     // If argument mismatch error.
-    if (calleeFunc->arg_size() != (node->children.size()-1)) {
-        throw Message::Exception(Twine(node->children.size()) + " arguments passed to a function that takes " + Twine(calleeFunc->arg_size()));
+    unsigned int numArgsPassed = (node->children.size()-1);
+    unsigned int numArgsNeeded = calleeFunc->arg_size();
+    if (calleeFuncSym->IsSRet) {
+        numArgsNeeded -= 1; // first argument is automatically passed
+    }
+    if (numArgsNeeded != numArgsPassed) {
+        throw Message::Exception(Twine(numArgsPassed) + " arguments passed to a function that takes " + 
+                                 Twine(numArgsNeeded));
     }
     
     std::vector<Value*> argVals;
-    // args start at second child
-    unsigned idx = 1;
-    for (Function::arg_iterator ai = calleeFunc->arg_begin(), 
-         e = calleeFunc->arg_end(); ai != e;++ai, ++idx) {
+    // args start at second child    
+    Function::arg_iterator ai = calleeFunc->arg_begin(), e = calleeFunc->arg_end();
+    
+    Value *returnBuffer = NULL;
+    if (calleeFuncSym->IsSRet) {
+        // start at the entry block. Optimizers like this
+        BasicBlock *entryBlock = &Builder.GetInsertBlock()->getParent()->getEntryBlock();
+        IRBuilder<> TmpB(entryBlock,entryBlock->begin());
+        // pass a memory buffer of the return type as the first parameter, false means not a reference
+        returnBuffer = TmpB.CreateAlloca(calleeFuncSym->getType()->getLLVMType(false),0,"sretBuffer");
+        // cast it to a reference
+        returnBuffer = Builder.CreatePointerCast(returnBuffer, calleeFuncSym->getType()->getLLVMType(true));
+        compileInitializeComplex(returnBuffer, calleeFuncSym->getType()); // initialize array lengths and stuff
+        argVals.push_back(returnBuffer);
+        // move on to the next argument
+        ai++;
+    }
+    for (unsigned idx = 1; ai != e;++ai, ++idx) {
         Value *val = compile(node->children[idx]);
         TuringType *typ = Types.getTypeLLVM(ai->getType(),true);
         argVals.push_back(promoteType(val, typ));
     }
-    
-    if (calleeFunc->getReturnType()->isVoidTy() && wantReturn) {
+    if (calleeFuncSym->IsSRet) {        
+        assert(returnBuffer != NULL);
+        // return the casted reference to the return value. true = this is a reference
+        Builder.CreateCall(calleeFunc, argVals);
+        return returnBuffer;
+    } else if (calleeFunc->getReturnType()->isVoidTy() && wantReturn) {
         throw Message::Exception(Twine("Procedure ") + calleeFunc->getName() + " can not return a value.");
     } else if(!wantReturn) {
         Builder.CreateCall(calleeFunc, argVals);
@@ -815,7 +852,7 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
 }
 
 Function *CodeGen::compileFunctionPrototype(ASTNode *node) {
-    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]));
+    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]))->getFunc();
 }
 
 /*! creates an llvm function with no implementation.
@@ -827,19 +864,30 @@ Function *CodeGen::compileFunctionPrototype(ASTNode *node) {
  \param params A DECLARATIONS ast node containing the formal parameters.
  
  */
-Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args) {
+FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args) {
+    
+    bool structRet = returnType->isComplexTy();
     
     // Make the function type:  double(double,double) etc.
     std::vector<Type*> argTypes;
-    // extract argument types
-    for (unsigned int i = 0; i < args.size(); ++i) {
-        argTypes.push_back(args[i].Type->getLLVMType(true));  // true = it is a parameter
+    // complex types are returned by passing a pointer to a return value as the first parameter
+    if (structRet) {
+        argTypes.push_back(returnType->getLLVMType(true));
     }
     
-    FunctionType *FT = FunctionType::get(returnType->getLLVMType(false),
-                                         argTypes, false);
+    // extract argument types
+    for (unsigned int i = 0; i < args.size(); ++i) {
+        argTypes.push_back(args[i].Type->getLLVMType(true));  // true = parameters are references
+    }
+    // the return type is void if it is a procedure OR if the return is a complex type
+    // WARNING it shouldn't matter wether the getLLVMType() is a reference since complex types are passed
+    // as parameters. However, some change later on may need this to be decided.
+    Type *funcRetType = structRet ? Type::getVoidTy(getGlobalContext()) : returnType->getLLVMType();
+    FunctionType *FT = FunctionType::get(funcRetType,argTypes, false);
     
     Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
+    FunctionSymbol *fSym = new FunctionSymbol(f,returnType);
+    fSym->IsSRet = structRet;
     
     // If F conflicted, there was already something named 'name'.  If it has a
     // body, don't allow redefinition or reextern.
@@ -860,13 +908,17 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     }
     
     // Set names for all arguments.
-    unsigned idx = 0;
-    for (Function::arg_iterator ai = f->arg_begin(); idx != args.size();
+    Function::arg_iterator ai = f->arg_begin();
+    // add the right attributes
+    if (structRet) {
+        ai->setName("returnVal");
+        ai->addAttr(Attribute::StructRet);
+        ++ai;
+    }
+    for (unsigned idx = 0;idx != args.size();
          ++ai, ++idx) {
         ai->setName(args[idx].Name);
     }
-    
-    FunctionSymbol *fSym = new FunctionSymbol(f,returnType);
     
     // add it to the LOCAL scope
     // WARNING this allows some interesting
@@ -874,22 +926,14 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
     // support.
     Scopes->curScope()->setVar(name,fSym);
     
-    return f;
+    return fSym;
 }
 
 Function *CodeGen::compileFunction(ASTNode *node) {
     ASTNode *proto = node->children[0];
     std::vector<VarDecl> args = getDecls(proto->children[1]);
-    Function *f = compilePrototype(proto->str,getType(proto->children[0]),args);
-    
-    // TODO add separate scope for arguments so they can be redefined?
-    Scopes->pushLocalScope(f);
-    // add arguments to the scope
-    unsigned idx = 0;
-    for (Function::arg_iterator ai = f->arg_begin(); idx != args.size();
-         ++ai, ++idx) {
-        Scopes->curScope()->setVar(args[idx].Name,&(*ai),args[idx].Type);
-    }
+    FunctionSymbol *fSym = compilePrototype(proto->str,getType(proto->children[0]),args);
+    Function *f = fSym->getFunc();
     
     /* using allocas, allows modification of parameters. Saving the code in case it is needed
     // add arguments to the scope
@@ -907,9 +951,24 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     RetBlock = endBB;
     
     Builder.SetInsertPoint(entryBB);
-
-    if (!isProcedure(f)) {
+    
+    // declare this early so it can be read as the return value for srets
+    Function::arg_iterator ai = f->arg_begin();
+    
+    if (fSym->IsSRet) {
+        // RetVal is the memory pointed to by the first argument
+        RetVal = &(*ai);
+        ++ai; // the next argument is the actual first one
+    } else if (!isProcedure(f)) {
         RetVal = Builder.CreateAlloca(f->getReturnType(), 0,"returnval");
+    }
+    
+    // TODO add separate scope for arguments so they can be redefined?
+    Scopes->pushLocalScope(f);
+    // add NORMAL arguments to the scope
+    for (unsigned idx = 0; idx != args.size();
+         ++ai, ++idx) {
+        Scopes->curScope()->setVar(args[idx].Name,&(*ai),args[idx].Type);
     }
     
     compileBlock(node->children[1]);
@@ -922,7 +981,8 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     
     // procedures have an implicit "return"
     Builder.SetInsertPoint(endBB);
-    if (isProcedure(f)) {        
+    // complex returns and procedures have void return types
+    if (isProcedure(f) || fSym->IsSRet) {        
         Builder.CreateRetVoid();
     } else { // function
         // TODO check if RetVal is ever set
@@ -936,6 +996,7 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     // back to normal programming...
     Builder.restoreIP(prevPoint);
     
+    // verifies early. Disadvantage is that it does not print the module first. Makes debugging harder.
     //verifyFunction(*f);
     
     return f;
