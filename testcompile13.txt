@@ -39,7 +39,13 @@ end PutStuff
 fcn Second( arr : array 1..2 of int ) : int
     result arr(2)
 end Second
+/*
+fcn RetStr () : string
+    result "lol"
+end RetStr
 
+put RetStr ()
+*/
 for i : 1..13
     lolArr(i) := i
 end for
@@ -55,6 +61,8 @@ end loop
 % test implicit copy
 lolArr2 := lolArr
 
+
+% set bob to 5
 bob := lolArr2(9) - Second(lolArr2)
 
 if bob <= 5 or bob > 7 then

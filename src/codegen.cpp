@@ -13,6 +13,8 @@
 #include "Message.h"
 #include "Executor.h"
 
+#include "Symbol.h"
+
 #define ITERATE_CHILDREN(node,var) \
 for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->children.end();var < e;++var)
 
@@ -228,6 +230,15 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls) {
     return decls;
 }
 
+//! Creates a symbol out of an allocated buffer pointer
+Symbol *CodeGen::getSymbolForVal(Value *val) {
+    if (!val->getType()->isPointerTy()) {
+        throw Message::Exception("Symbols must be a pointer type");
+    }
+    
+    return new Symbol(val,Types.getTypeLLVM(cast<PointerType>(val->getType())->getElementType()));
+}
+
 Value *CodeGen::promoteType(Value *val, TuringType *destType) {
     Type *type = val->getType();
     Type *llvmDestType = destType->getLLVMType(true);
@@ -308,12 +319,15 @@ bool CodeGen::compileStat(ASTNode *node) {
             Builder.CreateBr(ExitBlock);
             return true;
         case Language::RESULT_STAT:
+        {
             if (RetVal == NULL) {
                 throw Message::Exception("Result can only be used inside a function.");
             }
-            Builder.CreateStore(compile(node->children[0]),RetVal);
+            Value *val = compile(node->children[0]);
+            abstractCompileAssign(val,getSymbolForVal(RetVal));
             compileReturn();
             return true;
+        }
         default:
             return compile(node) != NULL; // treat as an expression
     }
@@ -548,27 +562,27 @@ Value *CodeGen::compileEqualityOp(ASTNode *node) {
     return ret;
 }
 
-Symbol CodeGen::compileLHS(ASTNode *node) {
+Symbol *CodeGen::compileLHS(ASTNode *node) {
     switch (node->root) {
         case Language::VAR_REFERENCE:
             return Scopes->curScope()->resolve(node->str);
         case Language::CALL:
         {
             // must be an array reference
-            Symbol callee = compileLHS(node->children[0]);
-            if (!callee.getType() || !callee.getType()->isArrayTy()) {
+            Symbol *callee = compileLHS(node->children[0]);
+            if (!callee->getType() || !callee->getType()->isArrayTy()) {
                 throw Message::Exception("Can't index something that isn't an array.");
             }
             
-            TuringArrayType *arr = static_cast<TuringArrayType*>(callee.getType());
+            TuringArrayType *arr = static_cast<TuringArrayType*>(callee->getType());
             
-            return Symbol(compileIndex(callee.getVal(),node),arr->getElementType());
+            return new Symbol(compileIndex(callee->getVal(),node),arr->getElementType());
         }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
                                      " not recognized");
     }
-    return Symbol(); // never reaches here
+    return new Symbol(); // never reaches here
 }
 
 Value *CodeGen::compileAssignOp(ASTNode *node) {
@@ -588,8 +602,15 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     } else if (op.compare(":") != 0) {
         throw Message::Exception(Twine("Can't find operator ") + op);
     }
-    Symbol assignSym = compileLHS(node->children[0]);
-    Value *assignVar = assignSym.getVal();
+    Symbol *assignSym = compileLHS(node->children[0]);
+    
+    abstractCompileAssign(val, assignSym);
+    
+    return val;
+}
+
+void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
+    Value *assignVar = assignSym->getVal();
     
     if (isa<Argument>(assignVar)) {
         throw Message::Exception("Can't assign to an argument.");
@@ -601,9 +622,9 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     }
     
     // assigning an array to an array copies it
-    if (assignSym.getType()->isArrayTy()) {
+    if (assignSym->getType()->isArrayTy()) {
         compileArrayCopy(val,assignSym);
-        return val;
+        return;
     }
     
     // assert asignee is a pointer to the type being assigned
@@ -612,14 +633,13 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     }
     
     Builder.CreateStore(val,assignVar);
-    return val;
 }
 
-void CodeGen::compileArrayCopy(Value *from, Symbol to) {
+void CodeGen::compileArrayCopy(Value *from, Symbol *to) {
     Value *srcSize = compileArrayByteSize(from);
-    Value *destSize = compileArrayByteSize(to.getVal());
+    Value *destSize = compileArrayByteSize(to->getVal());
     Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("pointer to void")->getLLVMType(),"fromptr");
-    Value *toPtr = Builder.CreatePointerCast(to.getVal(),Types.getType("pointer to void")->getLLVMType(),"toptr");
+    Value *toPtr = Builder.CreatePointerCast(to->getVal(),Types.getType("pointer to void")->getLLVMType(),"toptr");
     Builder.CreateCall4(TheModule->getFunction("TuringCopyArray"),fromPtr,toPtr,srcSize,destSize);
 }
 
@@ -675,7 +695,7 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             type = Types.getTypeLLVM(initializer->getType());
         }
         
-        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type).getVal();
+        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type)->getVal();
         if (hasInitial) {
             Builder.CreateStore(initializer,declared);
         }
@@ -692,17 +712,17 @@ void CodeGen::compileVarDecl(ASTNode *node) {
 
 Value *CodeGen::compileVarReference(ASTNode *node) {
     // TODO maybe do as clang does and alloca and assign all params instead of this
-    Symbol var = compileLHS(node);
-    if (!(var.getVal()->getType()->isPointerTy())) {
+    Symbol *var = compileLHS(node);
+    if (!(var->getVal()->getType()->isPointerTy())) {
         // if it is not a reference return it straight up. Used for arguments.
-        return var.getVal();
+        return var->getVal();
     }
     // arrays are referenced
-    if (var.getType()->isArrayTy()) {
-        return Builder.CreateBitCast(var.getVal(),var.getType()->getLLVMType(true),"arrayref");
+    if (var->getType()->isArrayTy()) {
+        return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"arrayref");
     }
     
-    return Builder.CreateLoad(var.getVal(),Twine(node->str) + "val");
+    return Builder.CreateLoad(var->getVal(),Twine(node->str) + "val");
 }
 
 //! \param node  a CALL node
@@ -730,18 +750,18 @@ Value *CodeGen::compileIndex(Value *indexed,ASTNode *node) {
 //! in turing, the call syntax is used for array indexes, calls and other things
 //! this function dispatches the call to the correct compile function
 Value *CodeGen::compileCallSyntax(ASTNode *node) {
-    Symbol callee = compileLHS(node->children[0]);
-    if (isa<Function>(callee.getVal())) {
-        return compileCall(callee.getVal(),node,true);
+    Symbol *callee = compileLHS(node->children[0]);
+    if (callee->isFunction()) {
+        return compileCall(callee,node,true);
     }
     
-    if (callee.getType() == NULL) {
+    if (callee->getType() == NULL) {
         // FIXME EEEEVVVVIIIIILLLL!!!!
         goto fail;
     }
     
-    if (callee.getType()->isArrayTy()) {
-        return Builder.CreateLoad(compileIndex(callee.getVal(),node),"indexloadtemp");
+    if (callee->getType()->isArrayTy()) {
+        return Builder.CreateLoad(compileIndex(callee->getVal(),node),"indexloadtemp");
     }
     
 fail:        
@@ -749,7 +769,7 @@ fail:
     return NULL; // never reaches here
 }
 Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
-    return compileCall(compileLHS(node->children[0]).getVal(),node,wantReturn);
+    return compileCall(compileLHS(node->children[0]),node,wantReturn);
 }
 
 //! Compile a function call
@@ -759,14 +779,15 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
 //!         unless the wantReturn parameter is null
 //!         in wich case NULL is returned.
 //!         defaults to true.
-Value *CodeGen::compileCall(Value *callee,ASTNode *node, bool wantReturn) {
+Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
     
-    if (!isa<Function>(callee)) {
+    if (!callee->isFunction()) {
         throw Message::Exception("Only functions and procedures can be called.");
     }
     
     // must be a function
-    Function *calleeFunc = cast<Function>(callee);
+    FunctionSymbol *calleeFuncSym = static_cast<FunctionSymbol*>(callee);
+    Function *calleeFunc = cast<Function>(calleeFuncSym->getVal());
     
     // If argument mismatch error.
     if (calleeFunc->arg_size() != (node->children.size()-1)) {
@@ -845,11 +866,13 @@ Function *CodeGen::compilePrototype(const std::string &name, TuringType *returnT
         ai->setName(args[idx].Name);
     }
     
+    FunctionSymbol *fSym = new FunctionSymbol(f,returnType);
+    
     // add it to the LOCAL scope
     // WARNING this allows some interesting
     // functionality that normal turing does not
-    // support
-    Scopes->curScope()->setVar(name,f);
+    // support.
+    Scopes->curScope()->setVar(name,fSym);
     
     return f;
 }
@@ -1024,12 +1047,12 @@ void CodeGen::compileForStat(ASTNode *node) {
     Scopes->pushScope();
     
     // loop induction variable. node->str is the name
-    Symbol inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
+    Symbol *inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
     
     std::pair<Value*,Value*> range = compileRange(node->children[0]);
     
     // starting at the first number
-    Builder.CreateStore(range.first,inductionVar.getVal());
+    Builder.CreateStore(range.first,inductionVar->getVal());
     
     Builder.CreateBr(loopBB);
     
@@ -1048,9 +1071,9 @@ void CodeGen::compileForStat(ASTNode *node) {
     if (!isCurBlockTerminated()) {
         // increment = load -> add 1 -> store
         Value *oneConst = ConstantInt::get(getGlobalContext(), APInt(32,1));
-        Value *incremented = Builder.CreateAdd(Builder.CreateLoad(inductionVar.getVal(),"inductvarval"),
+        Value *incremented = Builder.CreateAdd(Builder.CreateLoad(inductionVar->getVal(),"inductvarval"),
                                                oneConst,"incremented");
-        Builder.CreateStore(incremented,inductionVar.getVal());
+        Builder.CreateStore(incremented,inductionVar->getVal());
         
         // finished yet?
         Value *done = Builder.CreateICmpUGT(incremented,range.second);

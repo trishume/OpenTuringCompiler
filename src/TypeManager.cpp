@@ -37,7 +37,7 @@ TuringType *TypeManager::getTypeLLVM(Type *llvmType, bool isReference){
     }
     
     if (llvmType->isPointerTy() && isReference) { // unwrap for array ref
-        llvmType = cast<PointerType>(llvmType)->getElementType();
+        return getTypeLLVM(cast<PointerType>(llvmType)->getElementType());
     }
     
     // is it an array

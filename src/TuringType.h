@@ -24,6 +24,8 @@ public:
     virtual std::string getName() = 0;
     
     virtual bool isArrayTy() = 0;
+    //! true if the type can not be stored in a register. I.E arrays and structs
+    virtual bool isComplexTy() = 0;
 };
 
 class BasicTuringType : public TuringType {
@@ -34,6 +36,7 @@ public:
     virtual std::string getName();
     
     virtual bool isArrayTy() {return false;}
+    virtual bool isComplexTy() {return false;}
 protected:
     llvm::Type *LLVMType;
     std::string Name;
@@ -54,6 +57,7 @@ public:
     }
     
     virtual bool isArrayTy() {return true;}
+    virtual bool isComplexTy() {return true;}
 protected:
     TuringType *ElementType;
     unsigned int Size;

@@ -43,12 +43,13 @@ private:
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls);
+    Symbol *getSymbolForVal(llvm::Value *val);
     llvm::Value *promoteType(llvm::Value *val, TuringType *destType);
     
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);
 	llvm::Value *compile(ASTNode *node);
-    Symbol compileLHS(ASTNode *node);
+    Symbol *compileLHS(ASTNode *node);
     
     llvm::Value *compileStringLiteral(const std::string &str);
 
@@ -56,7 +57,8 @@ private:
     llvm::Value *abstractCompileBinaryOp(llvm::Value *L, 
                                          llvm::Value *R, std::string op);
     llvm::Value *compileAssignOp(ASTNode *node);
-    void compileArrayCopy(llvm::Value *from, Symbol to);
+    void abstractCompileAssign(llvm::Value *val, Symbol *assignSym);
+    void compileArrayCopy(llvm::Value *from, Symbol *to);
     llvm::Value *compileLogicOp(ASTNode *node);
     llvm::Value *compileEqualityOp(ASTNode *node);
     
@@ -68,7 +70,7 @@ private:
     
     llvm::Value *compileCallSyntax(ASTNode *node);
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
-    llvm::Value *compileCall(llvm:: Value *callee,ASTNode *node, bool wantReturn);
+    llvm::Value *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
     llvm::Function *compileFunctionPrototype(ASTNode *node);
     llvm::Function *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     llvm::Function *compileFunction(ASTNode *node);

@@ -7,6 +7,7 @@ set(MySources
 	BasicScopes.cpp 
 	Executor.cpp 
 	Message.cpp 
+    Symbol.cpp 
 	Scope.cpp 
 	ScopeManager.cpp 
 	StdLib.cpp 
@@ -23,6 +24,7 @@ set(MyHeaders
 	BasicScopes.h 
 	Executor.h 
 	Message.h 
+    Symbol.h 
 	Scope.h 
 	ScopeManager.h 
 	TuringType.h 
