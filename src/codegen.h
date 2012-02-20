@@ -12,6 +12,7 @@
 #include <iostream>
 #include <stack>
 
+#include "ASTSource.h"
 #include "TuringType.h"
 #include "TypeManager.h"
 #include "VarDecl.h"
@@ -24,11 +25,14 @@ class ASTNode;
 
 class CodeGen {
 public:
-	CodeGen(ASTNode *tree);
+	CodeGen(ASTSource *source);
 
-	bool execute();
+	bool execute(bool dumpModule = false);
+    
+    bool compileFile(std::string fileName);
 
 protected:
+    bool compileRootNode(ASTNode *fileRoot, std::string fileName);
     void importStdLib();
     
     llvm::Function *currentFunction();
@@ -85,7 +89,10 @@ protected:
     void compileForStat(ASTNode *node);
     
 
-	ASTNode *Root;
+	ASTSource *TheSource; // sounds ominous ...
+    std::string CurFile;
+    //! is the module in a state to finalize and execute?
+    bool CanExecute;
 
 	llvm::Module *TheModule;
     llvm::Function *MainFunction;

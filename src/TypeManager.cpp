@@ -116,7 +116,7 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     strType->setName("string");
     addType("string",strType); // char*
     
-    addTypeLLVM("pointer to void",(Type*)Type::getInt8Ty(c)->getPointerTo());
+    addTypeLLVM("voidptr",(Type*)Type::getInt8Ty(c)->getPointerTo());
     //aliasType("string","pointer to void");
     
     addTypeLLVM("void",(Type*)Type::getVoidTy(c));

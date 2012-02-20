@@ -160,6 +160,7 @@ instruction
     |   typedecl {$$ = $0; /* pass up */}
     |   put {$$ = $0; /* pass up */}
     |   get {$$ = $0; /* pass up */}
+    |   includestat {$$ = $0; /* pass up */}
     |   constdecl {$$ = $0; /* pass up */}
     |   ifstat {$$ = $0; /* pass up */}
     |   forstat {$$ = $0; /* pass up */}
@@ -217,6 +218,12 @@ get :   'get' (':' assignableExpression ',')? assignableExpression (':' '*')?
         $$->addChild($2); // first expr
     }
     ;
+includestat :   'include' '"' STRING '"'
+        {
+            $$ = new ASTNode(Language::INCLUDE_STAT,$n0.start_loc.line);
+            $$->str = nodeString($n2);
+        }
+        ;
 
 //variables
 vardecl 

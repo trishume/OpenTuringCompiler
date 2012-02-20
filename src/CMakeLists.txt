@@ -4,6 +4,7 @@ add_custom_command(	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g.d_parser.cpp
 					COMMAND /usr/local/bin/make_dparser ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g -v -Xcpp)
 
 set(MySources 
+    ASTSource.cpp
 	BasicScopes.cpp 
 	Executor.cpp 
 	Message.cpp 
@@ -21,6 +22,7 @@ set(MySources
 	)
 
 set(MyHeaders
+    ASTSource.h
 	BasicScopes.h 
 	Executor.h 
 	Message.h 

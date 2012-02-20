@@ -19,15 +19,73 @@
 #define ITERATE_CHILDREN(node,var) \
 for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->children.end();var < e;++var)
 
+static const std::string defaultIncludes =
+    "extern proc TuringPrintInt(val : int)\n"
+    "extern proc TuringPrintReal(val : real)\n"
+    "extern proc TuringPrintBool(val : boolean)\n"
+    "extern proc TuringPrintString(val : string)\n"
+    "extern proc TuringGetString(val : string)\n"
+    "extern proc TuringPrintNewline()\n"
+    "extern fcn TuringPower(val : int, power : int) : int\n"
+    "extern fcn TuringIndexArray(index : int, length : int) : int\n"
+    "extern proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
+    "extern fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
+;
+
 using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(ASTNode *tree) : Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
-	Root = tree;
+CodeGen::CodeGen(ASTSource *source) :   TheSource(source), CurFile(""), CanExecute(true),
+Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
     Scopes = new ScopeManager(TheModule);
+    
+    // Get the module ready to start compiling
+    
+    /* Create the top level interpreter function to call as entry */
+	std::vector<Type*> argTypes;
+	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
+	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
+	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
+    
+	Builder.SetInsertPoint(mainBlock);
+    
+    // Add all the functions that the language needs to function
+    ASTNode *includesRoot = TheSource->parseString(defaultIncludes);
+    if (includesRoot == NULL) {
+        throw Message::Exception("Failed to parse default includes. This shouldn't happen ever.");
+    }
+    compileRootNode(includesRoot, "<default includes>");
+}
+
+bool CodeGen::compileFile(std::string fileName) {
+    ASTNode *fileRoot = TheSource->parseFile(fileName, CurFile);
+    
+    if (fileRoot == NULL) {
+        throw Message::Exception(Twine("Failed to parse file \"") + fileName + "\".");
+    }
+    return compileRootNode(fileRoot,fileName);
+}
+
+bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {    
+    std::string oldCurFile = CurFile;
+    CurFile = fileName;
+    bool good = false;
+    try {
+        good = compileBlock(fileRoot);
+    } catch (Message::Exception e) {
+        Message::error(e.Message);
+        
+    }
+    CurFile = oldCurFile;
+    if (!good) {
+        // can't execute it if it failed.
+        CanExecute = false;
+    }
+    
+    return good;
 }
 
 void CodeGen::importStdLib() {
@@ -74,29 +132,13 @@ void CodeGen::importStdLib() {
 
 #pragma mark Execution
 
-bool CodeGen::execute() {
-    
-    Message::log("Generating code...");
-    
-	
-    
-	/* Create the top level interpreter function to call as entry */
-	std::vector<Type*> argTypes;
-	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
-	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
-	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
-    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock");
-    
-	Builder.SetInsertPoint(mainBlock);
-    bool good = false;
-    try {
-        importStdLib();
-        good = compileBlock(Root);
-    } catch (Message::Exception e) {
-        Message::error(e.Message);
-        
+bool CodeGen::execute(bool dumpModule) {
+    if (!CanExecute) {
+        Message::error("Code generation failed. Can not execute.");
     }
     
+    // Finalize the main function
+    BasicBlock *endBB = BasicBlock::Create(getGlobalContext(), "returnblock");
     Builder.CreateBr(endBB);
     MainFunction->getBasicBlockList().push_back(endBB);
     Builder.SetInsertPoint(endBB);
@@ -104,12 +146,12 @@ bool CodeGen::execute() {
         Builder.CreateRetVoid();
     }
     
-	TheModule->dump();
+    // we have it finalized. No more!
+    CanExecute = false;
     
-    if (!good) { // code gen failed
-        return false;
-    }
+	if(dumpModule) TheModule->dump();
     
+    // run it!
     Message::log("JIT compiling and optimizing...");
     Executor jit(TheModule);
     jit.optimize();
@@ -303,7 +345,7 @@ bool CodeGen::compileStat(ASTNode *node) {
         return false;
 	}
     
-    Message::setCurLine(node->getLine());
+    Message::setCurLine(node->getLine(),CurFile);
     
     switch(node->root) {
         case Language::FUNC_PROTO: // extern declaration
@@ -333,6 +375,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true;
         case Language::GET_STAT:
             compileGetStat(node);
+            return true;
+        case Language::INCLUDE_STAT:
+            compileFile(node->str);
             return true;
         case Language::RETURN_STAT:
             compileReturn();
@@ -574,8 +619,8 @@ Value *CodeGen::compileEqualityOp(ASTNode *node) {
     } else if (type->isArrayTy()) { // strings and arrays
         Value *srcSize = compileArrayByteSize(L);
         Value *destSize = compileArrayByteSize(R);
-        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("pointer to void")->getLLVMType(),"fromptr");
-        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("pointer to void")->getLLVMType(),"toptr");
+        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("voidptr")->getLLVMType(),"fromptr");
+        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("voidptr")->getLLVMType(),"toptr");
         ret = Builder.CreateCall4(TheModule->getFunction("TuringCompareArray"),fromPtr,toPtr,srcSize,destSize);
     } else {
         throw Message::Exception(Twine("Can't compare type ") + type->getName());
@@ -680,8 +725,8 @@ void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
 void CodeGen::compileArrayCopy(Value *from, Symbol *to) {
     Value *srcSize = compileArrayByteSize(from);
     Value *destSize = compileArrayByteSize(to->getVal());
-    Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("pointer to void")->getLLVMType(),"fromptr");
-    Value *toPtr = Builder.CreatePointerCast(to->getVal(),Types.getType("pointer to void")->getLLVMType(),"toptr");
+    Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("voidptr")->getLLVMType(),"fromptr");
+    Value *toPtr = Builder.CreatePointerCast(to->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
     Builder.CreateCall4(TheModule->getFunction("TuringCopyArray"),fromPtr,toPtr,srcSize,destSize);
 }
 
@@ -1039,6 +1084,9 @@ Function *CodeGen::compileFunction(ASTNode *node) {
 // compiles the "return" and "result" statements.
 // the last block in a function contains the return statement
 void CodeGen::compileReturn() {
+    if (RetBlock == NULL) {
+        throw Message::Exception("Can't use 'return' or 'result' outside of a function.");
+    }
     Builder.CreateBr(RetBlock);
 }
 

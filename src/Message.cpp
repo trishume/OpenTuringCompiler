@@ -11,28 +11,21 @@
 
 namespace Message {
     static int curLine = 0;
+    static std::string curFile = "";
     
-    void setCurLine(int line) {
+    void setCurLine(int line,std::string fileName) {
         curLine = line;
+        curFile = fileName;
     }
     
     bool error(const llvm::Twine &message) {
-        if (curLine < 1) {
+        if (curLine < 1 || curFile.compare("") == 0) {
             std::cerr << "ERROR: ";
         } else {
-            std::cerr << "ERROR on line " << curLine << ": ";
+            std::cerr << "ERROR on line " << curLine << " in file " << curFile << ": ";
         }
         std::cerr << message.str() << std::endl;
         return true;
-    }
-    bool warning(const llvm::Twine &message) {
-        if (curLine < 1) {
-            std::cerr << "WARNING: ";
-        } else {
-            std::cerr << "WARNING on line " << curLine << ": ";
-        }
-        std::cerr << message.str() << std::endl;
-        return false;
     }
     bool log(const llvm::Twine &message) {
         std::cout << "LOG: " << message.str() << std::endl;
