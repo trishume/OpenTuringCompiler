@@ -25,6 +25,8 @@ public:
     //! uses resolveVarThis and isDeclared to search up the scope tree
     //! returns the address to be loaded/stored
     virtual Symbol *resolve(std::string name);
+    //! resolves a variable in the current scope only
+    virtual Symbol *resolveVarThis(std::string name) = 0;
     virtual bool isDeclared(std::string name);
     
     //! generates a variable declaration and adds it to the symbol table
@@ -40,8 +42,6 @@ public:
     
     Scope *Parent;
 protected:
-    //! resolves a variable in the current scope only
-    virtual Symbol *resolveVarThis(std::string name) = 0;
     //! checks if a variable is declared in the current scope only
     virtual bool isDeclaredThis(std::string name) = 0;
     

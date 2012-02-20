@@ -8,30 +8,56 @@
 
 #include "ScopeManager.h"
 
+#include <llvm/ADT/Twine.h>
 #include <cassert>
+
+#include "Message.h"
 
 ScopeManager::ScopeManager(llvm::Module *mod) {
     assert(mod != NULL);
     
-    currentScope = new GlobalScope(mod,NULL);
+    CurrentScope = new GlobalScope(mod,NULL);
 }
 
 Scope *ScopeManager::curScope() {
-    return currentScope;
+    return CurrentScope;
+}
+
+Scope *ScopeManager::getNamedScope(std::string name) {
+    if (NamedScopes.find(name) == NamedScopes.end()) {
+        throw Message::Exception(llvm::Twine("Module ") + name + " does not exist.");
+    }  
+    return NamedScopes[name];
+}
+
+bool ScopeManager::namedScopeExists(std::string name) {
+    return NamedScopes.find(name) != NamedScopes.end();
 }
 
 void ScopeManager::pushScope() {
-    currentScope = currentScope->createChildScope();
+    CurrentScope = CurrentScope->createChildScope();
 }
 
 void ScopeManager::pushLocalScope(llvm::Function *func) {
     assert(func != NULL);
     
-    currentScope = new LocalScope(func,currentScope);
+    CurrentScope = new LocalScope(func,CurrentScope);
+}
+
+void ScopeManager::pushNamedScope(std::string name) {
+    if (NamedScopes.find(name) != NamedScopes.end()) {
+        throw Message::Exception(llvm::Twine("Module ") + name + " already exists.");
+    }    
+    pushScope();
+    NamedScopes[name] = CurrentScope;
+    AllNamed.insert(CurrentScope);
 }
 
 void ScopeManager::popScope() {
-    Scope *oldScope = currentScope;
-    currentScope = currentScope->Parent;
-    delete oldScope;
+    Scope *oldScope = CurrentScope;
+    CurrentScope = CurrentScope->Parent;
+    // don't delete something that is referenced in the NamedScopes map
+    if (AllNamed.find(oldScope) == AllNamed.end()) {
+        delete oldScope;
+    }
 }

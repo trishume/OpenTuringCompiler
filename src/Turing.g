@@ -109,7 +109,7 @@
 
 // first rule is root
 program     
-    :   LT* instructions LT* 
+    :   LT* instructionsOrDefs LT* 
     {
         if($1 != NULL) {
             treeRoot = $1;
@@ -133,7 +133,26 @@ instructions
     }
     ;
 
+instructionsOrDefs
+    :   instructionOrDef ((LT+) instructionOrDef)*
+    {
+        $$ = new ASTNode(Language::BLOCK);
+        if ($0 != NULL) $$->addChild($0); // first instruction
+        addParseGroupItems(&$n1,$$,1); // rest of them
+    }
+    | LT*
+    {
+        $$ = new ASTNode(Language::BLOCK);
+    }
+    ;
+
 // TODO calling procs without call brackets. As in View.Update
+instructionOrDef
+    :   instruction {$$ = $0; /* pass up */}
+    |   funcdef {$$ = $0; /* pass up */}
+    |   moduledef {$$ = $0; /* pass up */}
+    ;
+    
 instruction 
     :   vardecl {$$ = $0; /* pass up */}
     |   externdecl {$$ = $0; /* pass up */}
@@ -141,7 +160,6 @@ instruction
     |   put {$$ = $0; /* pass up */}
     |   get {$$ = $0; /* pass up */}
     |   constdecl {$$ = $0; /* pass up */}
-    |   funcdef {$$ = $0; /* pass up */}
     |   ifstat {$$ = $0; /* pass up */}
     |   forstat {$$ = $0; /* pass up */}
     |   loopstat {$$ = $0; /* pass up */}
@@ -409,6 +427,14 @@ funcdef
         $$ = new ASTNode(Language::FUNC_DEF,$n0.start_loc.line);
         $$->addChild($0);
         $$->addChild($2);
+    }
+    ;
+moduledef
+    :  'module' ID LT+ instructionsOrDefs LT+ 'end' ID
+    {
+        $$ = new ASTNode(Language::MODULE_DEF,$n0.start_loc.line);
+        $$->str = nodeString($n1); // module name
+        $$->addChild($3);
     }
     ;
 

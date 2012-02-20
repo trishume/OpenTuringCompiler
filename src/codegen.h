@@ -66,7 +66,7 @@ protected:
     void compilePutStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
-    llvm::Value *compileVarReference(ASTNode *node);
+    llvm::Value *abstractCompileVarReference(Symbol *var,const std::string &name);
     llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
     
     llvm::Value *compileCallSyntax(ASTNode *node);
@@ -76,6 +76,8 @@ protected:
     FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
     llvm::Function *compileFunction(ASTNode *node);
     void compileReturn();
+    
+    void compileModule(ASTNode *node);
     
     void compileIfStat(ASTNode *node);
     void compileLoopStat(ASTNode *node);

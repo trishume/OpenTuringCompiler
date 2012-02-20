@@ -306,6 +306,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return compileFunctionPrototype(node) != NULL;
         case Language::FUNC_DEF:
             return compileFunction(node);
+        case Language::MODULE_DEF:
+            compileModule(node);
+            return true;
         case Language::CALL:
             compileCall(node,false); // special case allowing procedure calls
             return true; // throws error on fail
@@ -362,7 +365,9 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::VAR_REFERENCE:
-            return compileVarReference(node);
+        case Language::FIELD_REF_OP:
+            // compileLHS knows how to handle these. We just have to load them.
+            return abstractCompileVarReference(compileLHS(node),node->str);
         case Language::STRING_LITERAL:
             return compileStringLiteral(node->str);
         case Language::INT_LITERAL:
@@ -580,6 +585,18 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
     switch (node->root) {
         case Language::VAR_REFERENCE:
             return Scopes->curScope()->resolve(node->str);
+        case Language::FIELD_REF_OP:
+        {
+            ASTNode *lhs = node->children[0];
+            // is it a module? If so, retrieve its scope and resolve the variable without searching up.
+            if (lhs->root == Language::VAR_REFERENCE &&
+                Scopes->namedScopeExists(lhs->str)) {
+                return Scopes->getNamedScope(lhs->str)->resolveVarThis(node->str);
+            }
+            
+            // TODO other reference types
+            throw Message::Exception(Twine("Can't reference element ") + node->str);
+        }
         case Language::CALL:
         {
             // must be an array reference
@@ -711,21 +728,20 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             type = Types.getTypeLLVM(initializer->getType());
         }
         
-        Value *declared = Scopes->curScope()->declareVar(args[i].Name,type)->getVal();
-        if (hasInitial) {
-            Builder.CreateStore(initializer,declared);
-        }
-        
+        Symbol *declared = Scopes->curScope()->declareVar(args[i].Name,type);
         // must initialize the length part of the array struct
         if (type->isComplexTy()) {
-            compileInitializeComplex(declared, type);
+            compileInitializeComplex(declared->getVal(), type);
+        }
+        
+        if (hasInitial) {
+            abstractCompileAssign(initializer, declared);
         }
     }
 }
 
-Value *CodeGen::compileVarReference(ASTNode *node) {
+Value *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name) {
     // TODO maybe do as clang does and alloca and assign all params instead of this
-    Symbol *var = compileLHS(node);
     if (!(var->getVal()->getType()->isPointerTy())) {
         // if it is not a reference return it straight up. Used for arguments.
         return var->getVal();
@@ -735,7 +751,7 @@ Value *CodeGen::compileVarReference(ASTNode *node) {
         return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"arrayref");
     }
     
-    return Builder.CreateLoad(var->getVal(),Twine(node->str) + "val");
+    return Builder.CreateLoad(var->getVal(),Twine(name) + "val");
 }
 
 //! \param node  a CALL node
@@ -820,7 +836,7 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
     Value *returnBuffer = NULL;
     if (calleeFuncSym->IsSRet) {
         // start at the entry block. Optimizers like this
-        BasicBlock *entryBlock = &Builder.GetInsertBlock()->getParent()->getEntryBlock();
+        BasicBlock *entryBlock = &currentFunction()->getEntryBlock();
         IRBuilder<> TmpB(entryBlock,entryBlock->begin());
         // pass a memory buffer of the return type as the first parameter, false means not a reference
         returnBuffer = TmpB.CreateAlloca(calleeFuncSym->getType()->getLLVMType(false),0,"sretBuffer");
@@ -920,10 +936,9 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
         ai->setName(args[idx].Name);
     }
     
-    // add it to the LOCAL scope
-    // WARNING this allows some interesting
-    // functionality that normal turing does not
-    // support.
+    // add it to the LOCAL scope so that modules work
+    // the parser prevents them from being defined
+    // in places they shouldn't be
     Scopes->curScope()->setVar(name,fSym);
     
     return fSym;
@@ -1007,6 +1022,12 @@ void CodeGen::compileReturn() {
     Builder.CreateBr(RetBlock);
 }
 
+void CodeGen::compileModule(ASTNode *node) {
+    Scopes->pushNamedScope(node->str);
+    compileBlock(node->children[0]);
+    Scopes->popScope();
+}
+
 //! compiles an if statement as a series of blocks
 //! works on IF_STAT or ELSIF_STAT nodes
 void CodeGen::compileIfStat(ASTNode *node) {
@@ -1033,7 +1054,7 @@ void CodeGen::compileIfStat(ASTNode *node) {
     
     Builder.SetInsertPoint(thenBB);
     
-    Scopes->pushScope();
+    Scopes->pushLocalScope(currentFunction());
     compileBlock(node->children[1]);
     Scopes->popScope();
     
@@ -1046,7 +1067,7 @@ void CodeGen::compileIfStat(ASTNode *node) {
         theFunction->getBasicBlockList().push_back(elseBB);
         Builder.SetInsertPoint(elseBB);
         
-        Scopes->pushScope();
+        Scopes->pushLocalScope(currentFunction());
         compileBlock(node->children[2]);
         Scopes->popScope();
         
@@ -1078,7 +1099,7 @@ void CodeGen::compileLoopStat(ASTNode *node) {
     BasicBlock *prevExitBlock = ExitBlock;
     ExitBlock = mergeBB;
     
-    Scopes->pushScope();
+    Scopes->pushLocalScope(currentFunction());
     compileBlock(node->children[0]);
     Scopes->popScope();
     
@@ -1105,7 +1126,7 @@ void CodeGen::compileForStat(ASTNode *node) {
     BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "for", theFunction);
     BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "forcont");
     
-    Scopes->pushScope();
+    Scopes->pushLocalScope(currentFunction());
     
     // loop induction variable. node->str is the name
     Symbol *inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
