@@ -102,6 +102,7 @@
         keywords.insert("return");
         keywords.insert("result");
         keywords.insert("label");
+        keywords.insert("upper");
 
         return keywords.find(ident) != keywords.end();
     }
@@ -574,6 +575,11 @@ primaryExpression
     |   '\'' CHAR  '\'' { $$ = new ASTNode(Language::CHAR_LITERAL,$n0.start_loc.line); $$->str = nodeString($n1);}
     |   'true' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}
     |   'false' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}
+    |   'upper' '(' expr ')'
+    {
+        $$ = new ASTNode(Language::ARRAY_UPPER,$n0.start_loc.line);
+        $$->addChild($2);
+    }
     |   assignableExpression '(' ')' // function call with no args
     {
     $$ = new ASTNode(Language::CALL,$n0.start_loc.line);

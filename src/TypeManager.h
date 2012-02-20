@@ -27,6 +27,7 @@ public:
     bool aliasType(std::string name, std::string aliasName);
     
     bool isType(llvm::Value *val, std::string typeName);
+    bool isArrayRef(llvm::Type *llvmType);
     
     void addDefaultTypes(llvm::LLVMContext &c);
     

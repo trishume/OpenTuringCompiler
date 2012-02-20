@@ -157,6 +157,9 @@ Value *CodeGen::compileArrayByteSize(Value *arrayRef) {
 }
 
 Value *CodeGen::compileArrayLength(Value *arrayRef) {
+    if (!Types.isArrayRef(arrayRef->getType())) {
+        throw Message::Exception("Can only find the upper limit of an array.");
+    }
     return Builder.CreateLoad(Builder.CreateConstGEP2_32(arrayRef,0,0,"arrlengthptr"),"arraylengthval");
 }
 
@@ -364,6 +367,8 @@ Value *CodeGen::compile(ASTNode *node) {
             return compileEqualityOp(node);
         case Language::CALL:
             return compileCallSyntax(node);
+        case Language::ARRAY_UPPER:
+            return compileArrayLength(compile(node->children[0]));
         case Language::VAR_REFERENCE:
         case Language::FIELD_REF_OP:
             // compileLHS knows how to handle these. We just have to load them.

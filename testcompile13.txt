@@ -51,7 +51,7 @@ fcn Second( arr : array 1..2 of int ) : int
     result arr(2)
 end Second
 
-for i : 1..13
+for i : 1..upper(lolArr)
     lolArr(i) := i
 end for
 % lolArr = 1,2,3,4...

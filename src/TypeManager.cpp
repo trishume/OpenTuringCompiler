@@ -84,6 +84,23 @@ bool TypeManager::isType(Value *val, std::string typeName) {
     return val->getType() == getType(typeName)->getLLVMType(true);
 }
 
+bool TypeManager::isArrayRef(llvm::Type *llvmType) {
+    if (!llvmType->isPointerTy()) { 
+        return false;
+    }
+    // unwrap for array ref
+    llvmType = cast<PointerType>(llvmType)->getElementType();
+    
+    // is it an array
+    if (llvmType->isStructTy() && cast<StructType>(llvmType)->getNumElements() == 2 && 
+        cast<StructType>(llvmType)->getElementType(0) == getType("int")->getLLVMType() &&
+        cast<StructType>(llvmType)->getElementType(1)->isArrayTy()) 
+    {
+        return true;
+    }
+    return false;
+}
+
 void TypeManager::addDefaultTypes(LLVMContext &c) {
     // ints
     addTypeLLVM("int",(Type*)Type::getInt32Ty(c));
