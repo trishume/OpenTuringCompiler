@@ -13,18 +13,19 @@
 #include "TypeManager.h"
 #include "Message.h"
 
-typedef int TInt;
+typedef int32_t TInt;
 typedef double TReal;
 
 using namespace llvm;
 
 
 typedef struct {
-    int length;
+    TInt length;
     char strdata[255]; // length is dummy, can be anything
 } TString;
 
 extern "C" {
+    
     void TuringPrintInt(TInt num) {
         std::cout << num;
     }
@@ -56,13 +57,20 @@ extern "C" {
             return y;
         }
     }
+    void TuringGetString(TString *string) {
+        std::string inStr;
+        std::cin >> inStr;
+        if (inStr.size() > string->length) {
+            Message::runtimeError(Twine("Tried to read a string of size ") + Twine(inStr.size()) + 
+                                  " into a string of size " + Twine(string->length));
+        }
+        strcpy(string->strdata, inStr.c_str());
+    }
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
-//        Message::log(Twine("copying array of length ") + Twine(fromLength) + 
-//                     " to one of length " + Twine(toLength));
         if (fromLength > toLength) {
             // TODO better runtime error handling
-            Message::error("Tried to copy an array to a smaller one.");
-            exit(1);
+            Message::runtimeError(Twine("Tried to copy an array of length ") + Twine(fromLength) + 
+                                  " to one of length " + Twine(toLength));
         }
         size_t fromLen = 0; // int and size_t may be different sizes so make sure the passed value is correct
         fromLen = fromLength;
@@ -84,12 +92,11 @@ extern "C" {
     //! \returns the 0-based index, stops program if there is an index problem
     int TuringIndexArray(int index, int length) {
         if (index <= 0) {
-            Message::error(Twine("Can't index an array with the negative value of ") + Twine(index));
-            exit(1);
+            Message::runtimeError(Twine("Can't index an array with the negative value of ") + Twine(index));
         }
         if (index > length) {
-            Message::error(Twine("Can't index an array of size") + Twine(length) +  " with the number " + Twine(index));
-            exit(1);
+            Message::runtimeError(Twine("Can't index an array of size") + Twine(length) +  
+                                  " with the number " + Twine(index));
         }
         return index - 1;
     }

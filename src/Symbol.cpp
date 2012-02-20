@@ -7,3 +7,14 @@
 //
 
 #include "Symbol.h"
+
+#include <llvm/Instructions.h>
+
+using namespace llvm;
+
+Value *VarSymbol::getVal() {
+    /*if (getType()->isComplexTy()) {
+        return new BitCastInst(Val,getType()->getLLVMType(true),"castedLHS");
+    }*/
+    return Val;
+}

@@ -47,6 +47,7 @@ void CodeGen::importStdLib() {
     
     params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("string")));
     compilePrototype("TuringPrintString",Types.getType("void"),*params);
+    compilePrototype("TuringGetString",Types.getType("void"),*params);
     delete params;
     
     params = new std::vector<VarDecl>();
@@ -251,7 +252,7 @@ Symbol *CodeGen::getSymbolForVal(Value *val) {
         throw Message::Exception("Symbols must be a pointer type");
     }
     
-    return new Symbol(val,Types.getTypeLLVM(cast<PointerType>(val->getType())->getElementType()));
+    return new VarSymbol(val,Types.getTypeLLVM(cast<PointerType>(val->getType())->getElementType()));
 }
 
 Value *CodeGen::promoteType(Value *val, TuringType *destType) {
@@ -329,6 +330,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true;
         case Language::PUT_STAT:
             compilePutStat(node);
+            return true;
+        case Language::GET_STAT:
+            compileGetStat(node);
             return true;
         case Language::RETURN_STAT:
             compileReturn();
@@ -612,13 +616,13 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
             
             TuringArrayType *arr = static_cast<TuringArrayType*>(callee->getType());
             
-            return new Symbol(compileIndex(callee->getVal(),node),arr->getElementType());
+            return new VarSymbol(compileIndex(callee->getVal(),node),arr->getElementType());
         }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
                                      " not recognized");
     }
-    return new Symbol(); // never reaches here
+    return new VarSymbol(); // never reaches here
 }
 
 Value *CodeGen::compileAssignOp(ASTNode *node) {
@@ -710,6 +714,17 @@ void CodeGen::compilePutStat(ASTNode *node) {
     if (node->str.compare("..") != 0) {
         Builder.CreateCall(TheModule->getFunction("TuringPrintNewline"),std::vector<Value*>());
     }
+}
+
+void CodeGen::compileGetStat(ASTNode *node) {
+    Symbol *var = compileLHS(node->children[0]);
+    
+    if (var->getType()->getName().compare("string") != 0) {
+        throw Message::Exception("This version of the Open Turing Compiler can only 'get' strings.");
+    }
+    
+    Function *calleeFunc = TheModule->getFunction("TuringGetString");
+    Builder.CreateCall(calleeFunc, Builder.CreatePointerCast(var->getVal(), var->getType()->getLLVMType(true)));
 }
 
 void CodeGen::compileVarDecl(ASTNode *node) {

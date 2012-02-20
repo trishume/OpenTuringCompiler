@@ -43,4 +43,9 @@ namespace Message {
         if (!cond) error(message);
         return cond == NULL;
     }
+    
+    void runtimeError(const llvm::Twine &message) {
+        error(message);
+        exit(1);
+    }
 }

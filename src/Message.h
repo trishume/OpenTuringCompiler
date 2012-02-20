@@ -23,6 +23,8 @@ namespace Message {
     bool log(const llvm::Twine &message);
     bool ifNull(void *cond, const llvm::Twine &message);
     
+    void runtimeError(const llvm::Twine &message);
+    
     struct Exception {
         Exception(){
             // TODO make it take on the message of the last Message::error

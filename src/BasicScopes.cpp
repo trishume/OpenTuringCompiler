@@ -25,7 +25,7 @@ Symbol *BasicScope::resolveVarThis(std::string name) {
 //! sets a variable name to reference a specific value
 void BasicScope::setVar(std::string name, llvm::Value *val, TuringType *type) {
     // TODO check if it already exists?
-    symbols[name] = new Symbol(val,type);
+    symbols[name] = new VarSymbol(val,type);
 }
 
 void BasicScope::setVar(std::string name, Symbol *val) {
@@ -56,7 +56,7 @@ Symbol *GlobalScope::declareVar(std::string name, TuringType *type) {
                                               /*Linkage=*/GlobalValue::CommonLinkage,
                                               /*Initializer=*/Constant::getNullValue(type->getLLVMType(false)), // has initializer, specified below
                                               /*Name=*/name);
-    Symbol *sym = new Symbol(gvar,type);
+    Symbol *sym = new VarSymbol(gvar,type);
     
     // store in the symbol table
     symbols[name] = sym;
@@ -79,7 +79,7 @@ Symbol *LocalScope::declareVar(std::string name, TuringType *type) {
                      TheFunction->getEntryBlock().begin());
     Value *lvar = TmpB.CreateAlloca(type->getLLVMType(false), 0,name);
     
-    Symbol *sym = new Symbol(lvar,type);
+    Symbol *sym = new VarSymbol(lvar,type);
     
     // store in the symbol table
     symbols[name] = sym;

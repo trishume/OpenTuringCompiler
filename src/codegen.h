@@ -64,6 +64,7 @@ protected:
     llvm::Value *compileEqualityOp(ASTNode *node);
     
     void compilePutStat(ASTNode *node);
+    void compileGetStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
     llvm::Value *abstractCompileVarReference(Symbol *var,const std::string &name);

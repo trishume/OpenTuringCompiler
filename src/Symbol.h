@@ -17,7 +17,7 @@
 
 #include "TuringType.h"
 
-/*
+
 //! abstract class representing things in the scope system: variables and functions
 class Symbol {
 public:
@@ -27,15 +27,15 @@ public:
     virtual bool isFunction() = 0;
 protected:
     Symbol(){}
-};*/
+};
 
 //! represents a variable. The value must be a pointer type unless it is an argument
-class Symbol {
+class VarSymbol : public Symbol {
 public:
-    Symbol() : Val(NULL), Type(NULL) {}
-    Symbol(llvm::Value *val, TuringType *type) : Val(val), Type(type) {}
-    TuringType *getType() {return Type;}
-    llvm::Value *getVal() {return Val;}
+    VarSymbol() : Val(NULL), Type(NULL) {}
+    VarSymbol(llvm::Value *val, TuringType *type) : Val(val), Type(type) {}
+    virtual TuringType *getType() {return Type;}
+    virtual llvm::Value *getVal();
     
     virtual bool isFunction() {return false;}
 protected:
@@ -46,14 +46,18 @@ protected:
 //! represents a function. getType is the return type and getVal is the Function*
 class FunctionSymbol : public Symbol {
 public:
-    FunctionSymbol(llvm::Value *val, TuringType *type) : Symbol(val,type), IsSRet(false) {
-        assert(llvm::isa<llvm::Function>(getVal()));
-    }
+    FunctionSymbol(llvm::Function *llvmFunc, TuringType *type) : IsSRet(false), Func(llvmFunc), RetType(type)  {}
+    virtual TuringType *getType() {return RetType;}
+    virtual llvm::Value *getVal() {return Func;}
+    
     virtual bool isFunction() {return true;}
-    llvm::Function *getFunc() {return llvm::cast<llvm::Function>(getVal());}
+    llvm::Function *getFunc() {return Func;}
     
     //! is the first parameter a pointer to where the return value should go?
     bool IsSRet;
+protected:
+    llvm::Function *Func;
+    TuringType *RetType;
 };
 
 #endif
