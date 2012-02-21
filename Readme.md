@@ -1,12 +1,11 @@
-#The New Open Turing Compiler
-##by Tristan Hume
+#The New Open Turing Compiler - by Tristan Hume
 
 A compiler for Turing written using LLVM for code generation and Dparser for parsing.
 
-If you want to compile it yourself you have to:
- * install dparser from http://http://dparser.sourceforge.net/
- * install LLVM from SVN head. It might work with regular 3.0 but I haven't tried it
- * run 'cmake' and then 'make'
+####If you want to compile it yourself you have to:
+ * Install dparser from http://http://dparser.sourceforge.net/
+ * Install LLVM from SVN head. It might work with regular 3.0 but I haven't tried it
+ * Run 'cmake' and then 'make'
 
 If any of this goes wrong it's your problem. I haven't made any effort to make it easy for other people to contribute yet.
 I will eventually though, once the compiler is in a state where I have tested it and it is usable.
