@@ -25,6 +25,7 @@ static const std::string defaultIncludes =
     "extern proc TuringPrintBool(val : boolean)\n"
     "extern proc TuringPrintString(val : string)\n"
     "extern proc TuringGetString(val : string)\n"
+    "extern \"length\" fcn TuringStringLength(val : string) : int\n"
     "extern proc TuringPrintNewline()\n"
     "extern fcn TuringPower(val : int, power : int) : int\n"
     "extern fcn TuringIndexArray(index : int, length : int) : int\n"
@@ -307,8 +308,8 @@ bool CodeGen::compileStat(ASTNode *node) {
     Message::setCurLine(node->getLine(),CurFile);
     
     switch(node->root) {
-        case Language::FUNC_PROTO: // extern declaration
-            return compileFunctionPrototype(node) != NULL;
+        case Language::EXTERN_DECL: // extern declaration
+            return compileFunctionPrototype(node->children[0],node->str) != NULL;
         case Language::FUNC_DEF:
             return compileFunction(node);
         case Language::MODULE_DEF:
@@ -891,8 +892,8 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
     return Builder.CreateCall(calleeFunc, argVals, "calltmp");
 }
 
-Function *CodeGen::compileFunctionPrototype(ASTNode *node) {
-    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]))->getFunc();
+Function *CodeGen::compileFunctionPrototype(ASTNode *node, const std::string &aliasName) {
+    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]),aliasName)->getFunc();
 }
 
 /*! creates an llvm function with no implementation.
@@ -902,9 +903,10 @@ Function *CodeGen::compileFunctionPrototype(ASTNode *node) {
  \param name The name of the function
  \param returnType The type the function returns. the void type if it is a procedure.
  \param params A DECLARATIONS ast node containing the formal parameters.
+ \param aliasName the name to put in the symbol table. Blank if same as LLVM func name.
  
  */
-FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args) {
+FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName) {
     
     bool structRet = returnType->isComplexTy();
     
@@ -963,7 +965,8 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
     // add it to the LOCAL scope so that modules work
     // the parser prevents them from being defined
     // in places they shouldn't be
-    Scopes->curScope()->setVar(name,fSym);
+    std::string symName = aliasName.empty() ? name : aliasName;
+    Scopes->curScope()->setVar(symName,fSym);
     
     return fSym;
 }

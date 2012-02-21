@@ -66,6 +66,9 @@ extern "C" {
         }
         strcpy(string->strdata, inStr.c_str());
     }
+    int TuringStringLength(TString *string) {
+        return strlen(string->strdata);
+    }
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
         if (fromLength > toLength) {
             // TODO better runtime error handling

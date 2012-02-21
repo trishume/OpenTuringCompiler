@@ -75,8 +75,8 @@ protected:
     llvm::Value *compileCallSyntax(ASTNode *node);
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
     llvm::Value *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
-    llvm::Function *compileFunctionPrototype(ASTNode *node);
-    FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args);
+    llvm::Function *compileFunctionPrototype(ASTNode *node, const std::string &aliasName = "");
+    FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName = "");
     llvm::Function *compileFunction(ASTNode *node);
     void compileReturn();
     

@@ -425,7 +425,17 @@ prototype
     ;
     
 externdecl
-    : 'extern' prototype {$$ = $1; /* pass up */}
+    : 'extern' prototype 
+    {
+        $$ = new ASTNode(Language::EXTERN_DECL,$n0.start_loc.line);
+        $$->addChild($1);
+    }
+    | 'extern' '"' ID '"' prototype
+    {
+        $$ = new ASTNode(Language::EXTERN_DECL,$n0.start_loc.line);
+        $$->str = nodeString($n2);
+        $$->addChild($4);
+    }
     ;
     
 funcdef 

@@ -19,7 +19,7 @@ namespace Message {
     }
     
     bool error(const llvm::Twine &message) {
-        if (curLine < 1 || curFile.compare("") == 0) {
+        if (curLine < 1 || curFile.empty()) {
             std::cerr << "ERROR: ";
         } else {
             std::cerr << "ERROR on line " << curLine << " in file " << curFile << ": ";
