@@ -53,7 +53,7 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
 	Builder.SetInsertPoint(mainBlock);
     
     // Add all the functions that the language needs to function
-    ASTNode *includesRoot = TheSource->parseString(defaultIncludes);
+    ASTNode *includesRoot = TheSource->parseString(defaultIncludes,false);
     if (includesRoot == NULL) {
         throw Message::Exception("Failed to parse default includes. This shouldn't happen ever.");
     }
@@ -61,6 +61,7 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
 }
 
 bool CodeGen::compileFile(std::string fileName) {
+    Message::log(Twine("Compiling file \"") + fileName + "\".");
     ASTNode *fileRoot = TheSource->parseFile(fileName, CurFile);
     
     if (fileRoot == NULL) {
@@ -86,48 +87,6 @@ bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {
     }
     
     return good;
-}
-
-void CodeGen::importStdLib() {
-    std::vector<VarDecl> *params;
-    
-    params = new std::vector<VarDecl>(1,VarDecl("num",Types.getType("int")));
-    compilePrototype("TuringPrintInt",Types.getType("void"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>(1,VarDecl("num",Types.getType("real")));
-    compilePrototype("TuringPrintReal",Types.getType("void"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("boolean")));
-    compilePrototype("TuringPrintBool",Types.getType("void"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>(1,VarDecl("val",Types.getType("string")));
-    compilePrototype("TuringPrintString",Types.getType("void"),*params);
-    compilePrototype("TuringGetString",Types.getType("void"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>();
-    compilePrototype("TuringPrintNewline",Types.getType("void"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
-    compilePrototype("TuringPower",Types.getType("int"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>(2,VarDecl("val",Types.getType("int")));
-    compilePrototype("TuringIndexArray",Types.getType("int"),*params);
-    delete params;
-    
-    params = new std::vector<VarDecl>();
-    params->push_back(VarDecl("from",Types.getType("pointer to void")));
-    params->push_back(VarDecl("to",Types.getType("pointer to void")));
-    params->push_back(VarDecl("fromLength",Types.getType("int")));
-    params->push_back(VarDecl("toLength",Types.getType("int")));
-    compilePrototype("TuringCopyArray",Types.getType("void"),*params);
-    compilePrototype("TuringCompareArray",Types.getType("boolean"),*params);
-    delete params;
 }
 
 #pragma mark Execution

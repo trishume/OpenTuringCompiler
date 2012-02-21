@@ -114,7 +114,6 @@ program
     {
         if($1 != NULL) {
             treeRoot = $1;
-            std::cout << $1->stringTree() << std::endl;
         } else {
           std::cerr << "null ast!" << std::endl;
         }

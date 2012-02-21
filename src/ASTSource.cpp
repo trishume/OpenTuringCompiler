@@ -38,11 +38,13 @@ std::string ASTSource::folderFromFilePath(const std::string &fileName) {
     return (found == std::string::npos ? "" : fileName.substr(0,found+1));
 }
 
-ASTNode *ASTSource::parseString(const std::string &fileData) {
+ASTNode *ASTSource::parseString(const std::string &fileData, bool printAST) {
     char *s = new char[fileData.length()];
     strcpy(s,fileData.c_str());
     
     if (dparse(Parser, s, strlen(s)) && !Parser->syntax_errors) {
+        if (printAST)
+            std::cout << treeRoot->stringTree() << std::endl;
         return treeRoot;
     }
     

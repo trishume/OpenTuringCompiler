@@ -26,7 +26,7 @@ public:
     //! \returns the parsed AST or NULL on parsing error
     ASTNode *parseFile(const std::string &fileName, const std::string &includedFrom);
     //! \returns the parsed AST or NULL on parsing error
-    virtual ASTNode *parseString(const std::string &fileData);
+    virtual ASTNode *parseString(const std::string &fileData, bool printAST = true);
     //! returns the folder part of a file path
     static std::string folderFromFilePath(const std::string &fileName);
 protected:

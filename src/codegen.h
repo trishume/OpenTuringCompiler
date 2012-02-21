@@ -33,8 +33,6 @@ public:
 
 protected:
     bool compileRootNode(ASTNode *fileRoot, std::string fileName);
-    void importStdLib();
-    
     llvm::Function *currentFunction();
     bool isProcedure(llvm::Function *f);
     bool isMainFunction(llvm::Function *f);
