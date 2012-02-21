@@ -69,6 +69,15 @@ extern "C" {
     int TuringStringLength(TString *string) {
         return strlen(string->strdata);
     }
+    // fancy struct return. Turing signature is fcn TuringStringConcat(lhs,rhs : string) : string
+    void TuringStringConcat(TString *retStr, TString* lhs, TString *rhs) {
+        // TODO this is suboptimal because it uses strlen. Ignore safety and forge ahead?
+        if (TuringStringLength(lhs) + TuringStringLength(rhs) > retStr->length) {
+            Message::runtimeError("Tried to add two strings to create a string larger than the maximum string length");
+        }
+        strcpy(retStr->strdata, lhs->strdata);
+        strcat(retStr->strdata, rhs->strdata);
+    }
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
         if (fromLength > toLength) {
             // TODO better runtime error handling

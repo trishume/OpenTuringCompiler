@@ -26,6 +26,7 @@ static const std::string defaultIncludes =
     "extern proc TuringPrintString(val : string)\n"
     "extern proc TuringGetString(val : string)\n"
     "extern \"length\" fcn TuringStringLength(val : string) : int\n"
+    "extern fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "extern proc TuringPrintNewline()\n"
     "extern fcn TuringPower(val : int, power : int) : int\n"
     "extern fcn TuringIndexArray(index : int, length : int) : int\n"
@@ -475,6 +476,14 @@ Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
     } else if (op.compare("<=") == 0) {
         return fp ? Builder.CreateFCmpOLE(L, R) : Builder.CreateICmpSLE(L, R);
     } else if (op.compare("+") == 0) { // MATH
+        // string + string = TuringStringConcat(string)
+        if (Types.isType(L, "string") && Types.isType(R, "string")) {
+            Symbol *callee = Scopes->curScope()->resolve("TuringStringConcat");
+            std::vector<Value*> params;
+            params.push_back(L);
+            params.push_back(R);
+            return abstractCompileCall(callee, params, true);
+        }
         binOp = fp ? Instruction::FAdd : Instruction::Add;
     } else if (op.compare("-") == 0) {
         binOp = fp ? Instruction::FSub : Instruction::Sub;
@@ -500,6 +509,12 @@ Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
         return Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
     } else {
         throw Message::Exception("Invalid binary operator.");
+    }
+    
+    // if it hasn't already been promoted (which type checks), do type checking
+    if (!fp) {
+        L = promoteType(L, Types.getType("int"));
+        R = promoteType(R, Types.getType("int"));
     }
     
     // if it hasn't returned by now it must be a normal binop
@@ -826,6 +841,14 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
     return compileCall(compileLHS(node->children[0]),node,wantReturn);
 }
 
+Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
+    std::vector<Value*> params;
+    for (unsigned int i = 1; i < node->children.size(); ++i) {
+        params.push_back(compile(node->children[i]));
+    }
+    return abstractCompileCall(callee, params, wantReturn);
+}
+
 //! Compile a function call
 //! \param wantReturn  Wether the return value is ignored. 
 //!                    Should always be true for procedures.
@@ -833,7 +856,7 @@ Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
 //!         unless the wantReturn parameter is null
 //!         in wich case NULL is returned.
 //!         defaults to true.
-Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
+Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &params, bool wantReturn) {
     
     if (!callee->isFunction()) {
         throw Message::Exception("Only functions and procedures can be called.");
@@ -844,7 +867,7 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
     Function *calleeFunc = cast<Function>(calleeFuncSym->getVal());
     
     // If argument mismatch error.
-    unsigned int numArgsPassed = (node->children.size()-1);
+    unsigned int numArgsPassed = params.size();
     unsigned int numArgsNeeded = calleeFunc->arg_size();
     if (calleeFuncSym->IsSRet) {
         numArgsNeeded -= 1; // first argument is automatically passed
@@ -872,8 +895,8 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
         // move on to the next argument
         ai++;
     }
-    for (unsigned idx = 1; ai != e;++ai, ++idx) {
-        Value *val = compile(node->children[idx]);
+    for (unsigned idx = 0; ai != e;++ai, ++idx) {
+        Value *val = params[idx];
         TuringType *typ = Types.getTypeLLVM(ai->getType(),true);
         argVals.push_back(promoteType(val, typ));
     }

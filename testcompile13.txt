@@ -9,7 +9,7 @@ var lolArr,lolArr2 : array 1..13 of int
 
 % test complex type returns
 fcn RetPrintingStr () : string
-    result "PRINTING "
+    result "PRIN" + "TING "
 end RetPrintingStr
 
 var assignStr : string
