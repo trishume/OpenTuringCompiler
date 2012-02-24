@@ -49,6 +49,7 @@
             D_ParseNode *child = d_get_child(parseNode,i);
             
             if(index >= d_get_number_of_children(child)) {
+                std::cerr << d_get_number_of_children(child) << " children when indexed with " << index << "\n";
                 errorFunc("Not enough children in group in addParseGroupItems");
                 return 0;
             }
@@ -193,7 +194,7 @@ type
         $$->addChild($1); // first range
         addParseGroupItems(&$n2,$$,1); // rest of them
     }
-    |   'record' LT* decls ((LT+) decls) LT* 'end' 'record'
+    |   'record' (LT*) decls ((LT+) decls)* LT* 'end' 'record'
     { 
         $$ = new ASTNode(Language::RECORD_TYPE,$n0.start_loc.line);
         $$->addChild($2); // first decls

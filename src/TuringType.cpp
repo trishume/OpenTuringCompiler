@@ -15,6 +15,8 @@
 #include <llvm/ADT/Twine.h>
 #include <llvm/ADT/ArrayRef.h>
 
+#include "Message.h"
+
 using namespace llvm;
 
 Type *BasicTuringType::getLLVMType(bool isReference) {
@@ -46,10 +48,38 @@ std::string TuringArrayType::getName() {
     return Name;
 }
 
-Type *TuringPointerType::getLLVMType(bool isReference) {
-    return LLVMType->getPointerTo();
+TuringRecordType::TuringRecordType(std::vector<VarDecl> elements) : Elems(elements) {
+    Twine nameBuilder("record of");
+    for (unsigned int i = 0; i < Elems.size(); ++i) {
+        // build name
+        nameBuilder.concat(" (");
+        nameBuilder.concat(Elems[i].Type->getName());
+        nameBuilder.concat(")");
+        // build field map
+        NameToIndex[Elems[i].Name] = i;
+    }
+    Name = nameBuilder.str();
 }
 
-std::string TuringPointerType::getName() {
-    return (Twine("pointer to ") + Name).str();
+Type *TuringRecordType::getLLVMType(bool isReference) {
+    std::vector<Type*> structElements;
+    
+    for (unsigned int i = 0; i < Elems.size(); ++i) {
+        structElements.push_back(Elems[i].Type->getLLVMType(false));
+    }
+    
+    Type *type = StructType::get(getGlobalContext(),ArrayRef<Type*>(structElements));
+    
+    if (isReference) {
+        return type->getPointerTo();
+    } else {
+        return type;
+    }
+}
+
+unsigned int TuringRecordType::getIndex(std::string field) {
+    if (NameToIndex.find(field) == NameToIndex.end()) {
+        throw Message::Exception(Twine("This record type does not have a field named ") + field);
+    }
+    return NameToIndex[field];
 }

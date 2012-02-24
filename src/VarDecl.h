@@ -9,6 +9,10 @@
 #ifndef Turing_Compiler_VarDecl_h
 #define Turing_Compiler_VarDecl_h
 
+#include <vector>
+
+class TuringType; // forward
+
 struct VarDecl {
     VarDecl(std::string name, TuringType *type) : Name(name), Type(type) {}
     std::string Name;

@@ -78,6 +78,7 @@ extern "C" {
         strcpy(retStr->strdata, lhs->strdata);
         strcat(retStr->strdata, rhs->strdata);
     }
+    //! copy an array, leaving the destination length element intact
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
         if (fromLength > toLength) {
             // TODO better runtime error handling
@@ -86,7 +87,14 @@ extern "C" {
         }
         size_t fromLen = 0; // int and size_t may be different sizes so make sure the passed value is correct
         fromLen = fromLength;
+        
+        // doesn't have to be a string, we just want to access the length part of the struct.
+        TString *castedTo = ((TString*)to);
+        TInt prevLength = castedTo->length;
+        
         memcpy(to,from,fromLen);
+        // restore the length part of the array struct
+        castedTo->length = prevLength;
     }
     bool TuringCompareArray(void *from, void *to, int fromLength, int toLength) {
         //        Message::log(Twine("copying array of length ") + Twine(fromLength) + 

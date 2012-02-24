@@ -186,6 +186,8 @@ std::pair<Value*,Value*> CodeGen::compileRange(ASTNode *node) {
     return std::pair<Value*,Value*>(start,end);
 }
 
+//! properly initializes complex data structures. It's main duty is initializing the length of arrays.
+//! \param declared A pointer to a newly allocated buffer to be initialized
 void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
     // must initialize the length part of the array struct
     if (type->isArrayTy()) {
@@ -204,6 +206,21 @@ void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
             }
         }
     }
+    if (type->isRecordTy()) {
+        TuringRecordType *recType = static_cast<TuringRecordType*>(type);
+        // initialize fields if they are complex
+        for (unsigned int i = 0; i < recType->getSize(); ++i) {
+            VarDecl field = recType->getDecl(i);
+            if (field.Type->isComplexTy()) {
+                // get the field to initialize
+                Symbol *recordSym = new VarSymbol(declared,type);
+                Symbol *fieldSym = compileRecordFieldRef(recordSym, field.Name);
+                delete recordSym;
+                // initialize it
+                compileInitializeComplex(fieldSym->getVal(),fieldSym->getType());
+            }            
+        }
+    }
 }
 
 #pragma mark Transformation
@@ -217,6 +234,8 @@ TuringType *CodeGen::getType(ASTNode *node) {
 			return Types.getType(node->str); // can't be NULL
         case Language::ARRAY_TYPE:
             return getArrayType(node);
+        case Language::RECORD_TYPE:
+            return getRecordType(node);
         case Language::DEFERRED_TYPE:
             return Types.getType("auto");
         case Language::VOID_TYPE:
@@ -226,6 +245,17 @@ TuringType *CodeGen::getType(ASTNode *node) {
             // TODO other type nodes
 	}    
     return NULL; // never gets here
+}
+
+TuringType *CodeGen::getRecordType(ASTNode *node) {
+    std::vector<VarDecl> decls;
+    
+    ITERATE_CHILDREN(node, it) {
+        std::vector<VarDecl> subDecls = getDecls(*it,false); // don't allow auto types
+        // tack them on to the end of the decls list
+        decls.insert(decls.end(), subDecls.begin(), subDecls.end());
+    }
+    return new TuringRecordType(decls);
 }
 
 // TODO TEST fancy logic. Test this.
@@ -255,12 +285,15 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
 //! transforms a declarations node into a vector of declarations. 
 //! \param decls A DECLARATIONS ASTNode.
 //! \return vector of declarations.
-std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls) {
+std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls,bool allowAutoTypes) {
     if(astDecls->root != Language::DECLARATIONS) throw Message::Exception("Expected DECLARATIONS node in getDecls");
     
     std::vector<VarDecl> decls;
     ITERATE_CHILDREN(astDecls,decl) {
         TuringType *type = getType((*decl)->children[0]);
+        if(!allowAutoTypes && (type == Types.getType("auto") || type == Types.getType("void"))) {
+            throw Message::Exception("Can't infer type for this declaration.");
+        }
         decls.push_back(VarDecl((*decl)->str,type));
     }
     
@@ -641,6 +674,12 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
                 return Scopes->getNamedScope(lhs->str)->resolveVarThis(node->str);
             }
             
+            // is it a record?
+            Symbol *rec = compileLHS(lhs);
+            if (rec->getType()->isRecordTy()) {
+                return compileRecordFieldRef(rec, node->str);
+            }
+            
             // TODO other reference types
             throw Message::Exception(Twine("Can't reference element ") + node->str);
         }
@@ -658,7 +697,7 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
         }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
-                                     " not recognized");
+                                     " not recognized. You might be using a feature that hasn't been implemented yet");
     }
     return new VarSymbol(); // never reaches here
 }
@@ -824,6 +863,20 @@ Value *CodeGen::compileIndex(llvm::Value *indexed,ASTNode *node) {
         throw Message::Exception("Must have at least one array index in brackets.");
     }
     return abstractCompileIndex(indexed,compile(node->children[1]));
+}
+
+Symbol *CodeGen::compileRecordFieldRef(Symbol *record, std::string fieldName) {
+    if (!record->getType()->isRecordTy()) {
+        throw Message::Exception(Twine("Can't access field of non-record type \"") + record->getType()->getName() + "\".");
+    }
+    TuringRecordType *recType = static_cast<TuringRecordType*>(record->getType());
+    
+    // in LLVM, structs don't have named fields so turn the name into an index
+    unsigned int fieldIndex = recType->getIndex(fieldName);
+    Value *fieldPtr = Builder.CreateConstGEP2_32(record->getVal(), 0, recType->getIndex(fieldName),
+                                                 Twine("recordField")+fieldName);
+    TuringType *fieldType = recType->getDecl(fieldIndex).Type;
+    return new VarSymbol(fieldPtr,fieldType);
 }
 
 //! \param node  a CALL node

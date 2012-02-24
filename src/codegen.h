@@ -46,7 +46,8 @@ protected:
     
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
-    std::vector<VarDecl> getDecls(ASTNode *astDecls);
+    TuringType *getRecordType(ASTNode *node);
+    std::vector<VarDecl> getDecls(ASTNode *astDecls,bool allowAutoTypes = true);
     Symbol *getSymbolForVal(llvm::Value *val);
     llvm::Value *promoteType(llvm::Value *val, TuringType *destType);
     
@@ -72,6 +73,7 @@ protected:
     
     llvm::Value *abstractCompileVarReference(Symbol *var,const std::string &name);
     llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
+    Symbol *compileRecordFieldRef(Symbol *record, std::string fieldName);
     llvm::Value *abstractCompileIndex(llvm::Value *indexed,llvm::Value *index);
     
     llvm::Value *compileCallSyntax(ASTNode *node);
