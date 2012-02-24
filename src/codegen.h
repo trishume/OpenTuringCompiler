@@ -38,6 +38,7 @@ protected:
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
     
+    llvm::Value *getConstantInt(int index);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
     std::pair<llvm::Value*,llvm::Value*> compileRange(ASTNode *node);
@@ -71,13 +72,14 @@ protected:
     
     llvm::Value *abstractCompileVarReference(Symbol *var,const std::string &name);
     llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
+    llvm::Value *abstractCompileIndex(llvm::Value *indexed,llvm::Value *index);
     
     llvm::Value *compileCallSyntax(ASTNode *node);
 	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
     llvm::Value *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
     llvm::Value *abstractCompileCall(Symbol *callee, const std::vector<llvm::Value*> &params, bool wantReturn);
     llvm::Function *compileFunctionPrototype(ASTNode *node, const std::string &aliasName = "");
-    FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName = "");
+    FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName = "", bool internal = true);
     llvm::Function *compileFunction(ASTNode *node);
     void compileReturn();
     

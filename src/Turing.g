@@ -167,6 +167,11 @@ instruction
     |   casestat {$$ = $0; /* pass up */}
     |   exitstat {$$ = $0; /* pass up */}
     |   resultstat {$$ = $0; /* pass up */}
+    |   possibleProcedureIdentifier // no brackets procedure call
+    {
+        $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
+        $$->addChild($0);
+    }
     |   expr {$$ = $0; /* pass up */}
     ;
 
@@ -611,6 +616,24 @@ assignableExpression
         $$ = new ASTNode(Language::PTRDEREF,$n0.start_loc.line);
         $$->addChild($1);
     }
+    |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args or array index
+    {
+    $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
+    $$->addChild($0);
+    $$->addChild($2);
+    addParseGroupItems(&$n3,$$,2); // rest of args
+    }
+    |   possibleProcedureIdentifier {$$ = $0; /* pass up */}
+    ;
+
+// anything that could be a non-bracketed procedure call if put on its own line
+possibleProcedureIdentifier
+    :   assignableExpression FIELD_REF_OPERATOR ID // '.' operator
+    {
+        $$ = new ASTNode(Language::FIELD_REF_OP,$n0.start_loc.line);
+        $$->addChild($0);
+        $$->str = nodeString($n2); // right operand
+    }
     |   assignableExpression POINTER_FIELD_REF_OPERATOR ID // '->' operator
     {
         // cheating. -> is semantically equivelant to ^lhs.rhs
@@ -620,22 +643,9 @@ assignableExpression
         deref->addChild($0);
         $$->addChild(deref);
     }
-    |   assignableExpression FIELD_REF_OPERATOR ID // '.' operator
-    {
-        $$ = new ASTNode(Language::FIELD_REF_OP,$n0.start_loc.line);
-        $$->addChild($0);
-        $$->str = nodeString($n2); // right operand
-    }
-    |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args or array index
-    {
-    $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
-    $$->addChild($0);
-    $$->addChild($2);
-    addParseGroupItems(&$n3,$$,2); // rest of args
-    }
     |   ID
     {
-        $$ = new ASTNode(Language::VAR_REFERENCE,$n0.start_loc.line);
-        $$->str = nodeString($n0); // var identifier
+    $$ = new ASTNode(Language::VAR_REFERENCE,$n0.start_loc.line);
+    $$->str = nodeString($n0); // var identifier
     }
     ;

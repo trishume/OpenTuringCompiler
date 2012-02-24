@@ -60,7 +60,7 @@ extern "C" {
     void TuringGetString(TString *string) {
         std::string inStr;
         std::cin >> inStr;
-        if (inStr.size() > string->length) {
+        if ((int)inStr.size() > string->length) {
             Message::runtimeError(Twine("Tried to read a string of size ") + Twine(inStr.size()) + 
                                   " into a string of size " + Twine(string->length));
         }
@@ -104,10 +104,10 @@ extern "C" {
     //! \returns the 0-based index, stops program if there is an index problem
     int TuringIndexArray(int index, int length) {
         if (index <= 0) {
-            Message::runtimeError(Twine("Can't index an array with the negative value of ") + Twine(index));
+            Message::runtimeError(Twine("Can't index an array with the negative/zero value of ") + Twine(index));
         }
         if (index > length) {
-            Message::runtimeError(Twine("Can't index an array of size") + Twine(length) +  
+            Message::runtimeError(Twine("Can't index an array of size ") + Twine(length) +  
                                   " with the number " + Twine(index));
         }
         return index - 1;

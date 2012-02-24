@@ -79,6 +79,7 @@ bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {
     try {
         good = compileBlock(fileRoot);
     } catch (Message::Exception e) {
+        good = false;
         Message::error(e.Message);
         
     }
@@ -94,8 +95,12 @@ bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {
 #pragma mark Execution
 
 bool CodeGen::execute(bool dumpModule) {
+    
+    if(dumpModule) TheModule->dump();
+    
     if (!CanExecute) {
         Message::error("Code generation failed. Can not execute.");
+        return false; // fail
     }
     
     // Finalize the main function
@@ -110,9 +115,8 @@ bool CodeGen::execute(bool dumpModule) {
     // we have it finalized. No more!
     CanExecute = false;
     
-	if(dumpModule) TheModule->dump();
-    
     // run it!
+    Message::setCurLine(0, "");
     Message::log("JIT compiling and optimizing...");
     Executor jit(TheModule);
     jit.optimize();
@@ -140,6 +144,10 @@ bool CodeGen::isMainFunction(Function *f) {
 
 bool CodeGen::isCurBlockTerminated() {
     return Builder.GetInsertBlock()->getTerminator() != NULL;
+}
+
+Value *CodeGen::getConstantInt(int index) {
+    return ConstantInt::get(getGlobalContext(), APInt(32,index));
 }
 
 Value *CodeGen::compileArrayByteSize(Value *arrayRef) {
@@ -185,6 +193,16 @@ void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
         Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared,0,0,"arrlengthptr");
         Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
         Builder.CreateStore(length,arrLengthPtr);
+        
+        // initialize the subelements
+        // TODO make the loop at runtime not compile time. This is inefficient and hacky.
+        if (arrtype->getElementType()->isComplexTy()) {
+            // use 1 and <= because we are using Turing's one based indices
+            for (unsigned int i = 1; i <= arrtype->getSize(); ++i) {
+                Value *indexed = abstractCompileIndex(declared, getConstantInt(i));
+                compileInitializeComplex(indexed,arrtype->getElementType());
+            }
+        }
     }
 }
 
@@ -691,7 +709,9 @@ void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
     
     // assert asignee is a pointer to the type being assigned
     if (cast<PointerType>(assignVar->getType())->getElementType() != val->getType()) {
-        throw Message::Exception("Things being assigned must be the same type.");
+        throw Message::Exception(Twine("Only expressions of type \"") + 
+                                 assignSym->getType()->getName() + 
+                                 "\" can be assigned to this variable.");
     }
     
     Builder.CreateStore(val,assignVar);
@@ -791,27 +811,32 @@ Value *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name)
         return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"arrayref");
     }
     
+    // TODO implement function references
+    if (var->isFunction()) {
+        throw Message::Exception("Function references are not implemented yet");
+    }
+    
     return Builder.CreateLoad(var->getVal(),Twine(name) + "val");
+}
+
+Value *CodeGen::compileIndex(llvm::Value *indexed,ASTNode *node) {
+    if (node->children.size() == 0) {
+        throw Message::Exception("Must have at least one array index in brackets.");
+    }
+    return abstractCompileIndex(indexed,compile(node->children[1]));
 }
 
 //! \param node  a CALL node
 //! \returns a pointer to the element
-Value *CodeGen::compileIndex(Value *indexed,ASTNode *node) {
-    
-    if (node->children.size() == 0) {
-        throw Message::Exception("Must have at least one array index in brackets.");
-    }
-    
+Value *CodeGen::abstractCompileIndex(Value *indexed,Value *index) {        
     std::vector<Value*> indices;
     // depointerize
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
-    // index it
-    Value *index = compile(node->children[1]);
     // take the 1-based index, bounds-check it and return the 0-based index
     Value *realIndex = Builder.CreateCall2(TheModule->getFunction("TuringIndexArray"),index,
-                                            compileArrayLength(indexed));
+                                            compileArrayLength(indexed),"realIndexVal");
     indices.push_back(realIndex);
     return Builder.CreateInBoundsGEP(indexed,indices,"indextemp");
 }
@@ -916,7 +941,8 @@ Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &pa
 }
 
 Function *CodeGen::compileFunctionPrototype(ASTNode *node, const std::string &aliasName) {
-    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]),aliasName)->getFunc();
+    // false = external function
+    return compilePrototype(node->str,getType(node->children[0]),getDecls(node->children[1]),aliasName,false)->getFunc();
 }
 
 /*! creates an llvm function with no implementation.
@@ -927,9 +953,10 @@ Function *CodeGen::compileFunctionPrototype(ASTNode *node, const std::string &al
  \param returnType The type the function returns. the void type if it is a procedure.
  \param params A DECLARATIONS ast node containing the formal parameters.
  \param aliasName the name to put in the symbol table. Blank if same as LLVM func name.
+ \param internal wether it is an internal function with a body or an extern declaration
  
  */
-FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName) {
+FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName, bool internal) {
     
     bool structRet = returnType->isComplexTy();
     
@@ -950,7 +977,7 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
     Type *funcRetType = structRet ? Type::getVoidTy(getGlobalContext()) : returnType->getLLVMType();
     FunctionType *FT = FunctionType::get(funcRetType,argTypes, false);
     
-    Function *f = Function::Create(FT, Function::ExternalLinkage, name, TheModule);
+    Function *f = Function::Create(FT, internal ? Function::InternalLinkage : Function::ExternalLinkage, name, TheModule);
     FunctionSymbol *fSym = new FunctionSymbol(f,returnType);
     fSym->IsSRet = structRet;
     
@@ -997,7 +1024,8 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
 Function *CodeGen::compileFunction(ASTNode *node) {
     ASTNode *proto = node->children[0];
     std::vector<VarDecl> args = getDecls(proto->children[1]);
-    FunctionSymbol *fSym = compilePrototype(proto->str,getType(proto->children[0]),args);
+    // true = internal, "" = don't alias
+    FunctionSymbol *fSym = compilePrototype(proto->str,getType(proto->children[0]),args,"",true);
     Function *f = fSym->getFunc();
     
     /* using allocas, allows modification of parameters. Saving the code in case it is needed
@@ -1174,7 +1202,7 @@ void CodeGen::compileLoopStat(ASTNode *node) {
 //! works on LOOP_STAT nodes
 void CodeGen::compileForStat(ASTNode *node) {
     
-    Function *theFunction = Builder.GetInsertBlock()->getParent();
+    Function *theFunction = currentFunction();
     
     BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "for", theFunction);
     BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "forcont");
