@@ -107,6 +107,11 @@ extern "C" {
         return memcmp(to,from,fromLen) == 0;
     }
     
+    // TODO maybe get rid of this and do it in compiler to improve optimization
+    bool TuringCompareRecord(void *from, void *to, int fromLen) {
+        return memcmp(to,from,fromLen) == 0;
+    }
+    
     //! \param index the 1-based index, unchecked
     //! \param length the length of the array
     //! \returns the 0-based index, stops program if there is an index problem

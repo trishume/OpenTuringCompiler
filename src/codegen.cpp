@@ -31,6 +31,7 @@ static const std::string defaultIncludes =
     "extern fcn TuringPower(val : int, power : int) : int\n"
     "extern fcn TuringIndexArray(index : int, length : int) : int\n"
     "extern proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
+    "extern fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
     "extern fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
 ;
 
@@ -150,6 +151,21 @@ Value *CodeGen::getConstantInt(int index) {
     return ConstantInt::get(getGlobalContext(), APInt(32,index));
 }
 
+//! gets the size in bytes of a type. Used for memcmp and memcpy operations
+//! \param type the pointer type of an allocated buffer of that type. 
+//!             I.E {i32,i32}* for a record of two ints. Or i32* for an int.
+Value *CodeGen::compileByteSize(Type *type) {
+    if (!type->isPointerTy()) {
+        throw Message::Exception("Can only find the size of pointer types. This shouldn't happen and is probably a bug in the compiler.");
+    }
+    // getting index 1 of a pointer will treat it as an array and thus get the second element
+    // for a null pointer this will be the size in bytes of the type.
+    Value *sizePtr = Builder.CreateConstGEP1_32(ConstantPointerNull::get(cast<PointerType>(type)), 1);
+    return Builder.CreatePointerCast(sizePtr,Types.getType("int")->getLLVMType(),"typelengthint");
+}
+
+//! Arrays are a special case for getting the byte size because the type {i32,[0 x type]}
+//! is larger than LLVM thinks it is. use the length value to get the actual size.
 Value *CodeGen::compileArrayByteSize(Value *arrayRef) {
     std::vector<Value*> indices;
     // depointerize
@@ -300,15 +316,6 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls,bool allowAutoTypes) {
     return decls;
 }
 
-//! Creates a symbol out of an allocated buffer pointer
-Symbol *CodeGen::getSymbolForVal(Value *val) {
-    if (!val->getType()->isPointerTy()) {
-        throw Message::Exception("Symbols must be a pointer type");
-    }
-    
-    return new VarSymbol(val,Types.getTypeLLVM(cast<PointerType>(val->getType())->getElementType()));
-}
-
 Value *CodeGen::promoteType(Value *val, TuringType *destType) {
     Type *type = val->getType();
     Type *llvmDestType = destType->getLLVMType(true);
@@ -403,7 +410,7 @@ bool CodeGen::compileStat(ASTNode *node) {
                 throw Message::Exception("Result can only be used inside a function.");
             }
             Value *val = compile(node->children[0]);
-            abstractCompileAssign(val,getSymbolForVal(RetVal));
+            abstractCompileAssign(val,RetVal);
             compileReturn();
             return true;
         }
@@ -648,6 +655,14 @@ Value *CodeGen::compileEqualityOp(ASTNode *node) {
         Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("voidptr")->getLLVMType(),"fromptr");
         Value *toPtr = Builder.CreatePointerCast(R,Types.getType("voidptr")->getLLVMType(),"toptr");
         ret = Builder.CreateCall4(TheModule->getFunction("TuringCompareArray"),fromPtr,toPtr,srcSize,destSize);
+    } else if (type->isRecordTy()) { // records
+        if (L->getType() != R->getType()) {
+            throw Message::Exception("Can't compare records of different types.");
+        }
+        Value *srcSize = compileByteSize(L->getType());
+        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("voidptr")->getLLVMType(),"fromptr");
+        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("voidptr")->getLLVMType(),"toptr");
+        ret = Builder.CreateCall3(TheModule->getFunction("TuringCompareRecord"),fromPtr,toPtr,srcSize);
     } else {
         throw Message::Exception(Twine("Can't compare type ") + type->getName());
     }
@@ -744,6 +759,9 @@ void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
     if (assignSym->getType()->isArrayTy()) {
         compileArrayCopy(val,assignSym);
         return;
+    } else if (assignSym->getType()->isRecordTy()) {
+        compileRecordCopy(val, assignSym);
+        return;
     }
     
     // assert asignee is a pointer to the type being assigned
@@ -762,6 +780,16 @@ void CodeGen::compileArrayCopy(Value *from, Symbol *to) {
     Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("voidptr")->getLLVMType(),"fromptr");
     Value *toPtr = Builder.CreatePointerCast(to->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
     Builder.CreateCall4(TheModule->getFunction("TuringCopyArray"),fromPtr,toPtr,srcSize,destSize);
+}
+
+void CodeGen::compileRecordCopy(Value *from, Symbol *to) {
+    assert(from->getType()->isPointerTy());
+    if (to->getType()->getLLVMType(true) != from->getType()) {
+        throw Message::Exception("Can only assign to a record of the same type.");
+    }
+    Value *fromSize = compileByteSize(from->getType());
+    // llvm intrinsic memcpy. Auto-converts and optimizes well.
+    Builder.CreateMemCpy(to->getVal(), from, fromSize, 0);
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {
@@ -845,9 +873,9 @@ Value *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name)
         // if it is not a reference return it straight up. Used for arguments.
         return var->getVal();
     }
-    // arrays are referenced
-    if (var->getType()->isArrayTy()) {
-        return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"arrayref");
+    // complex types are referenced
+    if (var->getType()->isComplexTy()) {
+        return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"complexref");
     }
     
     // TODO implement function references
@@ -956,8 +984,6 @@ Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &pa
     }
     
     std::vector<Value*> argVals;
-    // args start at second child    
-    Function::arg_iterator ai = calleeFunc->arg_begin(), e = calleeFunc->arg_end();
     
     Value *returnBuffer = NULL;
     if (calleeFuncSym->IsSRet) {
@@ -970,12 +996,11 @@ Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &pa
         returnBuffer = Builder.CreatePointerCast(returnBuffer, calleeFuncSym->getType()->getLLVMType(true));
         compileInitializeComplex(returnBuffer, calleeFuncSym->getType()); // initialize array lengths and stuff
         argVals.push_back(returnBuffer);
-        // move on to the next argument
-        ai++;
     }
-    for (unsigned idx = 0; ai != e;++ai, ++idx) {
+    
+    for (unsigned idx = 0; idx < params.size(); ++idx) {
         Value *val = params[idx];
-        TuringType *typ = Types.getTypeLLVM(ai->getType(),true);
+        TuringType *typ = calleeFuncSym->getArgDecl(idx).Type;
         argVals.push_back(promoteType(val, typ));
     }
     if (calleeFuncSym->IsSRet) {        
@@ -1031,7 +1056,7 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
     FunctionType *FT = FunctionType::get(funcRetType,argTypes, false);
     
     Function *f = Function::Create(FT, internal ? Function::InternalLinkage : Function::ExternalLinkage, name, TheModule);
-    FunctionSymbol *fSym = new FunctionSymbol(f,returnType);
+    FunctionSymbol *fSym = new FunctionSymbol(f,returnType,args);
     fSym->IsSRet = structRet;
     
     // If F conflicted, there was already something named 'name'.  If it has a
@@ -1103,10 +1128,10 @@ Function *CodeGen::compileFunction(ASTNode *node) {
     
     if (fSym->IsSRet) {
         // RetVal is the memory pointed to by the first argument
-        RetVal = &(*ai);
+        RetVal = new VarSymbol(&(*ai),fSym->getType());
         ++ai; // the next argument is the actual first one
     } else if (!isProcedure(f)) {
-        RetVal = Builder.CreateAlloca(f->getReturnType(), 0,"returnval");
+        RetVal = new VarSymbol(Builder.CreateAlloca(f->getReturnType(), 0,"returnval"),fSym->getType());
     }
     
     // TODO add separate scope for arguments so they can be redefined?
@@ -1132,7 +1157,7 @@ Function *CodeGen::compileFunction(ASTNode *node) {
         Builder.CreateRetVoid();
     } else { // function
         // TODO check if RetVal is ever set
-        Builder.CreateRet(Builder.CreateLoad(RetVal));
+        Builder.CreateRet(Builder.CreateLoad(RetVal->getVal()));
     }
     
     Scopes->popScope();

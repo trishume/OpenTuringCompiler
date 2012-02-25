@@ -39,6 +39,7 @@ protected:
     bool isCurBlockTerminated();
     
     llvm::Value *getConstantInt(int index);
+    llvm::Value *compileByteSize(llvm::Type *type);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
     std::pair<llvm::Value*,llvm::Value*> compileRange(ASTNode *node);
@@ -48,7 +49,6 @@ protected:
     TuringType *getArrayType(ASTNode *node);
     TuringType *getRecordType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls,bool allowAutoTypes = true);
-    Symbol *getSymbolForVal(llvm::Value *val);
     llvm::Value *promoteType(llvm::Value *val, TuringType *destType);
     
 	bool compileBlock(ASTNode *node);
@@ -64,6 +64,7 @@ protected:
     llvm::Value *compileAssignOp(ASTNode *node);
     void abstractCompileAssign(llvm::Value *val, Symbol *assignSym);
     void compileArrayCopy(llvm::Value *from, Symbol *to);
+    void compileRecordCopy(llvm::Value *from, Symbol *to);
     llvm::Value *compileLogicOp(ASTNode *node);
     llvm::Value *compileEqualityOp(ASTNode *node);
     
@@ -103,7 +104,7 @@ protected:
 	llvm::IRBuilder<> Builder;
     
     //! the current value to be returned. NULL if not a valid place to return from.
-    llvm::Value *RetVal;
+    Symbol *RetVal;
     llvm::BasicBlock *RetBlock;
     //! the block that is the end of the most recent loop
     llvm::BasicBlock *ExitBlock;

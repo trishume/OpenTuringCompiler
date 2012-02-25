@@ -16,6 +16,7 @@
 #include <llvm/Value.h>
 
 #include "TuringType.h"
+#include "VarDecl.h"
 
 
 //! abstract class representing things in the scope system: variables and functions
@@ -46,9 +47,11 @@ protected:
 //! represents a function. getType is the return type and getVal is the Function*
 class FunctionSymbol : public Symbol {
 public:
-    FunctionSymbol(llvm::Function *llvmFunc, TuringType *type) : IsSRet(false), Func(llvmFunc), RetType(type)  {}
+    FunctionSymbol(llvm::Function *llvmFunc, TuringType *type, const std::vector<VarDecl> &args) : IsSRet(false), Func(llvmFunc), Args(args), RetType(type)  {}
     virtual TuringType *getType() {return RetType;}
     virtual llvm::Value *getVal() {return Func;}
+    
+    VarDecl getArgDecl(unsigned int index) {return Args[index];}
     
     virtual bool isFunction() {return true;}
     llvm::Function *getFunc() {return Func;}
@@ -57,6 +60,7 @@ public:
     bool IsSRet;
 protected:
     llvm::Function *Func;
+    std::vector<VarDecl> Args;
     TuringType *RetType;
 };
 

@@ -5,7 +5,7 @@
 % test string length.
 
 %test records and multi-dimensional arrays
-var rec : record
+var rec,otherRec : record
             mat : array 1..2 of array 1..2 of boolean
             hovering : real
           end record
@@ -79,8 +79,14 @@ loop
 end loop
 
 
-% test implicit copy
+% test implicit copy of arrays and records
 Print13.lolArr2 := Print13.lolArr
+otherRec := rec
+
+%check record copy
+if rec.hovering ~= otherRec.hovering or rec.mat ~= otherRec.mat then
+    put rec.hovering, " is not equal to ", otherRec.hovering, " after copy."
+end if
 
 
 % set bob to 5
