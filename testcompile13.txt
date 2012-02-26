@@ -8,16 +8,16 @@
 const threeConst := 3
 const oneConst : real := 1
 
-% test type declarations
+% test type declarations, records and multi-dimensional arrays
 type recType :  record
-                    mat : array 1..threeConst of array 1..2 of boolean
+                    mat : array 1..threeConst, 1..2 of boolean
                     hovering : real
                 end record
 
-%test records and multi-dimensional arrays
 var rec,otherRec : recType
 
-rec.mat(1)(2) := true
+% test alternate multi-dimensional array index syntax
+rec.mat(1,2) := true
 
 var bob := length("123456")
 

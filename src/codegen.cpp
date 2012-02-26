@@ -818,10 +818,10 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
     }
     
     // assigning an array to an array copies it
-    if (assignSym->getType()->isArrayTy()) {
+    if (assignSym->getType()->isArrayTy() && val->getType()->isArrayTy()) {
         compileArrayCopy(val,assignSym);
         return;
-    } else if (assignSym->getType()->isRecordTy()) {
+    } else if (assignSym->getType()->isRecordTy() && val->getType()->isRecordTy()) {
         compileRecordCopy(val, assignSym);
         return;
     }
@@ -830,7 +830,8 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
     if (assignSym->getType() != val->getType()) {
         throw Message::Exception(Twine("Only expressions of type \"") + 
                                  assignSym->getType()->getName() + 
-                                 "\" can be assigned to this variable.");
+                                 "\" can be assigned to this variable. Tried to assign one of type \"" +
+                                 val->getType()->getName() + "\".");
     }
     
     Builder.CreateStore(val->getVal(),assignVar);
@@ -980,10 +981,19 @@ TuringValue *CodeGen::abstractCompileVarReference(Symbol *var,const std::string 
 //! \param node  a CALL node
 //! \returns a pointer to the element
 Symbol *CodeGen::compileIndex(Symbol *indexed,ASTNode *node) {
-    if (node->children.size() == 0) {
+    if (node->children.size() < 2) {
         throw Message::Exception("Must have at least one array index in brackets.");
     }
-    return abstractCompileIndex(indexed,compile(node->children[1]));
+    
+    // support multiple indices like mat(2,3) indexing multi-dimensional arrays
+    // iteratively wrap the symbol. curIndexed starts as the main array and then becomes the subarray
+    // and then finally, the element.
+    Symbol *curIndexed = indexed;
+    for (unsigned int i = 1; i < node->children.size(); ++i) {
+        curIndexed = abstractCompileIndex(curIndexed,compile(node->children[i]));
+    }
+    
+    return curIndexed;
 }
 
 Symbol *CodeGen::compileRecordFieldRef(Symbol *record, std::string fieldName) {
@@ -1002,7 +1012,9 @@ Symbol *CodeGen::compileRecordFieldRef(Symbol *record, std::string fieldName) {
 
 
 Symbol *CodeGen::abstractCompileIndex(Symbol *indexed,TuringValue *index) {
-    assert(indexed->getType()->isArrayTy()); // calling code should assure this
+    if(!indexed->getType()->isArrayTy()) {
+        throw Message::Exception(Twine("Can't index non-array type ") + indexed->getType()->getName() + "\".");
+    }
     promoteType(index,Types.getType("int")); // type check
     
     std::vector<Value*> indices;
