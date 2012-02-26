@@ -20,8 +20,18 @@
 using namespace llvm;
 
 bool TuringType::compare(TuringType *other) {
-    // TODO compare using type name. Hacky and doesn't work in all cases
-    return getName().compare(other->getName()) == 0;
+    // LLVM types are all unique. Pointer comparison always checks for type equivelancy.
+    return getLLVMType(false) == other->getLLVMType(false);
+}
+
+bool TuringArrayType::compare(TuringType *other) {
+    if (!other->isArrayTy()) {
+        return false;
+    }
+    
+    TuringArrayType *arrTy = static_cast<TuringArrayType*>(other);
+    
+    return getSize() == arrTy->getSize() && getElementType()->compare(arrTy->getElementType());
 }
 
 Type *BasicTuringType::getLLVMType(bool isReference) {
@@ -30,6 +40,10 @@ Type *BasicTuringType::getLLVMType(bool isReference) {
 
 std::string BasicTuringType::getName() {
     return Name;
+}
+
+void BasicTuringType::setName(const std::string &newName) {
+    Name = newName;
 }
 
 TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int upper) : ElementType(elementType), Size(upper) {

@@ -24,7 +24,7 @@ public:
     TuringType *getArrayType(TuringType *elementType, unsigned int upper);
     bool addType(std::string name,TuringType *turType);
     bool addTypeLLVM(std::string name,llvm::Type *llvmType);
-    bool aliasType(std::string name, std::string aliasName);
+    bool aliasType(TuringType *type, std::string aliasName);
     
     bool isType(TuringValue *val, std::string typeName);
     bool isArrayRef(llvm::Type *llvmType);

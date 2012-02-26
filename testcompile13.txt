@@ -4,11 +4,14 @@
 
 % test string length.
 
+% test type declarations
+type recType :  record
+                    mat : array 1..2 of array 1..2 of boolean
+                    hovering : real
+                end record
+
 %test records and multi-dimensional arrays
-var rec,otherRec : record
-            mat : array 1..2 of array 1..2 of boolean
-            hovering : real
-          end record
+var rec,otherRec : recType
 
 rec.mat(1)(2) := true
 
@@ -79,18 +82,25 @@ loop
 end loop
 
 
-% test implicit copy of arrays and records
+% test implicit copy of arrays
 Print13.lolArr2 := Print13.lolArr
-otherRec := rec
-
-%check record copy
-if rec.hovering ~= otherRec.hovering or rec.mat ~= otherRec.mat then
-    put rec.hovering, " is not equal to ", otherRec.hovering, " after copy."
-end if
-
 
 % set bob to 5
 bob := Print13.lolArr2(9) - Second(Print13.lolArr2)
+
+% test implicit copy of records
+otherRec := rec
+
+% test passing and returning records
+fcn RetAndPassRec(passRec : recType) : recType
+    result passRec
+end RetAndPassRec
+rec := RetAndPassRec(otherRec)
+
+%check record copy and test comparison
+if rec ~= otherRec then
+    put rec.hovering, " is not equal to ", otherRec.hovering, " after copy."
+end if
 
 if bob <= 5 or bob > 7 then
     var ed := 6

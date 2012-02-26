@@ -41,12 +41,12 @@ bool TypeManager::addTypeLLVM(std::string name,Type *llvmType){
     NameMap[name] = new BasicTuringType(name,llvmType);
     return true;
 }
-bool TypeManager::aliasType(std::string name, std::string aliasName){
-    if (NameMap.find(name) == NameMap.end()) {
-        Message::error(llvm::Twine("Can't alias type named ") + name);
-        return false;
+bool TypeManager::aliasType(TuringType *type, std::string aliasName){
+    // rename record types so they show the alias name in error messages. Not worth it for other types.
+    if (type->isRecordTy()) {
+        type->setName(aliasName);
     }
-    NameMap[aliasName] = NameMap[name];
+    NameMap[aliasName] = type;
     return true;
 }
 

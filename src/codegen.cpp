@@ -412,6 +412,9 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::VAR_DECL:
             compileVarDecl(node);
             return true; // throws error on fail
+        case Language::TYPE_DECL:
+            Types.aliasType(getType(node->children[0]), node->str);
+            return true;
         case Language::IF_STAT:
             compileIfStat(node);
             return true; // throws error on fail
@@ -702,7 +705,7 @@ TuringValue *CodeGen::compileEqualityOp(ASTNode *node) {
         Value *toPtr = Builder.CreatePointerCast(R->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
         ret = Builder.CreateCall4(TheModule->getFunction("TuringCompareArray"),fromPtr,toPtr,srcSize,destSize);
     } else if (type->isRecordTy()) { // records
-        if (L->getType() != R->getType()) {
+        if (!L->getType()->compare(R->getType())) {
             throw Message::Exception("Can't compare records of different types.");
         }
         Value *srcSize = compileByteSize(L->getType());

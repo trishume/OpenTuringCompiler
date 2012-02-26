@@ -25,6 +25,7 @@ public:
     //!                     passed as parameters.
     virtual llvm::Type *getLLVMType(bool isReference = false) = 0;
     virtual std::string getName() = 0;
+    virtual void setName(const std::string &newName) = 0;
     
     //! returns true if the types are equal
     virtual bool compare(TuringType *otherType);
@@ -41,6 +42,7 @@ public:
     //! \param isReference has no effect for basic types
     virtual llvm::Type *getLLVMType(bool isReference = true);
     virtual std::string getName();
+    virtual void setName(const std::string &newName);
     
     virtual bool isArrayTy() {return false;}
     virtual bool isRecordTy() {return false;}
@@ -59,10 +61,12 @@ public:
     TuringType *getElementType() {return ElementType;};
     unsigned int getSize() {return Size;}
     
+    virtual bool compare(TuringType *other);
+    
     virtual std::string getName();
     //! set a nickname for this array type, used for strings
-    void setName(std::string str) {
-        Name = str;
+    virtual void setName(const std::string &newName) {
+        Name = newName;
     }
     
     virtual bool isArrayTy() {return true;}
@@ -85,8 +89,8 @@ public:
     
     virtual std::string getName() {return Name;}
     //! set a nickname for this array type, used for strings
-    void setName(std::string str) {
-        Name = str;
+    virtual void setName(const std::string &newName) {
+        Name = newName;
     }
     
     virtual bool isArrayTy() {return false;}
