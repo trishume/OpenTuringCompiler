@@ -4,9 +4,13 @@
 
 % test string length.
 
+% test constants
+const threeConst := 3
+const oneConst : real := 1
+
 % test type declarations
 type recType :  record
-                    mat : array 1..2 of array 1..2 of boolean
+                    mat : array 1..threeConst of array 1..2 of boolean
                     hovering : real
                 end record
 
@@ -27,7 +31,7 @@ assignStr := RetPrintingStr()
 
 %test no parenthesis procedures
 procedure SetHovering
-    rec.hovering := 0.1 * 3 / 3 + 0.9
+    rec.hovering := 0.1 * threeConst / threeConst + 0.9 * oneConst
 end SetHovering
 SetHovering
 

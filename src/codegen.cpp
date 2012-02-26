@@ -305,13 +305,25 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
             upperVal = compile(range->children[1]);
         }
         
+        Value *upperConst = upperVal->getVal();
+        
+        // this is fancy. It checks if the upper bound is a loaded const variable.
+        // if it is, it sets upperVal to the Constant initializer instead of the load instruction
+        if(isa<LoadInst>(upperConst) && 
+           isa<GlobalVariable>(cast<LoadInst>(upperConst)->getPointerOperand())) {
+            GlobalVariable *globalVar = cast<GlobalVariable>(cast<LoadInst>(upperConst)->getPointerOperand());
+            if (globalVar->isConstant()) {
+                upperConst = globalVar->getInitializer();
+            }
+        }
+        
         // we don't want someone putting "array bob..upper(bob) of int" because
         // we have to know the size at compile time.
-        if (!isa<ConstantInt>(upperVal->getVal())) {
+        if (!isa<ConstantInt>(upperConst)) {
             throw Message::Exception("Bounds of array must be int constants");
         }
         // *ConstantInt -> APInt -> uint_64
-        int upper = cast<ConstantInt>(upperVal->getVal())->getValue().getLimitedValue();
+        int upper = cast<ConstantInt>(upperConst)->getValue().getLimitedValue();
         // wrap it up
         arrayType = Types.getArrayType(arrayType,upper);
     }
@@ -412,6 +424,9 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::VAR_DECL:
             compileVarDecl(node);
             return true; // throws error on fail
+        case Language::CONST_DECL:
+            compileConstDecl(node);
+            return true;
         case Language::TYPE_DECL:
             Types.aliasType(getType(node->children[0]), node->str);
             return true;
@@ -896,7 +911,7 @@ void CodeGen::compileVarDecl(ASTNode *node) {
         }
         
         
-        if (type->getName() == "auto") {
+        if (type->getName().compare("auto") == 0) {
             if (!hasInitial) {
                 throw Message::Exception("Can't infer the type of a declaration with no initial value.");
             }
@@ -913,6 +928,32 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             abstractCompileAssign(initializer, declared);
         }
     }
+}
+
+void CodeGen::compileConstDecl(ASTNode *node) {
+    assert(node->children[0]->root == Language::DECLARATION);
+    
+    TuringValue *initializer = compile(node->children[1]);
+    
+    TuringType *type = getType(node->children[0]->children[0]);
+    if (type->getName().compare("auto") == 0) {
+        type = initializer->getType();
+    }
+    
+    initializer = promoteType(initializer, type);
+    
+    if(!isa<Constant>(initializer->getVal())) {
+        throw Message::Exception("Constant declaration does not have a constant initializer.");
+    }
+    
+    Value *gvar = new GlobalVariable(/*Module=*/*TheModule,
+                                     /*Type=*/type->getLLVMType(false),
+                                     /*isConstant=*/true,
+                                     /*Linkage=*/GlobalValue::InternalLinkage,
+                                     /*Initializer=*/cast<Constant>(initializer->getVal()),
+                                     "constDecl");
+    
+    Scopes->curScope()->setVar(node->children[0]->str, new VarSymbol(gvar,type));
 }
 
 TuringValue *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name) {

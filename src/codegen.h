@@ -74,6 +74,7 @@ protected:
     void compilePutStat(ASTNode *node);
     void compileGetStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
+    void compileConstDecl(ASTNode *node);
     
     TuringValue *abstractCompileVarReference(Symbol *var,const std::string &name = "");
     Symbol *compileIndex(Symbol *indexed,ASTNode *node);
