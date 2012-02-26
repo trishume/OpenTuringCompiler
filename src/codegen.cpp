@@ -433,6 +433,9 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::IF_STAT:
             compileIfStat(node);
             return true; // throws error on fail
+        case Language::CASE_STAT:
+            compileCaseStat(node);
+            return true;
         case Language::LOOP_STAT:
             compileLoopStat(node);
             return true;
@@ -694,7 +697,10 @@ TuringValue *CodeGen::compileLogicOp(ASTNode *node) {
 TuringValue *CodeGen::compileEqualityOp(ASTNode *node) {
     TuringValue *L = compile(node->children[0]);
     TuringValue *R = compile(node->children[1]);
-    
+    return abstractCompileEqualityOp(L,R,node->str.compare("=") != 0);
+}
+
+TuringValue *CodeGen::abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bool isNotEquals) {    
     bool fp = false;
     if (L->getVal()->getType()->isFloatingPointTy() || R->getVal()->getType()->isFloatingPointTy()) {
         fp = true;
@@ -732,7 +738,7 @@ TuringValue *CodeGen::compileEqualityOp(ASTNode *node) {
     }
 
     // if it is not =, it is ~= so invert it
-    if (node->str.compare("=") != 0) {
+    if (isNotEquals) {
         // bool == 0 is the same as not bool
         ret = Builder.CreateICmpEQ(ret,ConstantInt::get(getGlobalContext(), APInt(1,0)));
     }
@@ -826,13 +832,7 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
         return;
     }
     
-    // assert asignee is a pointer to the type being assigned
-    if (assignSym->getType() != val->getType()) {
-        throw Message::Exception(Twine("Only expressions of type \"") + 
-                                 assignSym->getType()->getName() + 
-                                 "\" can be assigned to this variable. Tried to assign one of type \"" +
-                                 val->getType()->getName() + "\".");
-    }
+    val = promoteType(val, assignSym->getType(),"assignment or result");
     
     Builder.CreateStore(val->getVal(),assignVar);
 }
@@ -1353,6 +1353,73 @@ void CodeGen::compileIfStat(ASTNode *node) {
     // Emit merge block.
     theFunction->getBasicBlockList().push_back(mergeBB);
     Builder.SetInsertPoint(mergeBB);
+}
+
+void CodeGen::compileCaseStat(ASTNode *node) {
+    TuringValue *expr = compile(node->children[0]);
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "caseCont");
+    compileCaseLabelStat(node->children[1], expr,mergeBB);
+    currentFunction()->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
+}
+
+void CodeGen::compileCaseLabelStat(ASTNode *node, TuringValue *expr, BasicBlock *mergeBB) {
+    Function *theFunction = currentFunction();
+    
+    // special case. No exprs and no next label means it is a catch-all case.
+    if (node->children.size() == 1) {
+        Scopes->pushLocalScope(theFunction);
+        compileBlock(node->children[0]);
+        Scopes->popScope();
+        
+        if (!isCurBlockTerminated()) {
+            Builder.CreateBr(mergeBB);
+        }
+        return;
+    }
+    
+    bool hasNextLabel = node->children.size() > 2 && node->children[1]->root == Language::CASE_LABEL;
+    
+    // if the expr is equal to one of this label's expressions, run this block
+    BasicBlock *thenBB = BasicBlock::Create(getGlobalContext(), "labelBlock");
+    
+    // otherwise continue on in this block
+    BasicBlock *elseBB = NULL;
+    
+    // for each possiblity expr
+    for (unsigned int i = (hasNextLabel ? 2 : 1); i < node->children.size(); ++i) {
+        elseBB = BasicBlock::Create(getGlobalContext(), "labelElse");
+        
+        TuringValue *cond = abstractCompileEqualityOp(expr, compile(node->children[i]));
+        Builder.CreateCondBr(cond->getVal(), thenBB, elseBB);
+        
+        // if it isn't the last iteration, then tack on the merge block and set it to the insert block
+        if (i != node->children.size() - 1) {
+            theFunction->getBasicBlockList().push_back(elseBB);
+            Builder.SetInsertPoint(elseBB);
+        }
+    }
+    theFunction->getBasicBlockList().push_back(thenBB);
+    Builder.SetInsertPoint(thenBB);
+    
+    Scopes->pushLocalScope(theFunction);
+    compileBlock(node->children[0]);
+    Scopes->popScope();
+    
+    if (!isCurBlockTerminated()) {
+        Builder.CreateBr(mergeBB);
+    }    
+    
+    theFunction->getBasicBlockList().push_back(elseBB);
+    Builder.SetInsertPoint(elseBB);
+    
+    if (hasNextLabel) {        
+        compileCaseLabelStat(node->children[1], expr, mergeBB);
+    }
+    
+    if (!isCurBlockTerminated()) {
+        Builder.CreateBr(mergeBB);
+    }
 }
 
 //! compiles an if statement as a series of blocks

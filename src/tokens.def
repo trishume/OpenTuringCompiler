@@ -17,8 +17,8 @@ AST_TOKEN(RANGE_SPECIAL_END) /* children: string: "*" or "char" */
 AST_TOKEN(IF_STAT) /* children: cond thenBlock elseBlock? string: */
 AST_TOKEN(FOR_STAT) /* children: range block string: counterVar */
 AST_TOKEN(LOOP_STAT) /* children: block string: */
-AST_TOKEN(CASE_LABEL) /* children: block expr* string: */
-AST_TOKEN(CASE_STAT) /* children: expr labels+ string: */
+AST_TOKEN(CASE_LABEL) /* children: block label? expr* string: */
+AST_TOKEN(CASE_STAT) /* children: expr label string: */
 AST_TOKEN(EXIT_STAT) /* children: string: */
 AST_TOKEN(RESULT_STAT) /* children: expr string: */
 AST_TOKEN(RETURN_STAT) /* children: string: */

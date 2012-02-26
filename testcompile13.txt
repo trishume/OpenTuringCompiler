@@ -21,9 +21,25 @@ rec.mat(1,2) := true
 
 var bob := length("123456")
 
+% test case statements and string concatenation
+var prinString := "P"
+proc TestCaseStat(bob : int)
+    case bob of
+    label 7,9:
+        prinString += "I"
+    label 5:
+        prinString += "R"
+    label:
+        prinString += "N"
+    end case
+end TestCaseStat
+TestCaseStat(5)
+TestCaseStat(9)
+TestCaseStat(839)
+
 % test complex type returns
 fcn RetPrintingStr () : string
-    result "PRIN" + "TING "
+    result prinString + "TING "
 end RetPrintingStr
 
 var assignStr : string

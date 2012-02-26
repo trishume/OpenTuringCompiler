@@ -5,6 +5,7 @@
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
 #include <llvm/Function.h>
+#include <llvm/BasicBlock.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Target/TargetData.h>
@@ -70,6 +71,7 @@ protected:
     void compileRecordCopy(TuringValue *from, Symbol *to);
     TuringValue *compileLogicOp(ASTNode *node);
     TuringValue *compileEqualityOp(ASTNode *node);
+    TuringValue *abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bool isNotEquals = false);
     
     void compilePutStat(ASTNode *node);
     void compileGetStat(ASTNode *node);
@@ -93,6 +95,8 @@ protected:
     void compileModule(ASTNode *node);
     
     void compileIfStat(ASTNode *node);
+    void compileCaseStat(ASTNode *node);
+    void compileCaseLabelStat(ASTNode *node,TuringValue *expr, llvm::BasicBlock *mergeBB);
     void compileLoopStat(ASTNode *node);
     void compileForStat(ASTNode *node);
     

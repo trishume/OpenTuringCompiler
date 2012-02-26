@@ -335,10 +335,11 @@ loopstat
     ;
 
 caselabel
-    :   'label' expr (',' (LT*) expr)* ':' LT* instructions LT*
+    :   'label' expr (',' (LT*) expr)* ':' LT* instructions LT* (caselabel?) LT*
     { 
         $$ = new ASTNode(Language::CASE_LABEL,$n0.start_loc.line);
         $$->addChild($5); // block
+        addParseTokens(&$n7,$$); // next caselabel
         $$->addChild($1);
         addParseGroupItems(&$n2,$$,2); // rest of args
     }
@@ -350,11 +351,11 @@ caselabel
     ;
 
 casestat
-    :   'case' expr 'of' LT* caselabel+ LT* 'end' 'case'
+    :   'case' expr 'of' LT* caselabel LT* 'end' 'case'
     { 
         $$ = new ASTNode(Language::CASE_STAT,$n0.start_loc.line);
         $$->addChild($1);
-        addParseTokens(&$n4,$$); // labels
+        $$->addChild($4);
     }
     ;
 exitstat
