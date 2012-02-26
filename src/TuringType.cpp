@@ -19,6 +19,11 @@
 
 using namespace llvm;
 
+bool TuringType::compare(TuringType *other) {
+    // TODO compare using type name. Hacky and doesn't work in all cases
+    return getName().compare(other->getName()) == 0;
+}
+
 Type *BasicTuringType::getLLVMType(bool isReference) {
     return LLVMType;
 }
@@ -28,7 +33,8 @@ std::string BasicTuringType::getName() {
 }
 
 TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int upper) : ElementType(elementType), Size(upper) {
-    Name = (Twine("array 1..") + Twine(Size) + " of " + ElementType->getName()).str();
+    Twine sizeTwine = Size == 0 ? "*" : Twine(Size);
+    Name = (Twine("array 1..") + sizeTwine + " of " + ElementType->getName()).str();
 }
 
 Type *TuringArrayType::getLLVMType(bool isReference) {

@@ -271,6 +271,22 @@ range
         $$->addChild($0); // begin
         $$->addChild($3); // end
     }
+    |      expr'.''.''*' // only for arrays
+    { 
+        $$ = new ASTNode(Language::RANGE,$n0.start_loc.line);
+        $$->addChild($0); // begin
+        ASTNode *stringEnd = new ASTNode(Language::RANGE_SPECIAL_END,$n3.start_loc.line);
+        stringEnd->str = "*";
+        $$->addChild(stringEnd); // end
+    }
+    |      expr'.''.''char' // only for arrays
+    { 
+        $$ = new ASTNode(Language::RANGE,$n0.start_loc.line);
+        $$->addChild($0); // begin
+        ASTNode *stringEnd = new ASTNode(Language::RANGE_SPECIAL_END,$n3.start_loc.line);
+        stringEnd->str = "char";
+        $$->addChild(stringEnd); // end
+    }
     ;
 
 // control structures

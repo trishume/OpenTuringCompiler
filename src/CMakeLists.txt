@@ -26,6 +26,7 @@ set(MyHeaders
 	BasicScopes.h 
 	Executor.h 
 	Message.h 
+	TuringValue.h 
     Symbol.h 
 	Scope.h 
 	ScopeManager.h 

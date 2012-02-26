@@ -26,6 +26,9 @@ public:
     virtual llvm::Type *getLLVMType(bool isReference = false) = 0;
     virtual std::string getName() = 0;
     
+    //! returns true if the types are equal
+    virtual bool compare(TuringType *otherType);
+    
     virtual bool isArrayTy() = 0;
     virtual bool isRecordTy() = 0;
     //! true if the type can not be stored in a register. I.E arrays and structs
@@ -49,6 +52,7 @@ protected:
 
 class TuringArrayType : public TuringType {
 public:
+    //! \param upper the size of the array. 0 for any size (used for parameters)
     TuringArrayType(TuringType *elementType, unsigned int upper);
     //! \param isReference returns {i32, [Size x Type]} normally, *{i32, [0 x Type]} by reference
     virtual llvm::Type *getLLVMType(bool isReference = false);

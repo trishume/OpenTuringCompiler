@@ -63,7 +63,7 @@ module Print13
     end PutStuff
 end Print13
 
-fcn Second( arr : array 1..2 of int ) : int
+fcn Second( arr : array 1..* of int ) : int
     result arr(2)
 end Second
 

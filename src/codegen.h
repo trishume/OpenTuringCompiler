@@ -8,12 +8,14 @@
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Target/TargetData.h>
+#include <llvm/ADT/Twine.h>
 
 #include <iostream>
 #include <stack>
 
 #include "ASTSource.h"
 #include "TuringType.h"
+#include "TuringValue.h"
 #include "TypeManager.h"
 #include "VarDecl.h"
 #include "Scope.h"
@@ -38,49 +40,50 @@ protected:
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
     
-    llvm::Value *getConstantInt(int index);
-    llvm::Value *compileByteSize(llvm::Type *type);
+    TuringValue *getConstantInt(int index);
+    llvm::Value *compileByteSize(TuringType *type);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
-    std::pair<llvm::Value*,llvm::Value*> compileRange(ASTNode *node);
-    void compileInitializeComplex(llvm::Value *declared, TuringType *type);
+    std::pair<TuringValue*,TuringValue*> compileRange(ASTNode *node);
+    void compileInitializeComplex(Symbol *declared);
     
     TuringType *getType(ASTNode *node);
     TuringType *getArrayType(ASTNode *node);
     TuringType *getRecordType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls,bool allowAutoTypes = true);
-    llvm::Value *promoteType(llvm::Value *val, TuringType *destType);
+    TuringValue *promoteType(TuringValue *val, TuringType *destType,
+                             llvm::Twine inStr = "");
     
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);
-	llvm::Value *compile(ASTNode *node);
+	TuringValue *compile(ASTNode *node);
     Symbol *compileLHS(ASTNode *node);
     
-    llvm::Value *compileStringLiteral(const std::string &str);
+    TuringValue *compileStringLiteral(const std::string &str);
 
-	llvm::Value *compileBinaryOp(ASTNode *node);
-    llvm::Value *abstractCompileBinaryOp(llvm::Value *L, 
-                                         llvm::Value *R, std::string op);
-    llvm::Value *compileAssignOp(ASTNode *node);
-    void abstractCompileAssign(llvm::Value *val, Symbol *assignSym);
-    void compileArrayCopy(llvm::Value *from, Symbol *to);
-    void compileRecordCopy(llvm::Value *from, Symbol *to);
-    llvm::Value *compileLogicOp(ASTNode *node);
-    llvm::Value *compileEqualityOp(ASTNode *node);
+	TuringValue *compileBinaryOp(ASTNode *node);
+    TuringValue *abstractCompileBinaryOp(TuringValue *L, 
+                                         TuringValue *R, std::string op);
+    TuringValue *compileAssignOp(ASTNode *node);
+    void abstractCompileAssign(TuringValue *val, Symbol *assignSym);
+    void compileArrayCopy(TuringValue *from, Symbol *to);
+    void compileRecordCopy(TuringValue *from, Symbol *to);
+    TuringValue *compileLogicOp(ASTNode *node);
+    TuringValue *compileEqualityOp(ASTNode *node);
     
     void compilePutStat(ASTNode *node);
     void compileGetStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     
-    llvm::Value *abstractCompileVarReference(Symbol *var,const std::string &name);
-    llvm::Value *compileIndex(llvm::Value *indexed,ASTNode *node);
+    TuringValue *abstractCompileVarReference(Symbol *var,const std::string &name = "");
+    Symbol *compileIndex(Symbol *indexed,ASTNode *node);
     Symbol *compileRecordFieldRef(Symbol *record, std::string fieldName);
-    llvm::Value *abstractCompileIndex(llvm::Value *indexed,llvm::Value *index);
+    Symbol *abstractCompileIndex(Symbol *indexed,TuringValue *index);
     
-    llvm::Value *compileCallSyntax(ASTNode *node);
-	llvm::Value *compileCall(ASTNode *node, bool wantReturn = true);
-    llvm::Value *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
-    llvm::Value *abstractCompileCall(Symbol *callee, const std::vector<llvm::Value*> &params, bool wantReturn);
+    TuringValue *compileCallSyntax(ASTNode *node);
+	TuringValue *compileCall(ASTNode *node, bool wantReturn = true);
+    TuringValue *compileCall(Symbol *callee,ASTNode *node, bool wantReturn);
+    TuringValue *abstractCompileCall(Symbol *callee, const std::vector<TuringValue*> &params, bool wantReturn);
     llvm::Function *compileFunctionPrototype(ASTNode *node, const std::string &aliasName = "");
     FunctionSymbol *compilePrototype(const std::string &name, TuringType *returnType, std::vector<VarDecl> args, const std::string &aliasName = "", bool internal = true);
     llvm::Function *compileFunction(ASTNode *node);

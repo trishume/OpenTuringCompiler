@@ -147,14 +147,16 @@ bool CodeGen::isCurBlockTerminated() {
     return Builder.GetInsertBlock()->getTerminator() != NULL;
 }
 
-Value *CodeGen::getConstantInt(int index) {
-    return ConstantInt::get(getGlobalContext(), APInt(32,index));
+TuringValue *CodeGen::getConstantInt(int index) {
+    return new TuringValue(ConstantInt::get(getGlobalContext(), APInt(32,index)),
+                           Types.getType("int"));
 }
 
 //! gets the size in bytes of a type. Used for memcmp and memcpy operations
 //! \param type the pointer type of an allocated buffer of that type. 
 //!             I.E {i32,i32}* for a record of two ints. Or i32* for an int.
-Value *CodeGen::compileByteSize(Type *type) {
+Value *CodeGen::compileByteSize(TuringType *turType) {
+    Type *type = turType->getLLVMType(true);
     if (!type->isPointerTy()) {
         throw Message::Exception("Can only find the size of pointer types. This shouldn't happen and is probably a bug in the compiler.");
     }
@@ -191,24 +193,30 @@ Value *CodeGen::compileArrayLength(Value *arrayRef) {
     return Builder.CreateLoad(Builder.CreateConstGEP2_32(arrayRef,0,0,"arrlengthptr"),"arraylengthval");
 }
 
-std::pair<Value*,Value*> CodeGen::compileRange(ASTNode *node) {
-    Value *start = compile(node->children[0]);
-    Value *end = compile(node->children[1]);
+std::pair<TuringValue*,TuringValue*> CodeGen::compileRange(ASTNode *node) {
+    TuringValue *start = compile(node->children[0]);
     
-    if (! start->getType()->isIntegerTy() && !end->getType()->isIntegerTy() ) {
+    if (node->children[1]->root == Language::RANGE_SPECIAL_END) {
+        throw Message::Exception(Twine("Special range end ") + node->children[1]->str + 
+                                 " is not supported here.");
+    }
+    
+    TuringValue *end = compile(node->children[1]);
+    
+    if (! Types.isType(start,"int") || !Types.isType(end,"int") ) {
         throw Message::Exception("The start and end of a range must be 'int's.");
     }
     
-    return std::pair<Value*,Value*>(start,end);
+    return std::pair<TuringValue*,TuringValue*>(start,end);
 }
 
 //! properly initializes complex data structures. It's main duty is initializing the length of arrays.
 //! \param declared A pointer to a newly allocated buffer to be initialized
-void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
+void CodeGen::compileInitializeComplex(Symbol *declared) {
     // must initialize the length part of the array struct
-    if (type->isArrayTy()) {
-        TuringArrayType *arrtype = static_cast<TuringArrayType*>(type);
-        Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared,0,0,"arrlengthptr");
+    if (declared->getType()->isArrayTy()) {
+        TuringArrayType *arrtype = static_cast<TuringArrayType*>(declared->getType());
+        Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared->getVal(),0,0,"arrlengthptr");
         Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
         Builder.CreateStore(length,arrLengthPtr);
         
@@ -217,23 +225,21 @@ void CodeGen::compileInitializeComplex(Value *declared, TuringType *type) {
         if (arrtype->getElementType()->isComplexTy()) {
             // use 1 and <= because we are using Turing's one based indices
             for (unsigned int i = 1; i <= arrtype->getSize(); ++i) {
-                Value *indexed = abstractCompileIndex(declared, getConstantInt(i));
-                compileInitializeComplex(indexed,arrtype->getElementType());
+                Symbol *indexed = abstractCompileIndex(declared, getConstantInt(i));
+                compileInitializeComplex(indexed);
             }
         }
     }
-    if (type->isRecordTy()) {
-        TuringRecordType *recType = static_cast<TuringRecordType*>(type);
+    if (declared->getType()->isRecordTy()) {
+        TuringRecordType *recType = static_cast<TuringRecordType*>(declared->getType());
         // initialize fields if they are complex
         for (unsigned int i = 0; i < recType->getSize(); ++i) {
             VarDecl field = recType->getDecl(i);
             if (field.Type->isComplexTy()) {
                 // get the field to initialize
-                Symbol *recordSym = new VarSymbol(declared,type);
-                Symbol *fieldSym = compileRecordFieldRef(recordSym, field.Name);
-                delete recordSym;
+                Symbol *fieldSym = compileRecordFieldRef(declared, field.Name);
                 // initialize it
-                compileInitializeComplex(fieldSym->getVal(),fieldSym->getType());
+                compileInitializeComplex(fieldSym);
             }            
         }
     }
@@ -283,15 +289,29 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
     // 1..5, 1..4 is [5 x [4 x type]] instead of vice-versa.
     for (int i = node->children.size() - 1; i > 0; --i) {
         ASTNode *range = node->children[i];
-        Value *upperVal = compile(range->children[1]);
+        
+        TuringValue *upperVal;
+        // arrays support special endpoints like 1..* or 1..char
+        if (range->children[1]->root == Language::RANGE_SPECIAL_END) {
+            ASTNode *specialEnd = range->children[1];
+            if (specialEnd->str.compare("*") == 0) {
+                upperVal = getConstantInt(0);
+            } else if (specialEnd->str.compare("char") == 0) {
+                upperVal = getConstantInt(255); // char array size
+            } else {
+                throw Message::Exception(Twine("Special array size value ") + specialEnd->str + " not recognized."); // parser prevents this
+            }
+        } else {
+            upperVal = compile(range->children[1]);
+        }
         
         // we don't want someone putting "array bob..upper(bob) of int" because
         // we have to know the size at compile time.
-        if (!isa<ConstantInt>(upperVal)) {
+        if (!isa<ConstantInt>(upperVal->getVal())) {
             throw Message::Exception("Bounds of array must be int constants");
         }
         // *ConstantInt -> APInt -> uint_64
-        int upper = cast<ConstantInt>(upperVal)->getValue().getLimitedValue();
+        int upper = cast<ConstantInt>(upperVal->getVal())->getValue().getLimitedValue();
         // wrap it up
         arrayType = Types.getArrayType(arrayType,upper);
     }
@@ -315,22 +335,34 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls,bool allowAutoTypes) {
     
     return decls;
 }
-
-Value *CodeGen::promoteType(Value *val, TuringType *destType) {
-    Type *type = val->getType();
+//! \param inStr string context of the check. I.E "first parameter of AFunction" or "Left side of operator"
+TuringValue *CodeGen::promoteType(TuringValue *val, TuringType *destType, Twine inStr) {
+    TuringType *type = val->getType();
     Type *llvmDestType = destType->getLLVMType(true);
     
     // if they are the same, no casting needed
-    if (type == llvmDestType) {
+    if (type->compare(destType)) {
         return val;
     }
     
-    if (type->isIntegerTy() && llvmDestType->isFloatingPointTy()) {
-        return Builder.CreateSIToFP(val, llvmDestType, "promotedint");
+    // any array can be converted to an array 1..*
+    if (val->getType()->isArrayTy() && destType->isArrayTy() && 
+        static_cast<TuringArrayType*>(destType)->getSize() == 0) {
+        return new TuringValue(val->getVal(),destType);
+    }
+    
+    if (Types.isType(val,"int") && llvmDestType->isFloatingPointTy()) {
+        return new TuringValue(Builder.CreateSIToFP(val->getVal(), llvmDestType, "promotedint"),
+                               Types.getType("real"));
     }
     
     // if it gets this far, it's an error
-    throw Message::Exception(Twine("Can't convert expression to type ") + destType->getName());
+    Twine message = Twine("Can't convert expression of type \"") + 
+    type->getName() + "\" to type \"" + destType->getName() + "\"";
+    if (!inStr.str().empty()) {
+        message.concat(Twine(" in ") + inStr);
+    }
+    throw Message::Exception(message + ".");
     
     return NULL; // never reaches here
     
@@ -409,7 +441,7 @@ bool CodeGen::compileStat(ASTNode *node) {
             if (RetVal == NULL) {
                 throw Message::Exception("Result can only be used inside a function.");
             }
-            Value *val = compile(node->children[0]);
+            TuringValue *val = compile(node->children[0]);
             abstractCompileAssign(val,RetVal);
             compileReturn();
             return true;
@@ -422,7 +454,7 @@ bool CodeGen::compileStat(ASTNode *node) {
 }
 
 //! dispatcher. Checks the type of the node and calls the correct compile function.
-Value *CodeGen::compile(ASTNode *node) {
+TuringValue *CodeGen::compile(ASTNode *node) {
 	if(node == NULL) {
 		throw Message::Exception("Can not compile null node.");
 	}
@@ -436,7 +468,8 @@ Value *CodeGen::compile(ASTNode *node) {
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::ARRAY_UPPER:
-            return compileArrayLength(compile(node->children[0]));
+            return new TuringValue(compileArrayLength(compile(node->children[0])->getVal()),
+                                   Types.getType("int"));
         case Language::VAR_REFERENCE:
         case Language::FIELD_REF_OP:
             // compileLHS knows how to handle these. We just have to load them.
@@ -445,20 +478,24 @@ Value *CodeGen::compile(ASTNode *node) {
             return compileStringLiteral(node->str);
         case Language::INT_LITERAL:
             // apint can convert a string
-            return ConstantInt::get(getGlobalContext(), APInt(32,node->str,10));
+            return new TuringValue(ConstantInt::get(getGlobalContext(), APInt(32,node->str,10)),
+                                   Types.getType("int"));
         case Language::REAL_LITERAL:
             // apint can convert a string
-            return ConstantFP::get(Types.getType("real")->getLLVMType(), node->str);
+            return new TuringValue(ConstantFP::get(Types.getType("real")->getLLVMType(), node->str),
+                                   Types.getType("real"));
         case Language::BOOL_LITERAL:
             // apint is used because booleans are one bit ints
-            return ConstantInt::get(getGlobalContext(), APInt(1,(node->str.compare("true") == 0) ? 1 : 0));
+            return new TuringValue(ConstantInt::get(getGlobalContext(), 
+                                                    APInt(1,(node->str.compare("true") == 0) ? 1 : 0)),
+                                   Types.getType("boolean"));
         default:
             throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " not recognized");
     }
 }
 //! creates a constant struct to represent a string literal
 //! \returns an array reference to the string literal
-Value *CodeGen::compileStringLiteral(const std::string &str) {
+TuringValue *CodeGen::compileStringLiteral(const std::string &str) {
     std::vector<Constant*> arrayStructVals,arrayVals;
     
     // string length
@@ -496,48 +533,54 @@ Value *CodeGen::compileStringLiteral(const std::string &str) {
                                      "stringConst");
     Type *stringRefType = Types.getType("string")->getLLVMType(true);
     
-    return Builder.CreatePointerCast(gvar,stringRefType,"castedstringconstant");
+    return new TuringValue(Builder.CreatePointerCast(gvar,stringRefType,"castedstringconstant"),
+                           Types.getType("string"));
 }
 
 // Compiles binary operators.
-Value *CodeGen::compileBinaryOp(ASTNode *node) {
+TuringValue *CodeGen::compileBinaryOp(ASTNode *node) {
     if (node->str.compare("and") == 0 || node->str.compare("or") == 0) {
         return compileLogicOp(node);
     } else {
-        Value *L = compile(node->children[0]);
-        Value *R = compile(node->children[1]);
+        TuringValue *L = compile(node->children[0]);
+        TuringValue *R = compile(node->children[1]);
         return abstractCompileBinaryOp(L,R,node->str);
     }
 }
 
-Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
+TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, std::string op) {
     if (L == 0 || R == 0) {
         throw Message::Exception("Invalid operand for binary operator.");
     }
     
     bool fp = false;
-    if (L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) {
+    if (Types.isType(L,"real") || Types.isType(R,"real")) {
         fp = true;
-        L = promoteType(L, Types.getType("real"));
-        R = promoteType(R, Types.getType("real"));
+        L = promoteType(L, Types.getType("real"), Twine("left side of ") + op + " operator");
+        R = promoteType(R, Types.getType("real"), Twine("right side of ") + op + " operator");
     }
+    TuringType *retTy = fp ? Types.getType("real") : Types.getType("int");
     
     Instruction::BinaryOps binOp;
 	
     // COMPARISONS
 	if (op.compare(">") == 0) {
-        return fp ? Builder.CreateFCmpOGT(L, R) : Builder.CreateICmpSGT(L, R);
+        Value *result = fp ? Builder.CreateFCmpOGT(L->getVal(), R->getVal()) : Builder.CreateICmpSGT(L->getVal(), R->getVal());
+        return new TuringValue(result,Types.getType("boolean"));
     } else if (op.compare("<") == 0) {
-        return fp ? Builder.CreateFCmpOLT(L, R) : Builder.CreateICmpSLT(L, R);
+        Value *result = fp ? Builder.CreateFCmpOLT(L->getVal(), R->getVal()) : Builder.CreateICmpSLT(L->getVal(), R->getVal());
+        return new TuringValue(result,Types.getType("boolean"));
     } else if (op.compare(">=") == 0) {
-        return fp ? Builder.CreateFCmpOGE(L, R) : Builder.CreateICmpSGE(L, R);
+        Value *result = fp ? Builder.CreateFCmpOGE(L->getVal(), R->getVal()) : Builder.CreateICmpSGE(L->getVal(), R->getVal());
+        return new TuringValue(result,Types.getType("boolean"));
     } else if (op.compare("<=") == 0) {
-        return fp ? Builder.CreateFCmpOLE(L, R) : Builder.CreateICmpSLE(L, R);
+        Value *result = fp ? Builder.CreateFCmpOLE(L->getVal(), R->getVal()) : Builder.CreateICmpSLE(L->getVal(), R->getVal());
+        return new TuringValue(result,Types.getType("boolean"));
     } else if (op.compare("+") == 0) { // MATH
         // string + string = TuringStringConcat(string)
         if (Types.isType(L, "string") && Types.isType(R, "string")) {
             Symbol *callee = Scopes->curScope()->resolve("TuringStringConcat");
-            std::vector<Value*> params;
+            std::vector<TuringValue*> params;
             params.push_back(L);
             params.push_back(R);
             return abstractCompileCall(callee, params, true);
@@ -562,27 +605,29 @@ Value *CodeGen::abstractCompileBinaryOp(Value *L, Value *R, std::string op) {
     } else if (op.compare("**") == 0) {
         if (fp) throw Message::Exception("Can't use '**' on real numbers.");
         std::vector<Value*> argVals;
-        argVals.push_back(L);
-        argVals.push_back(R);
-        return Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
+        argVals.push_back(L->getVal());
+        argVals.push_back(R->getVal());
+        Value *resVal = Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
+        return new TuringValue(resVal,Types.getType("int"));
     } else {
         throw Message::Exception("Invalid binary operator.");
     }
     
     // if it hasn't already been promoted (which type checks), do type checking
     if (!fp) {
-        L = promoteType(L, Types.getType("int"));
-        R = promoteType(R, Types.getType("int"));
+        L = promoteType(L, Types.getType("int"), Twine("left side of ") + op + " operator");
+        R = promoteType(R, Types.getType("int"), Twine("right side of ") + op + " operator");
     }
     
     // if it hasn't returned by now it must be a normal binop
-    return BinaryOperator::Create(binOp, L, R,"binOpRes",Builder.GetInsertBlock());
+    Value *resVal = BinaryOperator::Create(binOp, L->getVal(), R->getVal(),"binOpRes",Builder.GetInsertBlock());
+    return new TuringValue(resVal,retTy);
 }
 
 //! compiles a properly short-circuiting logic operator
 //! \param isAnd false for 'or' true for 'and'
-Value *CodeGen::compileLogicOp(ASTNode *node) {
-    Value *cond1 = compile(node->children[0]);
+TuringValue *CodeGen::compileLogicOp(ASTNode *node) {
+    TuringValue *cond1 = compile(node->children[0]);
     
     if (!Types.isType(cond1,"boolean")) {
         throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
@@ -598,9 +643,9 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     
     //! and continues if the first is true and or short-circuits
     if (node->str.compare("and") == 0) {
-        Builder.CreateCondBr(cond1, secondBB, mergeBB);
+        Builder.CreateCondBr(cond1->getVal(), secondBB, mergeBB);
     } else { // or
-        Builder.CreateCondBr(cond1, mergeBB, secondBB);
+        Builder.CreateCondBr(cond1->getVal(), mergeBB, secondBB);
     }
     
     
@@ -608,7 +653,7 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     // Emit second condition
     Builder.SetInsertPoint(secondBB);
     
-    Value *cond2 = compile(node->children[1]);
+    TuringValue *cond2 = compile(node->children[1]);
     
     if (!Types.isType(cond2,"boolean")) {
         throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
@@ -622,46 +667,47 @@ Value *CodeGen::compileLogicOp(ASTNode *node) {
     Builder.SetInsertPoint(mergeBB);
     
     PHINode *resPhi = Builder.CreatePHI(Types.getType("boolean")->getLLVMType(),2,"andresult");
-    resPhi->addIncoming(cond1,startBlock);
-    resPhi->addIncoming(cond2,secondBB);
+    resPhi->addIncoming(cond1->getVal(),startBlock);
+    resPhi->addIncoming(cond2->getVal(),secondBB);
     
-    return resPhi;
+    return new TuringValue(resPhi,Types.getType("boolean"));
 }
 
-Value *CodeGen::compileEqualityOp(ASTNode *node) {
-    Value *L = compile(node->children[0]);
-    Value *R = compile(node->children[1]);
+TuringValue *CodeGen::compileEqualityOp(ASTNode *node) {
+    TuringValue *L = compile(node->children[0]);
+    TuringValue *R = compile(node->children[1]);
     
     bool fp = false;
-    if (L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) {
+    if (L->getVal()->getType()->isFloatingPointTy() || R->getVal()->getType()->isFloatingPointTy()) {
         fp = true;
         L = promoteType(L, Types.getType("real"));
         R = promoteType(R, Types.getType("real"));
-    } else if (L->getType() != R->getType()) {
-        throw Message::Exception("Arguments of comparison must be the same type.");
+    } else if (!L->getType()->compare(R->getType())) {
+        throw Message::Exception(Twine("Can't compare an expression of type \"") + L->getType()->getName() +
+                                 "\" to one of type \"" + R->getType()->getName() + "\".");
     }
     
-    TuringType *type = Types.getTypeLLVM(L->getType(),true);
+    TuringType *type = L->getType();
     
     Value *ret = NULL;
     
     if (type->getName().compare("int") == 0 || type->getName().compare("boolean") == 0) {
-        ret = Builder.CreateICmpEQ(L,R,"equal");        
+        ret = Builder.CreateICmpEQ(L->getVal(),R->getVal(),"equal");        
     } else if (fp) {
-        ret = Builder.CreateFCmpOEQ(L, R,"fpequal");
+        ret = Builder.CreateFCmpOEQ(L->getVal(), R->getVal(),"fpequal");
     } else if (type->isArrayTy()) { // strings and arrays
-        Value *srcSize = compileArrayByteSize(L);
-        Value *destSize = compileArrayByteSize(R);
-        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("voidptr")->getLLVMType(),"fromptr");
-        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("voidptr")->getLLVMType(),"toptr");
+        Value *srcSize = compileArrayByteSize(L->getVal());
+        Value *destSize = compileArrayByteSize(R->getVal());
+        Value *fromPtr = Builder.CreatePointerCast(L->getVal(),Types.getType("voidptr")->getLLVMType(),"fromptr");
+        Value *toPtr = Builder.CreatePointerCast(R->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
         ret = Builder.CreateCall4(TheModule->getFunction("TuringCompareArray"),fromPtr,toPtr,srcSize,destSize);
     } else if (type->isRecordTy()) { // records
         if (L->getType() != R->getType()) {
             throw Message::Exception("Can't compare records of different types.");
         }
         Value *srcSize = compileByteSize(L->getType());
-        Value *fromPtr = Builder.CreatePointerCast(L,Types.getType("voidptr")->getLLVMType(),"fromptr");
-        Value *toPtr = Builder.CreatePointerCast(R,Types.getType("voidptr")->getLLVMType(),"toptr");
+        Value *fromPtr = Builder.CreatePointerCast(L->getVal(),Types.getType("voidptr")->getLLVMType(),"fromptr");
+        Value *toPtr = Builder.CreatePointerCast(R->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
         ret = Builder.CreateCall3(TheModule->getFunction("TuringCompareRecord"),fromPtr,toPtr,srcSize);
     } else {
         throw Message::Exception(Twine("Can't compare type ") + type->getName());
@@ -673,7 +719,7 @@ Value *CodeGen::compileEqualityOp(ASTNode *node) {
         ret = Builder.CreateICmpEQ(ret,ConstantInt::get(getGlobalContext(), APInt(1,0)));
     }
     
-    return ret;
+    return new TuringValue(ret,Types.getType("boolean"));
 }
 
 Symbol *CodeGen::compileLHS(ASTNode *node) {
@@ -706,9 +752,7 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
                 throw Message::Exception("Can't index something that isn't an array.");
             }
             
-            TuringArrayType *arr = static_cast<TuringArrayType*>(callee->getType());
-            
-            return new VarSymbol(compileIndex(callee->getVal(),node),arr->getElementType());
+            return compileIndex(callee,node);
         }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
@@ -717,8 +761,8 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
     return new VarSymbol(); // never reaches here
 }
 
-Value *CodeGen::compileAssignOp(ASTNode *node) {
-    Value *val = compile(node->children[1]);
+TuringValue *CodeGen::compileAssignOp(ASTNode *node) {
+    TuringValue *val = compile(node->children[1]);
     
     std::string op = node->str.substr(0,node->str.size() - 1);
     // check for += div= etc...
@@ -741,7 +785,7 @@ Value *CodeGen::compileAssignOp(ASTNode *node) {
     return val;
 }
 
-void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
+void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
     Value *assignVar = assignSym->getVal();
     
     // can't assign to arguments unless they are actual structure returns
@@ -765,42 +809,43 @@ void CodeGen::abstractCompileAssign(Value *val, Symbol *assignSym) {
     }
     
     // assert asignee is a pointer to the type being assigned
-    if (cast<PointerType>(assignVar->getType())->getElementType() != val->getType()) {
+    if (assignSym->getType() != val->getType()) {
         throw Message::Exception(Twine("Only expressions of type \"") + 
                                  assignSym->getType()->getName() + 
                                  "\" can be assigned to this variable.");
     }
     
-    Builder.CreateStore(val,assignVar);
+    Builder.CreateStore(val->getVal(),assignVar);
 }
 
-void CodeGen::compileArrayCopy(Value *from, Symbol *to) {
-    Value *srcSize = compileArrayByteSize(from);
+void CodeGen::compileArrayCopy(TuringValue *from, Symbol *to) {
+    Value *srcSize = compileArrayByteSize(from->getVal());
     Value *destSize = compileArrayByteSize(to->getVal());
-    Value *fromPtr = Builder.CreatePointerCast(from,Types.getType("voidptr")->getLLVMType(),"fromptr");
+    Value *fromPtr = Builder.CreatePointerCast(from->getVal(),Types.getType("voidptr")->getLLVMType(),"fromptr");
     Value *toPtr = Builder.CreatePointerCast(to->getVal(),Types.getType("voidptr")->getLLVMType(),"toptr");
     Builder.CreateCall4(TheModule->getFunction("TuringCopyArray"),fromPtr,toPtr,srcSize,destSize);
 }
 
-void CodeGen::compileRecordCopy(Value *from, Symbol *to) {
-    assert(from->getType()->isPointerTy());
-    if (to->getType()->getLLVMType(true) != from->getType()) {
-        throw Message::Exception("Can only assign to a record of the same type.");
+void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
+    assert(from->getType()->isRecordTy());
+    if (!to->getType()->compare(from->getType())) {
+        throw Message::Exception(Twine("Can't assign a record of type \"") + from->getType()->getName() +
+                                       "\" to one of type \"" + to->getType()->getName() + "\".");
     }
     Value *fromSize = compileByteSize(from->getType());
     // llvm intrinsic memcpy. Auto-converts and optimizes well.
-    Builder.CreateMemCpy(to->getVal(), from, fromSize, 0);
+    Builder.CreateMemCpy(to->getVal(), from->getVal(), fromSize, 0);
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {
     // print out all the comma separated expressions
     ITERATE_CHILDREN(node, curNode) {
-        Value *val = compile(*curNode);
-        TuringType *type = Types.getTypeLLVM(val->getType(),true);
+        TuringValue *val = compile(*curNode);
+        TuringType *type = val->getType();
         
         Function *calleeFunc;
         std::vector<Value*> argVals;
-        argVals.push_back(val);
+        argVals.push_back(val->getVal());
         
         if (type->getName().compare("int") == 0) {
             calleeFunc = TheModule->getFunction("TuringPrintInt");
@@ -841,7 +886,7 @@ void CodeGen::compileVarDecl(ASTNode *node) {
         bool hasInitial = node->children.size() > 1;
         
         TuringType *type = args[i].Type;
-        Value *initializer = NULL;
+        TuringValue *initializer = NULL;
         
         if (hasInitial) {
             initializer = compile(node->children[1]);
@@ -852,13 +897,13 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             if (!hasInitial) {
                 throw Message::Exception("Can't infer the type of a declaration with no initial value.");
             }
-            type = Types.getTypeLLVM(initializer->getType());
+            type = initializer->getType();
         }
         
         Symbol *declared = Scopes->curScope()->declareVar(args[i].Name,type);
         // must initialize the length part of the array struct
         if (type->isComplexTy()) {
-            compileInitializeComplex(declared->getVal(), type);
+            compileInitializeComplex(declared);
         }
         
         if (hasInitial) {
@@ -867,15 +912,15 @@ void CodeGen::compileVarDecl(ASTNode *node) {
     }
 }
 
-Value *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name) {
+TuringValue *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name) {
     // TODO maybe do as clang does and alloca and assign all params instead of this
     if (!(var->getVal()->getType()->isPointerTy())) {
         // if it is not a reference return it straight up. Used for arguments.
-        return var->getVal();
+        return new TuringValue(var->getVal(),var->getType());
     }
     // complex types are referenced
     if (var->getType()->isComplexTy()) {
-        return Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"complexref");
+        return new TuringValue(Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"complexref"), var->getType());
     }
     
     // TODO implement function references
@@ -883,10 +928,14 @@ Value *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name)
         throw Message::Exception("Function references are not implemented yet");
     }
     
-    return Builder.CreateLoad(var->getVal(),Twine(name) + "val");
+    return new TuringValue(Builder.CreateLoad(var->getVal(),
+                                              name.empty() ? (Twine(name) + "val") : "loadedVal"),
+                           var->getType());
 }
 
-Value *CodeGen::compileIndex(llvm::Value *indexed,ASTNode *node) {
+//! \param node  a CALL node
+//! \returns a pointer to the element
+Symbol *CodeGen::compileIndex(Symbol *indexed,ASTNode *node) {
     if (node->children.size() == 0) {
         throw Message::Exception("Must have at least one array index in brackets.");
     }
@@ -907,24 +956,30 @@ Symbol *CodeGen::compileRecordFieldRef(Symbol *record, std::string fieldName) {
     return new VarSymbol(fieldPtr,fieldType);
 }
 
-//! \param node  a CALL node
-//! \returns a pointer to the element
-Value *CodeGen::abstractCompileIndex(Value *indexed,Value *index) {        
+
+Symbol *CodeGen::abstractCompileIndex(Symbol *indexed,TuringValue *index) {
+    assert(indexed->getType()->isArrayTy()); // calling code should assure this
+    promoteType(index,Types.getType("int")); // type check
+    
     std::vector<Value*> indices;
     // depointerize
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
     // take the 1-based index, bounds-check it and return the 0-based index
-    Value *realIndex = Builder.CreateCall2(TheModule->getFunction("TuringIndexArray"),index,
-                                            compileArrayLength(indexed),"realIndexVal");
+    Value *realIndex = Builder.CreateCall2(TheModule->getFunction("TuringIndexArray"),index->getVal(),
+                                            compileArrayLength(indexed->getVal()),"realIndexVal");
     indices.push_back(realIndex);
-    return Builder.CreateInBoundsGEP(indexed,indices,"indextemp");
+    
+    TuringArrayType *arrTy = static_cast<TuringArrayType*>(indexed->getType());
+    
+    return new VarSymbol(Builder.CreateInBoundsGEP(indexed->getVal(),indices,"indextemp"),
+                           arrTy->getElementType());
 }
 
 //! in turing, the call syntax is used for array indexes, calls and other things
 //! this function dispatches the call to the correct compile function
-Value *CodeGen::compileCallSyntax(ASTNode *node) {
+TuringValue *CodeGen::compileCallSyntax(ASTNode *node) {
     Symbol *callee = compileLHS(node->children[0]);
     if (callee->isFunction()) {
         return compileCall(callee,node,true);
@@ -936,19 +991,19 @@ Value *CodeGen::compileCallSyntax(ASTNode *node) {
     }
     
     if (callee->getType()->isArrayTy()) {
-        return Builder.CreateLoad(compileIndex(callee->getVal(),node),"indexloadtemp");
+        return abstractCompileVarReference(compileIndex(callee,node));
     }
     
 fail:        
     throw Message::Exception("Only functions and procedures can be called.");
     return NULL; // never reaches here
 }
-Value *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
+TuringValue *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
     return compileCall(compileLHS(node->children[0]),node,wantReturn);
 }
 
-Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
-    std::vector<Value*> params;
+TuringValue *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
+    std::vector<TuringValue*> params;
     for (unsigned int i = 1; i < node->children.size(); ++i) {
         params.push_back(compile(node->children[i]));
     }
@@ -962,7 +1017,7 @@ Value *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
 //!         unless the wantReturn parameter is null
 //!         in wich case NULL is returned.
 //!         defaults to true.
-Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &params, bool wantReturn) {
+TuringValue *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<TuringValue*> &params, bool wantReturn) {
     
     if (!callee->isFunction()) {
         throw Message::Exception("Only functions and procedures can be called.");
@@ -994,20 +1049,22 @@ Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &pa
         returnBuffer = TmpB.CreateAlloca(calleeFuncSym->getType()->getLLVMType(false),0,"sretBuffer");
         // cast it to a reference
         returnBuffer = Builder.CreatePointerCast(returnBuffer, calleeFuncSym->getType()->getLLVMType(true));
-        compileInitializeComplex(returnBuffer, calleeFuncSym->getType()); // initialize array lengths and stuff
+        compileInitializeComplex(new VarSymbol(returnBuffer,calleeFuncSym->getType())); // initialize array lengths and stuff
         argVals.push_back(returnBuffer);
     }
     
     for (unsigned idx = 0; idx < params.size(); ++idx) {
-        Value *val = params[idx];
+        TuringValue *val = params[idx];
         TuringType *typ = calleeFuncSym->getArgDecl(idx).Type;
-        argVals.push_back(promoteType(val, typ));
+        argVals.push_back(promoteType(val, typ, 
+                                      Twine("argument ") + Twine(idx + 1) + " of function " +
+                                      calleeFunc->getName())->getVal());
     }
     if (calleeFuncSym->IsSRet) {        
         assert(returnBuffer != NULL);
         // return the casted reference to the return value. true = this is a reference
         Builder.CreateCall(calleeFunc, argVals);
-        return returnBuffer;
+        return new TuringValue(returnBuffer,calleeFuncSym->getType());
     } else if (calleeFunc->getReturnType()->isVoidTy() && wantReturn) {
         throw Message::Exception(Twine("Procedure ") + calleeFunc->getName() + " can not return a value.");
     } else if(!wantReturn) {
@@ -1015,7 +1072,7 @@ Value *CodeGen::abstractCompileCall(Symbol *callee,const std::vector<Value*> &pa
         return NULL;
     }
     
-    return Builder.CreateCall(calleeFunc, argVals, "calltmp");
+    return new TuringValue(Builder.CreateCall(calleeFunc, argVals, "calltmp"),calleeFuncSym->getType());
 }
 
 Function *CodeGen::compileFunctionPrototype(ASTNode *node, const std::string &aliasName) {
@@ -1190,7 +1247,8 @@ void CodeGen::compileModule(ASTNode *node) {
 //! compiles an if statement as a series of blocks
 //! works on IF_STAT or ELSIF_STAT nodes
 void CodeGen::compileIfStat(ASTNode *node) {
-    Value *cond = compile(node->children[0]);
+    TuringValue *cond = compile(node->children[0]);
+    cond = promoteType(cond,Types.getType("boolean")); // type check
     
     Function *theFunction = Builder.GetInsertBlock()->getParent();
     
@@ -1206,9 +1264,9 @@ void CodeGen::compileIfStat(ASTNode *node) {
     // otherwise skip over it
     if (hasElse) {
         elseBB = BasicBlock::Create(getGlobalContext(), "else");
-        Builder.CreateCondBr(cond, thenBB, elseBB);
+        Builder.CreateCondBr(cond->getVal(), thenBB, elseBB);
     } else {
-        Builder.CreateCondBr(cond, thenBB, mergeBB);
+        Builder.CreateCondBr(cond->getVal(), thenBB, mergeBB);
     }
     
     Builder.SetInsertPoint(thenBB);
@@ -1290,10 +1348,10 @@ void CodeGen::compileForStat(ASTNode *node) {
     // loop induction variable. node->str is the name
     Symbol *inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
     
-    std::pair<Value*,Value*> range = compileRange(node->children[0]);
+    std::pair<TuringValue*,TuringValue*> range = compileRange(node->children[0]);
     
     // starting at the first number
-    Builder.CreateStore(range.first,inductionVar->getVal());
+    Builder.CreateStore(range.first->getVal(),inductionVar->getVal());
     
     Builder.CreateBr(loopBB);
     
@@ -1317,7 +1375,7 @@ void CodeGen::compileForStat(ASTNode *node) {
         Builder.CreateStore(incremented,inductionVar->getVal());
         
         // finished yet?
-        Value *done = Builder.CreateICmpUGT(incremented,range.second);
+        Value *done = Builder.CreateICmpUGT(incremented,range.second->getVal());
         Builder.CreateCondBr(done,mergeBB,loopBB);
     }
     

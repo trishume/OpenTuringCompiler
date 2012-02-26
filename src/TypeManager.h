@@ -14,6 +14,7 @@
 #include <llvm/Type.h>
 #include <llvm/Value.h>
 #include "TuringType.h"
+#include "TuringValue.h"
 
 #define TURING_STRING_SIZE 255
 
@@ -26,7 +27,7 @@ public:
     bool addTypeLLVM(std::string name,llvm::Type *llvmType);
     bool aliasType(std::string name, std::string aliasName);
     
-    bool isType(llvm::Value *val, std::string typeName);
+    bool isType(TuringValue *val, std::string typeName);
     bool isArrayRef(llvm::Type *llvmType);
     
     void addDefaultTypes(llvm::LLVMContext &c);

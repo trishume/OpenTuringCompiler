@@ -80,8 +80,9 @@ bool TypeManager::aliasType(std::string name, std::string aliasName){
     return true;
 }
 
-bool TypeManager::isType(Value *val, std::string typeName) {
-    return val->getType() == getType(typeName)->getLLVMType(true);
+bool TypeManager::isType(TuringValue *val, std::string typeName) {
+    
+    return val->getType()->compare(getType(typeName));
 }
 
 bool TypeManager::isArrayRef(llvm::Type *llvmType) {
