@@ -25,36 +25,6 @@ TuringType *TypeManager::getArrayType(TuringType *elementType, unsigned int uppe
     //TODO LEAK this may never get released
     return new TuringArrayType(elementType, upper);
 }
-
-//! finds an existing TuringType of the specified LLVM Type.
-TuringType *TypeManager::getTypeLLVM(Type *llvmType, bool isReference){
-    std::map<std::string,TuringType*>::const_iterator it;
-    for (it = NameMap.begin(); it != NameMap.end(); ++it) {
-        TuringType *type = it->second;
-        if (type->getLLVMType(isReference) == llvmType) {
-            return type;
-        }
-    }
-    
-    if (llvmType->isPointerTy() && isReference) { // unwrap for array ref
-        return getTypeLLVM(cast<PointerType>(llvmType)->getElementType());
-    }
-    
-    // is it an array
-    if (llvmType->isStructTy() && cast<StructType>(llvmType)->getNumElements() == 2 && 
-        cast<StructType>(llvmType)->getElementType(0) == getType("int")->getLLVMType() &&
-        cast<StructType>(llvmType)->getElementType(1)->isArrayTy()) 
-    {
-        // it's an array so construct a type for it
-        ArrayType *arrTy = cast<ArrayType>(cast<StructType>(llvmType)->getElementType(1));
-        return getArrayType(getTypeLLVM(arrTy->getElementType()), arrTy->getNumElements());
-    }
-    
-    // couldn't find it, throw exception
-    llvmType->dump();
-    throw Message::Exception("Can't find correct type.");
-    return NULL;
-}
 bool TypeManager::addType(std::string name,TuringType *turType){
     if (NameMap.find(name) != NameMap.end()) {
         Message::error(llvm::Twine("Type ") + name + " already exists.");
