@@ -50,7 +50,7 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
     /* Create the top level interpreter function to call as entry */
 	std::vector<Type*> argTypes;
 	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
-	MainFunction = Function::Create(mainFuntionType, GlobalValue::InternalLinkage, MAIN_FUNC_NAME, TheModule);
+	MainFunction = Function::Create(mainFuntionType, GlobalValue::ExternalLinkage, MAIN_FUNC_NAME, TheModule);
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
     
 	Builder.SetInsertPoint(mainBlock);

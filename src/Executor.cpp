@@ -16,6 +16,7 @@
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/IPO.h>
 
 using namespace llvm;
 
@@ -37,8 +38,12 @@ void Executor::optimize() {
     p.add(new TargetData(TheModule));
     p.add(createVerifierPass());
     
+    // constant folding
+    p.add(createConstantMergePass());
     // Provide basic AliasAnalysis support for GVN.
     p.add(createBasicAliasAnalysisPass());
+    // inline functions
+    p.add(createFunctionInliningPass());
     // Promote allocas to registers.
     p.add(createPromoteMemoryToRegisterPass());
     // Do simple "peephole" optimizations and bit-twiddling optzns.
@@ -47,6 +52,8 @@ void Executor::optimize() {
     p.add(createReassociatePass());
     // Eliminate Common SubExpressions.
     p.add(createGVNPass());
+    // get rid of extra copying
+    p.add(createMemCpyOptPass());
     // Simplify the control flow graph (deleting unreachable blocks, etc).
     p.add(createCFGSimplificationPass());
     
