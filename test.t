@@ -1,4 +1,4 @@
 % compile test dispatcher. Include test files here.
 % Bonus: it tests file includes
 
-include "testcompile13.txt"
+include "test13.t"

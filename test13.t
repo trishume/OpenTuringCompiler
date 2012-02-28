@@ -2,8 +2,6 @@
 % As I develop the compiler I use the new features
 % to print 13 in increasingly complex ways...
 
-% test string length.
-
 % test constants
 const threeConst := 3
 const oneConst : real := 1
@@ -19,6 +17,7 @@ var rec,otherRec : recType
 % test alternate multi-dimensional array index syntax
 rec.mat(1,2) := true
 
+% test string length.
 var bob := length("123456")
 
 % test case statements and string concatenation

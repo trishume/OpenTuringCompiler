@@ -40,7 +40,7 @@ set(MyHeaders
 
 # here so they can be edited in the xcode project
 set(MyExtras
-	../testcompile13.txt
+	../test13.t
 	Turing.g
 	tokens.def
 	)
@@ -50,5 +50,11 @@ set_source_files_properties( ${MySources}
                             )
 
 add_executable(compiler ${MySources} ${MyHeaders} ${MyExtras})
-set_target_properties(compiler PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
+set_target_properties(	compiler 
+						PROPERTIES 
+						LINK_FLAGS ${LLVM_LDFLAGS})
 target_link_libraries(compiler ${LLVM_LIBS} -ldparse)
+
+# install
+set(COMPILER_INSTALL_DIR ${INSTALL_DIR})
+install(TARGETS compiler DESTINATION ${COMPILER_INSTALL_DIR})

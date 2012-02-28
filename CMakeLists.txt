@@ -17,8 +17,15 @@ endif()
 include_directories( ${LLVM_INCLUDE_DIR} )
 link_directories( ${LLVM_LIB_DIR} )
 
+set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
+
 add_subdirectory(src)
 
-enable_testing()
+add_subdirectory(stdlib)
 
-add_test (Compiler13Test src/compiler ${PROJECT_SOURCE_DIR}/testcompile13.txt)
+install(FILES predefs.t DESTINATION ${INSTALL_DIR}/lib)
+
+install(FILES test.t test13.t DESTINATION ${INSTALL_DIR}/test)
+
+enable_testing()
+add_test (Compiler13Test src/compiler ${PROJECT_SOURCE_DIR}/test.t)
