@@ -19,13 +19,10 @@ link_directories( ${LLVM_LIB_DIR} )
 
 set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
 
+add_subdirectory(test)
+
 add_subdirectory(src)
 
 add_subdirectory(stdlib)
 
 install(FILES predefs.t DESTINATION ${INSTALL_DIR}/lib)
-
-install(FILES test.t test13.t DESTINATION ${INSTALL_DIR}/test)
-
-enable_testing()
-add_test (Compiler13Test src/compiler ${PROJECT_SOURCE_DIR}/test.t)
