@@ -4,6 +4,8 @@
 
 % test constants
 const threeConst := 3
+% test parsing weird constants
+const testConst := -6.90460016972063023e-05
 const oneConst : real := 1
 
 % test type declarations, records and multi-dimensional arrays
@@ -17,8 +19,13 @@ var rec,otherRec : recType
 % test alternate multi-dimensional array index syntax
 rec.mat(1,2) := true
 
-% test string length.
-var bob := length("123456")
+% test string length and 'var' parameters
+var bob : int
+proc SetBob(var bob : int)
+    %get bob
+    bob := length("123456")
+end SetBob
+SetBob(bob)
 
 % test case statements and string concatenation
 var prinString := "P"
@@ -54,7 +61,7 @@ SetHovering
 module Print13
 
     %test equality checking and code inside a module
-    if bob = 6 and 9 ~= 7 and "bob" = "bob" and "lol" ~= "hi" and rec.hovering = 1 and rec.mat(1)(2) then
+    if bob = 6 and ~(-9 > 7) and "bob" = "bob" and "lol" ~= "hi" and rec.hovering = 1 and rec.mat(1)(2) then
         %test no newline
         put assignStr ..
         %test multi-expr

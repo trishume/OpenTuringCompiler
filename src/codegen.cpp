@@ -20,19 +20,20 @@
 for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->children.end();var < e;++var)
 
 static const std::string defaultIncludes =
-    "extern proc TuringPrintInt(val : int)\n"
-    "extern proc TuringPrintReal(val : real)\n"
-    "extern proc TuringPrintBool(val : boolean)\n"
-    "extern proc TuringPrintString(val : string)\n"
-    "extern proc TuringGetString(val : string)\n"
-    "extern \"length\" fcn TuringStringLength(val : string) : int\n"
-    "extern fcn TuringStringConcat(lhs,rhs : string) : string\n"
-    "extern proc TuringPrintNewline()\n"
-    "extern fcn TuringPower(val : int, power : int) : int\n"
-    "extern fcn TuringIndexArray(index : int, length : int) : int\n"
-    "extern proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
-    "extern fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
-    "extern fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
+    "external proc TuringPrintInt(val : int)\n"
+    "external proc TuringPrintReal(val : real)\n"
+    "external proc TuringPrintBool(val : boolean)\n"
+    "external proc TuringPrintString(val : string)\n"
+    "external proc TuringGetString(val : string)\n"
+    "external proc TuringGetInt(var val : int)\n"
+    "external \"length\" fcn TuringStringLength(val : string) : int\n"
+    "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
+    "external proc TuringPrintNewline()\n"
+    "external fcn TuringPower(val : int, power : int) : int\n"
+    "external fcn TuringIndexArray(index : int, length : int) : int\n"
+    "external proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
+    "external fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
+    "external fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
 ;
 
 using namespace llvm;
@@ -324,6 +325,12 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
         }
         // *ConstantInt -> APInt -> uint_64
         int upper = cast<ConstantInt>(upperConst)->getValue().getLimitedValue();
+        
+        // 800,000,000 should be enough array elements for Turing's target audience
+        // the upper limit is just so people don't declare enormous arrays just to crash the computer
+        if (upper<0 || upper > 800000000) {
+            throw Message::Exception("Array limit out of bounds.");
+        }
         // wrap it up
         arrayType = Types.getArrayType(arrayType,upper);
     }
@@ -342,7 +349,19 @@ std::vector<VarDecl> CodeGen::getDecls(ASTNode *astDecls,bool allowAutoTypes) {
         if(!allowAutoTypes && (type == Types.getType("auto") || type == Types.getType("void"))) {
             throw Message::Exception("Can't infer type for this declaration.");
         }
-        decls.push_back(VarDecl((*decl)->str,type));
+        
+        std::string name = (*decl)->str;
+        bool isVarRef = false;
+        if (name.substr(0,4).compare("var ") == 0) {
+            isVarRef = true;
+            name = name.substr(4);
+        }
+        
+        VarDecl vardecl(name,type);
+        if (isVarRef) {
+            vardecl.IsVarRef = true;
+        }
+        decls.push_back(vardecl);
     }
     
     return decls;
@@ -486,6 +505,8 @@ TuringValue *CodeGen::compile(ASTNode *node) {
             return compileAssignOp(node);
         case Language::EQUALITY_OP:
             return compileEqualityOp(node);
+        case Language::UNARY_OP:
+            return compileUnaryOp(node);
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::ARRAY_UPPER:
@@ -643,6 +664,28 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
     // if it hasn't returned by now it must be a normal binop
     Value *resVal = BinaryOperator::Create(binOp, L->getVal(), R->getVal(),"binOpRes",Builder.GetInsertBlock());
     return new TuringValue(resVal,retTy);
+}
+
+TuringValue *CodeGen::compileUnaryOp(ASTNode *node) {
+    TuringValue *val = compile(node->children[0]);
+    std::string op = node->str;
+    
+    if (op.compare("not") == 0 || op.compare("~") == 0) {
+        val = promoteType(val, Types.getType("boolean"),"boolean not operator");
+        // XOR with one is boolean not
+        Value *oneConst = ConstantInt::get(getGlobalContext(),APInt(1,1));
+        return new TuringValue(Builder.CreateXor(oneConst,val->getVal()),Types.getType("boolean"));
+    } else if(op.compare("-") == 0) {
+        if (Types.isType(val, "real")) {
+            Value *zeroConst = ConstantFP::get(Types.getType("real")->getLLVMType(),0.0);
+            return new TuringValue(Builder.CreateFSub(zeroConst,val->getVal()),Types.getType("real"));
+        }
+        
+        val = promoteType(val, Types.getType("int"),"negation operator");
+        return new TuringValue(Builder.CreateSub(getConstantInt(0)->getVal(),val->getVal()),Types.getType("int"));
+    } else {
+        throw Message::Exception("Invalid unary operator '" + op + "'.");
+    }
 }
 
 //! compiles a properly short-circuiting logic operator
@@ -813,7 +856,8 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
     Value *assignVar = assignSym->getVal();
     
     // can't assign to arguments unless they are actual structure returns
-    if (isa<Argument>(assignVar) && !(cast<Argument>(assignVar)->hasStructRetAttr())) {
+    if (isa<Argument>(assignVar) && !(cast<Argument>(assignVar)->hasStructRetAttr()) &&
+        !(assignVar->getType()->isPointerTy())) {
         
         throw Message::Exception("Can't assign to an argument.");
     }
@@ -889,13 +933,21 @@ void CodeGen::compilePutStat(ASTNode *node) {
 
 void CodeGen::compileGetStat(ASTNode *node) {
     Symbol *var = compileLHS(node->children[0]);
+    Value *val = var->getVal();
     
-    if (var->getType()->getName().compare("string") != 0) {
-        throw Message::Exception("This version of the Open Turing Compiler can only 'get' strings.");
+    TuringType *type = var->getType();
+    
+    Function *calleeFunc;
+    if (type->compare(Types.getType("string"))) {
+        calleeFunc = TheModule->getFunction("TuringGetString");
+        val = Builder.CreatePointerCast(val, var->getType()->getLLVMType(true));
+    } else if (type->compare(Types.getType("int"))) {
+        calleeFunc = TheModule->getFunction("TuringGetInt");
+    } else {
+        throw Message::Exception("Can't 'get' type \"" + type->getName() + "\".");
     }
     
-    Function *calleeFunc = TheModule->getFunction("TuringGetString");
-    Builder.CreateCall(calleeFunc, Builder.CreatePointerCast(var->getVal(), var->getType()->getLLVMType(true)));
+    Builder.CreateCall(calleeFunc, val);
 }
 
 void CodeGen::compileVarDecl(ASTNode *node) {
@@ -1059,9 +1111,22 @@ TuringValue *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
 }
 
 TuringValue *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
+    if (!callee->isFunction()) {
+        throw Message::Exception("Only functions and procedures can be called.");
+    }
+    FunctionSymbol *funcSym = static_cast<FunctionSymbol*>(callee);
     std::vector<TuringValue*> params;
     for (unsigned int i = 1; i < node->children.size(); ++i) {
-        params.push_back(compile(node->children[i]));
+        bool isVarRef = funcSym->getArgDecl(i-1).IsVarRef;
+        TuringValue *argVal;
+        //  handle 'var' parameters as symbols
+        if (isVarRef) {
+            Symbol *argSym = compileLHS(node->children[i]);
+            argVal = new TuringValue(argSym->getVal(),argSym->getType());
+        } else {
+            argVal = compile(node->children[i]);
+        }
+        params.push_back(argVal);
     }
     return abstractCompileCall(callee, params, wantReturn);
 }
@@ -1160,7 +1225,12 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
     
     // extract argument types
     for (unsigned int i = 0; i < args.size(); ++i) {
-        argTypes.push_back(args[i].Type->getLLVMType(true));  // true = parameters are references
+        Type *argType = args[i].Type->getLLVMType(true); // true = parameters are references
+        // if it is a var parameter and it is not a type normally passed by reference then pass a pointer
+        if (args[i].IsVarRef && !argType->isPointerTy()) {
+            argType = argType->getPointerTo();
+        }
+        argTypes.push_back(argType);  
     }
     // the return type is void if it is a procedure OR if the return is a complex type
     // WARNING it shouldn't matter wether the getLLVMType() is a reference since complex types are passed

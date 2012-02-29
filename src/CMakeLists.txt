@@ -42,13 +42,14 @@ set(MyHeaders
 set(MyExtras
 	Turing.g
 	tokens.def
+    ../test/test13.t
 	)
 
 set_source_files_properties( ${MySources}
                              PROPERTIES COMPILE_FLAGS ${LLVM_COMPILE_FLAGS}
                             )
 
-add_executable(compiler ${MySources} ${MyHeaders} ${MyExtras} ${TEST_FILES})
+add_executable(compiler ${MySources} ${MyHeaders} ${MyExtras})
 set_target_properties(	compiler 
 						PROPERTIES 
 						LINK_FLAGS ${LLVM_LDFLAGS})

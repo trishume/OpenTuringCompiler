@@ -67,6 +67,7 @@ protected:
                                          TuringValue *R, std::string op);
     TuringValue *compileAssignOp(ASTNode *node);
     void abstractCompileAssign(TuringValue *val, Symbol *assignSym);
+    TuringValue *compileUnaryOp(ASTNode *node);
     void compileArrayCopy(TuringValue *from, Symbol *to);
     void compileRecordCopy(TuringValue *from, Symbol *to);
     TuringValue *compileLogicOp(ASTNode *node);

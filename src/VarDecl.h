@@ -14,9 +14,11 @@
 class TuringType; // forward
 
 struct VarDecl {
-    VarDecl(std::string name, TuringType *type) : Name(name), Type(type) {}
+    VarDecl(std::string name, TuringType *type) : Name(name), Type(type), IsVarRef(false) {}
     std::string Name;
     TuringType *Type;
+    //! is it declared as var x : type? Used for function parameters
+    bool IsVarRef;
 };
 
 #endif

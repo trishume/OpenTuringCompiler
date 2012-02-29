@@ -66,6 +66,11 @@ extern "C" {
         }
         strcpy(string->strdata, inStr.c_str());
     }
+    void TuringGetInt(TInt *numRef) {
+        int inInt;
+        std::cin >> inInt;
+        *numRef = inInt;
+    }
     int TuringStringLength(TString *string) {
         return strlen(string->strdata);
     }

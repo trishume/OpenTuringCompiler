@@ -415,19 +415,18 @@ decls
     ;
 
 decl // declaration of a variable, argument or field
-    :   ID 
+    :   ('var'? ID)
     { 
         $$ = new ASTNode(Language::DECLARATION,$n0.start_loc.line);
         $$->str = nodeString($n0); // var name
         $$->addChild(new ASTNode(Language::DEFERRED_TYPE)); // no type
     }
-    |   ID ':' type
+    |   ('var'? ID) ':' type
     { 
         $$ = new ASTNode(Language::DECLARATION,$n0.start_loc.line);
         $$->str = nodeString($n0); // var name
         $$->addChild($2); // type
     }
-    // TODO impliment 'var' arguments
     ;
     
 prototype
@@ -448,12 +447,12 @@ prototype
     ;
     
 externdecl
-    : 'extern' prototype 
+    : 'external' prototype 
     {
         $$ = new ASTNode(Language::EXTERN_DECL,$n0.start_loc.line);
         $$->addChild($1);
     }
-    | 'extern' '"' ID '"' prototype
+    | 'external' '"' ID '"' prototype
     {
         $$ = new ASTNode(Language::EXTERN_DECL,$n0.start_loc.line);
         $$->str = nodeString($n2);
@@ -490,10 +489,11 @@ ID  :   "[a-zA-Z_][a-zA-Z0-9_]*"
     ]
     ;
 
-INT :   "[0-9]+"
+INT :   "-?[0-9]+"
     ;
 
-REAL:   "[0-9]*\.[0-9]+"
+REAL:   "-?[0-9]*\.[0-9]+"
+    |   "-?[0-9]*\.[0-9]+[eE]" INT
     ;
 
 whitespace: ( "[ \t]+" | COMMENT )*;
@@ -558,6 +558,7 @@ ASSIGN_OP
 UNARY_OPERATOR
     : '-' $unary_op_right 100
     | 'not' $unary_op_right 90
+    | '~' $unary_op_right 90
     ;
 POINTER_FIELD_REF_OPERATOR
     : '->' $binary_op_left 80
@@ -573,7 +574,7 @@ expr
     | UNARY_OPERATOR primaryExpression
     {
         $$ = new ASTNode(Language::UNARY_OP,$n0.start_loc.line);
-        $$->str = nodeString($n1); // op string
+        $$->str = nodeString($n0); // op string
         $$->addChild($1);
     }
     | expr LT* BIN_OP LT* expr 
