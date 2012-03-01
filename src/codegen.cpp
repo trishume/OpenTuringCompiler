@@ -30,6 +30,7 @@ static const std::string defaultIncludes =
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "external proc TuringPrintNewline()\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
+    "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
     "external fcn TuringIndexArray(index : int, length : int) : int\n"
     "external proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
     "external fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
@@ -581,7 +582,8 @@ TuringValue *CodeGen::compileStringLiteral(const std::string &str) {
 
 // Compiles binary operators.
 TuringValue *CodeGen::compileBinaryOp(ASTNode *node) {
-    if (node->str.compare("and") == 0 || node->str.compare("or") == 0) {
+    if (node->str.compare("and") == 0 || node->str.compare("or") == 0 || 
+        node->str.compare("&") == 0 || node->str.compare("|") == 0) {
         return compileLogicOp(node);
     } else {
         TuringValue *L = compile(node->children[0]);
@@ -642,15 +644,27 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
             throw Message::Exception("Can't use 'div' on real numbers yet. Try using '/' and then rounding");
         }
         binOp = Instruction::SDiv;
+    } else if (op.compare("xor") == 0) {
+        if (fp) { // TODO resolve this
+            throw Message::Exception("Can't use 'xor' on real numbers.");
+        }
+        binOp = Instruction::Xor;
     } else if (op.compare("mod") == 0) {
         binOp = fp ? Instruction::FRem : Instruction::SRem;
     } else if (op.compare("**") == 0) {
-        if (fp) throw Message::Exception("Can't use '**' on real numbers.");
         std::vector<Value*> argVals;
         argVals.push_back(L->getVal());
         argVals.push_back(R->getVal());
-        Value *resVal = Builder.CreateCall(TheModule->getFunction("TuringPower"),argVals,"powertmp");
-        return new TuringValue(resVal,Types.getType("int"));
+        
+        Function *func;
+        if (fp) {
+            func = TheModule->getFunction("pow");
+        } else {
+            func = TheModule->getFunction("TuringPower");
+        }
+        
+        Value *resVal = Builder.CreateCall(func,argVals,"powertmp");
+        return new TuringValue(resVal,retTy);
     } else {
         throw Message::Exception("Invalid binary operator.");
     }
@@ -706,7 +720,7 @@ TuringValue *CodeGen::compileLogicOp(ASTNode *node) {
     BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "andmerge");
     
     //! and continues if the first is true and or short-circuits
-    if (node->str.compare("and") == 0) {
+    if (node->str.compare("and") == 0 || node->str.compare("&") == 0) {
         Builder.CreateCondBr(cond1->getVal(), secondBB, mergeBB);
     } else { // or
         Builder.CreateCondBr(cond1->getVal(), mergeBB, secondBB);
@@ -876,6 +890,10 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
         return;
     }
     
+    if (assignSym->isFunction()) {
+        throw Message::Exception("Can't assign to a function.");
+    }
+    
     val = promoteType(val, assignSym->getType(),"assignment or result");
     
     Builder.CreateStore(val->getVal(),assignVar);
@@ -953,16 +971,14 @@ void CodeGen::compileGetStat(ASTNode *node) {
 void CodeGen::compileVarDecl(ASTNode *node) {
     std::vector<VarDecl> args = getDecls(node->children[0]);
     
+    bool hasInitial = node->children.size() > 1;
+    TuringValue *initializer = NULL;
+    if (hasInitial) {
+        initializer = compile(node->children[1]);
+    }
+    
     for (unsigned int i = 0; i < args.size();++i) {
-        bool hasInitial = node->children.size() > 1;
-        
         TuringType *type = args[i].Type;
-        TuringValue *initializer = NULL;
-        
-        if (hasInitial) {
-            initializer = compile(node->children[1]);
-        }
-        
         
         if (type->getName().compare("auto") == 0) {
             if (!hasInitial) {
@@ -1546,7 +1562,10 @@ void CodeGen::compileForStat(ASTNode *node) {
     // starting at the first number
     Builder.CreateStore(range.first->getVal(),inductionVar->getVal());
     
-    Builder.CreateBr(loopBB);
+    // if the first value is greater than the second then skip it
+    // I.E for i : 6..5
+    Value *overEnd = Builder.CreateICmpUGT(range.first->getVal(),range.second->getVal());
+    Builder.CreateCondBr(overEnd,mergeBB,loopBB);
     
     Builder.SetInsertPoint(loopBB);
     

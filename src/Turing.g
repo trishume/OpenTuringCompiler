@@ -403,11 +403,11 @@ formalargs
     ;
 
 decls  
-    :   decl (',' decl)* 
+    :   decl (',' (LT*) decl)* 
     {
         $$ = new ASTNode(Language::DECLARATIONS);
         $$->addChild($0); // first instruction
-        addParseGroupItems(&$n1,$$,1); // rest of them
+        addParseGroupItems(&$n1,$$,2); // rest of them
 
         // TYPE TRANSFORM
         typeTransform($$);
@@ -493,7 +493,7 @@ INT :   "-?[0-9]+"
     ;
 
 REAL:   "-?[0-9]*\.[0-9]+"
-    |   "-?[0-9]*\.[0-9]+[eE]" INT
+    |   "-?[0-9]*\.[0-9]+[eE]-?[0-9]+"
     ;
 
 whitespace: ( "[ \t]+" | COMMENT )*;
@@ -530,12 +530,15 @@ BIN_OP
     |   'mod' $binary_op_left 60
     |   '+' $binary_op_left 50
     |   '-' $binary_op_left 50
+    |   'xor' $binary_op_left 50
     |   '<=' $binary_op_left 40
     |   '>=' $binary_op_left 40
     |   '<' $binary_op_left 40
     |   '>' $binary_op_left 40
     |   'or' $binary_op_left 20
     |   'and' $binary_op_left 20
+    |   '|' $binary_op_left 20
+    |   '&' $binary_op_left 20
     ;
 
 EQUALITY_OP
