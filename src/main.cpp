@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     }
     
     // TODO proper base dir
-    ASTSource *source = new ASTSource("");
+    FileSource *source = new FileSource("");
     
     CodeGen gen(source);
     

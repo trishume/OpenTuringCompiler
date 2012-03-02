@@ -1,10 +1,11 @@
 include_directories (.)
 
 add_custom_command(	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g.d_parser.cpp 
-					COMMAND /usr/local/bin/make_dparser ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g -v -Xcpp)
+					COMMAND /usr/local/bin/make_dparser ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g -v -Xcpp
+					DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g)
 
 set(MySources 
-    ASTSource.cpp
+    FileSource.cpp
 	BasicScopes.cpp 
 	Executor.cpp 
 	Message.cpp 
@@ -22,7 +23,7 @@ set(MySources
 	)
 
 set(MyHeaders
-    ASTSource.h
+    FileSource.h
 	BasicScopes.h 
 	Executor.h 
 	Message.h 

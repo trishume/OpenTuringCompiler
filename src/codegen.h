@@ -14,7 +14,7 @@
 #include <iostream>
 #include <stack>
 
-#include "ASTSource.h"
+#include "FileSource.h"
 #include "TuringType.h"
 #include "TuringValue.h"
 #include "TypeManager.h"
@@ -28,7 +28,7 @@ class ASTNode;
 
 class CodeGen {
 public:
-	CodeGen(ASTSource *source);
+	CodeGen(FileSource *source);
 
 	bool execute(bool dumpModule = false);
     
@@ -102,7 +102,7 @@ protected:
     void compileForStat(ASTNode *node);
     
 
-	ASTSource *TheSource; // sounds ominous ...
+	FileSource *TheSource; // sounds ominous ...
     std::string CurFile;
     //! is the module in a state to finalize and execute?
     bool CanExecute;

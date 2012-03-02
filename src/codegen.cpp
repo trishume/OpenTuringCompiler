@@ -41,7 +41,7 @@ using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(ASTSource *source) :   TheSource(source), CurFile(""), CanExecute(true),
+CodeGen::CodeGen(FileSource *source) :   TheSource(source), CurFile(""), CanExecute(true),
 Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
