@@ -1,7 +1,10 @@
 set(TEST_FILES
 	test.t
 	test13.t
-	tonymathtest.t)
+	tonymathtest.t
+	testplanetbench.t
+	tonymathtest.t
+	heapsort.t)
 
 enable_testing()
 add_test (Compiler13Test src/compiler test.t)

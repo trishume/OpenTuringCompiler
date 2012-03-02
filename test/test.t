@@ -2,3 +2,4 @@
 % Bonus: it tests file includes
 
 include "test13.t"
+%include "testplanetbench.t"

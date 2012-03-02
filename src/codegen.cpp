@@ -124,7 +124,7 @@ bool CodeGen::execute(bool dumpModule) {
     Executor jit(TheModule);
     jit.optimize();
     Message::log("RUNNING...");
-    jit.run();
+    jit.run(false); // true = time run
     
 	return true; // success
 }

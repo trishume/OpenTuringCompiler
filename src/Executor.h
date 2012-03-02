@@ -20,7 +20,7 @@ public:
     Executor(llvm::Module *mod);
     
     void optimize();
-    bool run();
+    bool run(bool timeRun = false);
 private:
     llvm::Module *TheModule;
     llvm::ExecutionEngine *TheExecutionEngine;

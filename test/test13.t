@@ -61,7 +61,7 @@ SetHovering
 module Print13
 
     %test equality checking and code inside a module
-    if bob = 6 and ~(-9 > 7) and "bob" = "bob" and "lol" ~= "hi" and rec.hovering = 1 and rec.mat(1)(2) then
+    if bob = 6 and ~(-9 > 7) & "bob" = "bob" and "lol" ~= "hi" and rec.hovering = 1 and rec.mat(1)(2) then
         %test no newline
         put assignStr ..
         %test multi-expr

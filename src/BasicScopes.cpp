@@ -56,6 +56,7 @@ Symbol *GlobalScope::declareVar(std::string name, TuringType *type) {
                                               /*Linkage=*/GlobalValue::CommonLinkage,
                                               /*Initializer=*/Constant::getNullValue(type->getLLVMType(false)), // has initializer, specified below
                                               /*Name=*/name);
+    //gvar->setThreadLocal(true);
     Symbol *sym = new VarSymbol(gvar,type);
     
     // store in the symbol table
