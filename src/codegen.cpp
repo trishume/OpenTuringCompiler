@@ -7,6 +7,7 @@
 #include <llvm/Constants.h>
 #include <llvm/InstrTypes.h>
 #include <llvm/Attributes.h>
+#include <llvm/Support/DynamicLibrary.h>
 
 #include "language.h"
 #include "ast.h"
@@ -20,6 +21,7 @@
 for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->children.end();var < e;++var)
 
 static const std::string defaultIncludes =
+    "external proc TuringQuitWithCode(code : int)\n"
     "external proc TuringPrintInt(val : int)\n"
     "external proc TuringPrintReal(val : real)\n"
     "external proc TuringPrintBool(val : boolean)\n"
@@ -67,23 +69,40 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
 
 bool CodeGen::compileFile(std::string fileName) {
     Message::log(Twine("Compiling file \"") + fileName + "\".");
-    ASTNode *fileRoot = TheSource->parseFile(fileName, CurFile);
+    std::string path = TheSource->includeFilePath(fileName, CurFile);
+    ASTNode *fileRoot = TheSource->parseFile(path);
     
     if (fileRoot == NULL) {
-        throw Message::Exception(Twine("Failed to parse file \"") + fileName + "\".");
+        Message::error(Twine("Failed to parse file \"") + fileName + "\". Either there was a syntax error or the file does not exist.");
+        return false;
     }
-    return compileRootNode(fileRoot,fileName);
+    return compileRootNode(fileRoot,path);
+}
+
+bool CodeGen::linkLibrary(std::string libName) {
+    std::string libPath = TheSource->getLibraryPath(libName, CurFile);
+    if (libPath.empty()) {
+        Message::error(Twine("Can't find library ") + libName);
+        return false;
+    }
+    std::string errMsg;
+    bool fail = llvm::sys::DynamicLibrary::LoadLibraryPermanently (libPath.c_str(), &errMsg);
+    if (fail) {
+        Message::error(Twine("Failed to load library ") + libName + ": " + errMsg);
+        return false;
+    }
+    return true;
 }
 
 bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {    
     std::string oldCurFile = CurFile;
-    CurFile = fileName;
+    CurFile = std::string(fileName);
     bool good = false;
     try {
         good = compileBlock(fileRoot);
     } catch (Message::Exception e) {
         good = false;
-        Message::error(e.Message);
+        if(!e.Message.empty()) Message::error(e.Message);
         
     }
     CurFile = oldCurFile;
@@ -408,7 +427,7 @@ bool CodeGen::compileBlock(ASTNode *node) {
 	if(node->root == Language::BLOCK) {
 		ITERATE_CHILDREN(node,child) {
 			if(!compileStat(*child)) {
-				throw Message::Exception("Failed to compile statement in block.");
+				throw Message::Exception("");
 			}
             // used for returns and exits
             // instructions past this point will be unreachable so quit early
@@ -433,6 +452,8 @@ bool CodeGen::compileStat(ASTNode *node) {
     switch(node->root) {
         case Language::EXTERN_DECL: // extern declaration
             return compileFunctionPrototype(node->children[0],node->str) != NULL;
+        case Language::LIBRARY_DECL:           
+            return linkLibrary(node->str);
         case Language::FUNC_DEF:
             return compileFunction(node);
         case Language::MODULE_DEF:
@@ -468,9 +489,15 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::GET_STAT:
             compileGetStat(node);
             return true;
-        case Language::INCLUDE_STAT:
-            compileFile(node->str);
+        case Language::QUIT_STAT:
+        {
+            TuringValue *errCode = promoteType(compile(node->children[0])
+                                               , Types.getType("int"));
+            Builder.CreateCall(TheModule->getFunction("TuringQuitWithCode"), errCode->getVal());
             return true;
+        }
+        case Language::INCLUDE_STAT:
+            return compileFile(node->str);
         case Language::RETURN_STAT:
             compileReturn();
             return true;

@@ -21,10 +21,8 @@ public:
     FileSource(std::string baseDir);
     
     //! parses a file and returns the AST
-    //! \param fileName the relative file path of the file. Turing form.
-    //! \param includedFrom the relative path of the file to which fileName is relative. Turing form.
-    //! \returns the parsed AST or NULL on parsing error
-    ASTNode *parseFile(const std::string &fileName, const std::string &includedFrom);
+    //! \param fileName the absolute path to the file, os native.
+    ASTNode *parseFile(const std::string &filePath);
     //! get the full path of a library to load
     //! \param libName  the name of the dynamic library, no prefixes or suffixes
     //!                 for example "stdlib"

@@ -29,6 +29,26 @@ extern "C" {
         return sin(MyDegToRad(deg));
     }
 
+    // these wrappers are needed to allow C++ overloading to the double versions
+    TReal Turing_Stdlib_Math_Arctan(TReal rad) {
+        return atan(rad);
+    }
+    TReal Turing_Stdlib_Math_Cos(TReal rad) {
+        return cos(rad);
+    }
+    TReal Turing_Stdlib_Math_Sin(TReal rad) {
+        return sin(rad);
+    }
+    TReal Turing_Stdlib_Math_Sqrt(TReal val) {
+        return sqrt(val);
+    }
+    TReal Turing_Stdlib_Math_Exp(TReal val) {
+        return exp(val);
+    }
+    TReal Turing_Stdlib_Math_Ln(TReal val) {
+        return log(val);
+    }
+
     //
 	// Generate a random number between 0 and 1
 	// return a uniform number in [0,1].

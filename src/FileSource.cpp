@@ -24,29 +24,34 @@ FileSource::FileSource(std::string baseDir) : BasePath(baseDir) {
     Parser = new_D_Parser(&parser_tables_gram, sizeof(ASTNode*));
 }
 
-ASTNode *FileSource::parseFile(const std::string &fileName, const std::string &includedFrom) {   
-    std::string path = FileSource::includeFilePath(fileName, includedFrom);    
-    return parseString(getFileContents(path));
+ASTNode *FileSource::parseFile(const std::string &path) {
+    std::string parseFile = getFileContents(path);
+    if (parseFile.empty()) {
+        return NULL;
+    }
+    return parseString(parseFile);
 }
 
 std::string FileSource::getLibraryPath(const std::string &libName, const std::string &includedFrom) {
-    std::string path = FileSource::includeFilePath(libName, includedFrom);
+    std::string path;
     
     // library path is OS dependent. Find the right one.
     // TODO use a preprocessor define to stop .so includes on windows and vice-versa
     
-    std::string dllpath = (llvm::Twine(path) + ".dll").str();
-    std::ifstream dll_file(dllpath.c_str());
+    path = FileSource::includeFilePath((llvm::Twine(libName) + ".dll").str(),
+                                       includedFrom);
+    std::ifstream dll_file(path.c_str());
     if (dll_file.good())
     {
-        return dllpath;
+        return path;
     }
     
-    std::string sopath = (llvm::Twine("lib") + path + ".so").str();
-    std::ifstream so_file(sopath.c_str());
+    path = FileSource::includeFilePath((llvm::Twine("lib") + libName + ".so").str(),
+                                       includedFrom);
+    std::ifstream so_file(path.c_str());
     if (so_file.good())
     {
-        return sopath;
+        return path;
     }
     
     return ""; // FAIL

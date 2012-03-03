@@ -33,6 +33,7 @@ public:
 	bool execute(bool dumpModule = false);
     
     bool compileFile(std::string fileName);
+    bool linkLibrary(std::string libName);
 
 protected:
     bool compileRootNode(ASTNode *fileRoot, std::string fileName);

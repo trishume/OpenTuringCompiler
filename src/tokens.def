@@ -7,10 +7,12 @@ AST_TOKEN(DEFERRED_TYPE) /* children: string: */
 AST_TOKEN(VOID_TYPE) /* children: */
 AST_TOKEN(PUT_STAT) /* children: expr+ string: (.. if no newline) */
 AST_TOKEN(GET_STAT) /* children: assignableExpression string: (* if read whole line) */
+AST_TOKEN(QUIT_STAT) /* children: errCode string: */
 AST_TOKEN(INCLUDE_STAT) /* children: string: file name to include */
 AST_TOKEN(VAR_DECL) /* children: decls value? string: */
 AST_TOKEN(CONST_DECL) /* children: decl value string: */
 AST_TOKEN(EXTERN_DECL) /* children: prototype string: alias? */
+AST_TOKEN(LIBRARY_DECL) /* children: string: libname */
 AST_TOKEN(TYPE_DECL) /* children: type string: typeID */
 AST_TOKEN(RANGE) /* children: begin end string: */
 AST_TOKEN(RANGE_SPECIAL_END) /* children: string: "*" or "char" */

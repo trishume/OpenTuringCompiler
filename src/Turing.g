@@ -152,6 +152,7 @@ instructionOrDef
     :   instruction {$$ = $0; /* pass up */}
     |   funcdef {$$ = $0; /* pass up */}
     |   moduledef {$$ = $0; /* pass up */}
+    |   libdecl {$$ = $0; /* pass up */}
     ;
     
 instruction 
@@ -160,6 +161,7 @@ instruction
     |   typedecl {$$ = $0; /* pass up */}
     |   put {$$ = $0; /* pass up */}
     |   get {$$ = $0; /* pass up */}
+    |   quitstat {$$ = $0; /* pass up */}
     |   includestat {$$ = $0; /* pass up */}
     |   constdecl {$$ = $0; /* pass up */}
     |   ifstat {$$ = $0; /* pass up */}
@@ -223,6 +225,15 @@ get :   'get' (':' assignableExpression ',')? assignableExpression (':' '*')?
         $$->addChild($2); // first expr
     }
     ;
+
+quitstat
+    : 'quit' ('<'?) ':' expr
+    {
+        $$ = new ASTNode(Language::QUIT_STAT,$n0.start_loc.line);
+        $$->addChild($3);
+    }
+    ;
+
 includestat :   'include' '"' STRING '"'
         {
             $$ = new ASTNode(Language::INCLUDE_STAT,$n0.start_loc.line);
@@ -303,7 +314,7 @@ ifstat
 elsifstat   
     :   'elsif' expr 'then' LT* instructions LT* (elsifstat?)
     { 
-        ASTNode *innerIf = new ASTNode(Language::IF_STAT);
+        ASTNode *innerIf = new ASTNode(Language::IF_STAT,$n0.start_loc.line);
         innerIf->addChild($1); // cond
         innerIf->addChild($4); // block
         addParseTokens(&$n6,innerIf); // elsif
@@ -459,7 +470,15 @@ externdecl
         $$->addChild($4);
     }
     ;
-    
+
+libdecl
+    : 'linklibrary' '"' ID '"' 
+    {
+        $$ = new ASTNode(Language::LIBRARY_DECL,$n0.start_loc.line);
+        $$->str = nodeString($n2);
+    }
+    ;
+
 funcdef 
     :   prototype LT+ instructions LT+ 'end' ID
     {
@@ -564,17 +583,17 @@ UNARY_OPERATOR
     | '~' $unary_op_right 90
     ;
 POINTER_FIELD_REF_OPERATOR
-    : '->' $binary_op_left 80
+    : '->' $binary_op_left 110
     ;
 FIELD_REF_OPERATOR
-    : '.' $binary_op_left 80
+    : '.' $binary_op_left 110
     ;
 
 //expressions
 
 expr
     : primaryExpression {$$ = $0; /* pass up */}
-    | UNARY_OPERATOR primaryExpression
+    | UNARY_OPERATOR expr
     {
         $$ = new ASTNode(Language::UNARY_OP,$n0.start_loc.line);
         $$->str = nodeString($n0); // op string

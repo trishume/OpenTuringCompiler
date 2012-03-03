@@ -26,6 +26,10 @@ typedef struct {
 
 extern "C" {
     
+    void TuringQuitWithCode(TInt errorCode) {
+        Message::runtimeError(Twine("Program quit with error code:") + Twine(errorCode));
+    }
+    
     void TuringPrintInt(TInt num) {
         std::cout << num;
     }

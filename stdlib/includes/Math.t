@@ -3,6 +3,51 @@
 % Many things are included here but not implemented in the library.
 % They actually reference math.h functions that are automatically linked in.
 
+%
+% Determine the arc tangent of the given value, with result in radians.
+%
+external "arctan" function atan (r : real) : real
+
+%
+% Determine the arc tangent of the given value, with result in degrees.
+%
+external "arctand" function Turing_Stdlib_Math_Arctand (r : real) : real
+
+%
+% Determine the cosine of the given angle in radians.
+%
+external "cos" function Turing_Stdlib_Math_Cos (r : real) : real
+
+%
+% Determine the cosine of the given angle in degrees.
+%
+external "cosd" function Turing_Stdlib_Math_Cosd (r : real) : real
+
+%
+% Determine the natural exponent (e ** r) of the given value.
+%
+external "exp" function Turing_Stdlib_Math_Exp (r : real) : real
+
+%
+% Determine the natural logarithm of the given value.
+%
+external "ln" function Turing_Stdlib_Math_Ln (r : real) : real
+
+%
+% Determine the sine of the given angle in radians.
+%
+external "sin" function Turing_Stdlib_Math_Sin (r : real) : real
+
+%
+% Determine the sine of the given angle in degrees.
+%
+external "sind" function Turing_Stdlib_Math_Sind (r : real) : real
+
+%
+% Determine the square root of the given value.
+%
+external function sqrt (r : real) : real
+
 module Math
     % Constants
     const E : real := 2.71828182845904523536
@@ -82,61 +127,20 @@ module Rand
     Randomize
 end Rand
 
-%
-% Determine the arc tangent of the given value, with result in radians.
-%
-external "arctan" function atan (r : real) : real
-
-%
-% Determine the arc tangent of the given value, with result in degrees.
-%
-external "arctand" function Turing_Stdlib_Math_Arctand (r : real) : real
-
-%
-% Determine the cosine of the given angle in radians.
-%
-external function cos (r : real) : real
-
-%
-% Determine the cosine of the given angle in degrees.
-%
-external "cosd" function Turing_Stdlib_Math_Cosd (r : real) : real
-
-%
-% Determine the natural exponent (e ** r) of the given value.
-%
-external function exp (r : real) : real
-
-%
-% Determine the natural logarithm of the given value.
-%
-external "ln" function log (r : real) : real
-
-%
-% Determine the sine of the given angle in radians.
-%
-external function sin (r : real) : real
-
-%
-% Determine the sine of the given angle in degrees.
-%
-external "sind" function Turing_Stdlib_Math_Sind (r : real) : real
-
-%
-% Determine the square root of the given value.
-%
-external function sqrt (r : real) : real
+/* Math function exceptions */
+const excpRealOverflow := 51
+const excpTrigArgumentTooLarge := 100
 
 %
 % Determine the arc sine of the given value, with result in radians.
 %
 function arcsin (r : real) : real
     if r = 1 then
-        result PI / 2
+        result Math.PI / 2
     elsif r = 0 then
         result 0
     elsif r = -1 then
-        result - PI / 2
+        result - Math.PI / 2
     elsif r < -1 or r > 1 then
         quit < : excpTrigArgumentTooLarge
     elsif r < 0 then
@@ -172,15 +176,15 @@ function arccos (r : real) : real
     if r = 1 then
         result 0
     elsif r = 0 then
-        result PI / 2
+        result Math.PI / 2
     elsif r = -1 then
-        result PI
+        result Math.PI
     elsif r < -1 or r > 1 then
         quit < : excpTrigArgumentTooLarge
     elsif r > 0 then
         result arctan (sqrt ((1 - r * r) / (r * r)))
     else
-        result PI - arctan (sqrt ((1 - r * r) / (r * r)))
+        result Math.PI - arctan (sqrt ((1 - r * r) / (r * r)))
     end if
 end arccos
 

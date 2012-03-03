@@ -14,8 +14,8 @@ set(StdLibIncludes
 	includes/Math.t
 	)
 
-SET (LIB_TYPE SHARED)
-add_library(OpenTuringStdlib ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes})
+# module builds a plugin-like library
+add_library(OpenTuringStdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes})
 
 # install
 set(STDLIB_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib)
