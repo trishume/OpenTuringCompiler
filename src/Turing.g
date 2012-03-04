@@ -329,12 +329,29 @@ elsifstat
     ;
 
 forstat 
-    :   'for' ID ':' range LT+ instructions LT* 'end' 'for'
+    :   'for' ('decreasing')? ID ':' range ('by' expr)? LT+ instructions LT* 'end' 'for'
     { 
         $$ = new ASTNode(Language::FOR_STAT,$n0.start_loc.line);
-        $$->str = nodeString($n1); // loop variable
-        $$->addChild($3); // range
-        $$->addChild($5); // block
+        $$->str = nodeString($n2); // loop variable
+
+        ASTNode *isDecreasing = new ASTNode(Language::BOOL_LITERAL);
+        if(d_get_number_of_children(&$n1) > 0) {
+            isDecreasing->str = "true";
+        } else {
+            isDecreasing->str = "false";
+        }
+        $$->addChild(isDecreasing);
+
+        $$->addChild($4); // range
+
+        if(addParseGroupItems(&$n5,$$,1) == 0) { // by increment
+            // if the increment was not supplied it is one
+            ASTNode *oneLiteral = new ASTNode(Language::INT_LITERAL);
+            oneLiteral->str = "1";
+            $$->addChild(oneLiteral);
+        }
+
+        $$->addChild($7); // block
     }
     ;
 loopstat

@@ -667,8 +667,10 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
         }
         binOp = Instruction::FDiv;
     } else if (op.compare("div") == 0) {
-        if (fp) { // TODO resolve this
-            throw Message::Exception("Can't use 'div' on real numbers yet. Try using '/' and then rounding");
+        if (fp) { // floating point 'div' just truncates the division
+            Value *unTruncated = Builder.CreateFDiv(L->getVal(), R->getVal());
+            Value *truncated = Builder.CreateFPTrunc(unTruncated, Types.getType("int")->getLLVMType());
+            return new TuringValue(truncated,Types.getType("int"));
         }
         binOp = Instruction::SDiv;
     } else if (op.compare("xor") == 0) {
@@ -1574,6 +1576,12 @@ void CodeGen::compileLoopStat(ASTNode *node) {
 //! works on LOOP_STAT nodes
 void CodeGen::compileForStat(ASTNode *node) {
     
+    // first child is a bool literal of wether the loop is decreasing.
+    bool isDecreasing = (node->children[0]->str.compare("true") == 0);
+    // if the loop is decreasing we check if it is smaller than the end, otherwise, larger
+    CmpInst::Predicate donePred = isDecreasing ? CmpInst::ICMP_SLT : CmpInst::ICMP_SGT;
+    Instruction::BinaryOps loopNextOp = isDecreasing ? Instruction::Sub : Instruction::Add;
+    
     Function *theFunction = currentFunction();
     
     BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "for", theFunction);
@@ -1583,15 +1591,16 @@ void CodeGen::compileForStat(ASTNode *node) {
     
     // loop induction variable. node->str is the name
     Symbol *inductionVar = Scopes->curScope()->declareVar(node->str,Types.getType("int"));
+    TuringValue *increment = promoteType(compile(node->children[2]), Types.getType("int"), "for loop increment");
     
-    std::pair<TuringValue*,TuringValue*> range = compileRange(node->children[0]);
+    std::pair<TuringValue*,TuringValue*> range = compileRange(node->children[1]);
     
     // starting at the first number
     Builder.CreateStore(range.first->getVal(),inductionVar->getVal());
     
     // if the first value is greater than the second then skip it
     // I.E for i : 6..5
-    Value *overEnd = Builder.CreateICmpUGT(range.first->getVal(),range.second->getVal());
+    Value *overEnd = Builder.CreateICmp(donePred,range.first->getVal(),range.second->getVal());
     Builder.CreateCondBr(overEnd,mergeBB,loopBB);
     
     Builder.SetInsertPoint(loopBB);
@@ -1600,21 +1609,20 @@ void CodeGen::compileForStat(ASTNode *node) {
     BasicBlock *prevExitBlock = ExitBlock;
     ExitBlock = mergeBB;
     
-    compileBlock(node->children[1]);
+    compileBlock(node->children[3]);
     Scopes->popScope();
     
     // stack like. return to previous one
     ExitBlock = prevExitBlock;
     
     if (!isCurBlockTerminated()) {
-        // increment = load -> add 1 -> store
-        Value *oneConst = ConstantInt::get(getGlobalContext(), APInt(32,1));
-        Value *incremented = Builder.CreateAdd(Builder.CreateLoad(inductionVar->getVal(),"inductvarval"),
-                                               oneConst,"incremented");
+        // increment = load -> add/sub 1 -> store
+        Value *incremented = Builder.CreateBinOp(loopNextOp, Builder.CreateLoad(inductionVar->getVal(),"inductvarval"),
+                                               increment->getVal(),"incremented");
         Builder.CreateStore(incremented,inductionVar->getVal());
         
         // finished yet?
-        Value *done = Builder.CreateICmpUGT(incremented,range.second->getVal());
+        Value *done = Builder.CreateICmp(donePred,incremented,range.second->getVal());
         Builder.CreateCondBr(done,mergeBB,loopBB);
     }
     
