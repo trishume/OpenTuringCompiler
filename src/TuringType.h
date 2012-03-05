@@ -54,12 +54,14 @@ protected:
 
 class TuringArrayType : public TuringType {
 public:
-    //! \param upper the size of the array. 0 for any size (used for parameters)
-    TuringArrayType(TuringType *elementType, unsigned int upper);
+    //! \param upper the size of the array.
+    TuringArrayType(TuringType *elementType, unsigned int upper, bool anySize = false, bool flexible = false);
     //! \param isReference returns {i32, [Size x Type]} normally, *{i32, [0 x Type]} by reference
     virtual llvm::Type *getLLVMType(bool isReference = false);
     TuringType *getElementType() {return ElementType;};
     unsigned int getSize() {return Size;}
+    bool isAnySize() {return AnySize;}
+    bool isFlexible() {return Flexible;}
     
     virtual bool compare(TuringType *other);
     
@@ -75,6 +77,9 @@ public:
 protected:
     TuringType *ElementType;
     unsigned int Size;
+    //! true if it is an array 1..*
+    bool AnySize;
+    bool Flexible;
     std::string Name;
 };
 

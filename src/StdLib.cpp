@@ -134,4 +134,16 @@ extern "C" {
         }
         return index - 1;
     }
+    //! arr may be null to allocate a new array
+    void *TuringAllocateFlexibleArray(void *arr,TInt byteSize, TInt length) {
+        size_t byteSize_size; // TInt and size_t may be different sizes so allocate a buffer.
+        byteSize_size = byteSize;
+        void *buffer = realloc(arr,byteSize_size);
+        
+        // set the length part of the struct. TString is just used for the length.
+        TString *castedBuf = ((TString*)buffer);
+        castedBuf->length = length;
+        
+        return buffer;
+    }
 }

@@ -21,7 +21,6 @@
 class TypeManager {
 public:
     TuringType *getType(std::string name);
-    TuringType *getArrayType(TuringType *elementType, unsigned int upper);
     bool addType(std::string name,TuringType *turType);
     bool addTypeLLVM(std::string name,llvm::Type *llvmType);
     bool aliasType(TuringType *type, std::string aliasName);

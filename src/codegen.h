@@ -39,14 +39,19 @@ protected:
     bool compileRootNode(ASTNode *fileRoot, std::string fileName);
     llvm::Function *currentFunction();
     bool isProcedure(llvm::Function *f);
+    bool isFlexibleArray(TuringType *type);
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
     
     TuringValue *getConstantInt(int index);
     llvm::Value *compileByteSize(TuringType *type);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
+    llvm::Value *compileArrayByteSize(llvm::Type *arrayType,
+                                      llvm::Value *arrayLength);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
     std::pair<TuringValue*,TuringValue*> compileRange(ASTNode *node);
+    void compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, 
+                                      llvm::Value *newSize = NULL);
     void compileInitializeComplex(Symbol *declared);
     
     TuringType *getType(ASTNode *node);
@@ -59,7 +64,7 @@ protected:
 	bool compileBlock(ASTNode *node);
     bool compileStat(ASTNode *node);
 	TuringValue *compile(ASTNode *node);
-    Symbol *compileLHS(ASTNode *node);
+    Symbol *compileLHS(ASTNode *node, bool autoDeref = true);
     
     TuringValue *compileStringLiteral(const std::string &str);
 
@@ -77,6 +82,7 @@ protected:
     
     void compilePutStat(ASTNode *node);
     void compileGetStat(ASTNode *node);
+    void compileResizeStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     void compileConstDecl(ASTNode *node);
     

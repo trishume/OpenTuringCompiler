@@ -8,6 +8,7 @@ AST_TOKEN(VOID_TYPE) /* children: */
 AST_TOKEN(PUT_STAT) /* children: expr+ string: (.. if no newline) */
 AST_TOKEN(GET_STAT) /* children: assignableExpression string: (* if read whole line) */
 AST_TOKEN(QUIT_STAT) /* children: errCode string: */
+AST_TOKEN(RESIZE_STAT) /* children: flexibleArrRef newSize string: */
 AST_TOKEN(INCLUDE_STAT) /* children: string: file name to include */
 AST_TOKEN(VAR_DECL) /* children: decls value? string: */
 AST_TOKEN(CONST_DECL) /* children: decl value string: */

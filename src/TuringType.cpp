@@ -31,7 +31,15 @@ bool TuringArrayType::compare(TuringType *other) {
     
     TuringArrayType *arrTy = static_cast<TuringArrayType*>(other);
     
-    return getSize() == arrTy->getSize() && getElementType()->compare(arrTy->getElementType());
+    if (isFlexible() && !arrTy->isFlexible()) {
+        return false;
+    }
+    if (isAnySize() && !arrTy->isAnySize()) {
+        return false;
+    }
+    
+    return getSize() == arrTy->getSize() && // same size
+            getElementType()->compare(arrTy->getElementType()); // same type
 }
 
 Type *BasicTuringType::getLLVMType(bool isReference) {
@@ -46,16 +54,25 @@ void BasicTuringType::setName(const std::string &newName) {
     Name = newName;
 }
 
-TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int upper) : ElementType(elementType), Size(upper) {
-    Twine sizeTwine = Size == 0 ? "*" : Twine(Size);
-    Name = (Twine("array 1..") + sizeTwine + " of " + ElementType->getName()).str();
+TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int upper, bool anySize, bool flexible) : ElementType(elementType), Size(upper), AnySize(anySize), Flexible(flexible) {
+    Twine sizeTwine = AnySize ? "*" : Twine(Size);
+    Twine flexTwine = Flexible ? Twine("flexible ") : Twine("");
+    Name = (flexTwine + "array 1.." + sizeTwine + " of " + ElementType->getName()).str();
 }
 
 Type *TuringArrayType::getLLVMType(bool isReference) {
+    unsigned int size = AnySize ? 0 : Size;
+    
     std::vector<Type*> structElements;
     structElements.push_back(Type::getInt32Ty(getGlobalContext())); //size
-    structElements.push_back(ArrayType::get(ElementType->getLLVMType(),(isReference ? 0 : Size))); // array
+    structElements.push_back(ArrayType::get(ElementType->getLLVMType(),
+                                            ((isReference||Flexible) ? 0 : size))); // array
     Type *arrType = StructType::get(getGlobalContext(),ArrayRef<Type*>(structElements));
+    
+    // flexible arrays are always pointers to a buffer
+    if (Flexible) {
+        return arrType->getPointerTo();
+    }
     
     if (isReference) {
         return arrType->getPointerTo();

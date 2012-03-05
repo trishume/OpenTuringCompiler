@@ -162,6 +162,7 @@ instruction
     |   put {$$ = $0; /* pass up */}
     |   get {$$ = $0; /* pass up */}
     |   quitstat {$$ = $0; /* pass up */}
+    |   newstat {$$ = $0; /* pass up */}
     |   includestat {$$ = $0; /* pass up */}
     |   constdecl {$$ = $0; /* pass up */}
     |   ifstat {$$ = $0; /* pass up */}
@@ -189,12 +190,16 @@ type
         $$ = new ASTNode(Language::SIZED_STRING_TYPE,$n0.start_loc.line);
         $$->str = nodeString($n2); // string size name
     }
-    |   'array' range (','range)* 'of' type
+    |   'flexible'? 'array' range (','range)* 'of' type
     { 
         $$ = new ASTNode(Language::ARRAY_TYPE,$n0.start_loc.line);
-        $$->addChild($4); // type
-        $$->addChild($1); // first range
-        addParseGroupItems(&$n2,$$,1); // rest of them
+        $$->addChild($5); // type
+        $$->addChild($2); // first range
+        addParseGroupItems(&$n3,$$,1); // rest of them
+
+        if(d_get_number_of_children(&$n0) > 0) {
+            $$->str = "flexible";
+        }
     }
     |   'record' (LT*) decls ((LT+) decls)* LT* 'end' 'record'
     { 
@@ -230,6 +235,15 @@ quitstat
     : 'quit' ('<'?) ':' expr
     {
         $$ = new ASTNode(Language::QUIT_STAT,$n0.start_loc.line);
+        $$->addChild($3);
+    }
+    ;
+
+newstat
+    : 'new' assignableExpression ',' expr // flexible array resize
+    {
+        $$ = new ASTNode(Language::RESIZE_STAT,$n0.start_loc.line);
+        $$->addChild($1);
         $$->addChild($3);
     }
     ;
@@ -676,10 +690,10 @@ assignableExpression
     }
     |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args or array index
     {
-    $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
-    $$->addChild($0);
-    $$->addChild($2);
-    addParseGroupItems(&$n3,$$,2); // rest of args
+        $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
+        $$->addChild($0);
+        $$->addChild($2);
+        addParseGroupItems(&$n3,$$,2); // rest of args
     }
     |   possibleProcedureIdentifier {$$ = $0; /* pass up */}
     ;
@@ -703,7 +717,7 @@ possibleProcedureIdentifier
     }
     |   ID
     {
-    $$ = new ASTNode(Language::VAR_REFERENCE,$n0.start_loc.line);
-    $$->str = nodeString($n0); // var identifier
+        $$ = new ASTNode(Language::VAR_REFERENCE,$n0.start_loc.line);
+        $$->str = nodeString($n0); // var identifier
     }
     ;

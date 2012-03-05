@@ -37,6 +37,7 @@ static const std::string defaultIncludes =
     "external proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
     "external fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
     "external fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
+    "external fcn TuringAllocateFlexibleArray(arr : voidptr, byteSize,length : int) : voidptr\n"
 ;
 
 using namespace llvm;
@@ -160,6 +161,14 @@ bool CodeGen::isProcedure(Function *f) {
     return f->getReturnType()->isVoidTy();
 }
 
+bool CodeGen::isFlexibleArray(TuringType *type) {
+    if (!type->isArrayTy()) {
+        return false;
+    }
+    
+    return static_cast<TuringArrayType*>(type)->isFlexible();
+}
+
 bool CodeGen::isMainFunction(Function *f) {
     return f == MainFunction;
 }
@@ -190,20 +199,24 @@ Value *CodeGen::compileByteSize(TuringType *turType) {
 //! Arrays are a special case for getting the byte size because the type {i32,[0 x type]}
 //! is larger than LLVM thinks it is. use the length value to get the actual size.
 Value *CodeGen::compileArrayByteSize(Value *arrayRef) {
+    return compileArrayByteSize(arrayRef->getType(),compileArrayLength(arrayRef));
+}
+
+Value *CodeGen::compileArrayByteSize(Type *arrayType,Value *arrayLength) {
     std::vector<Value*> indices;
     // depointerize
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,0)));
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
     // index it with the length
-    indices.push_back(compileArrayLength(arrayRef));
+    indices.push_back(arrayLength);
     
     // double checking, this should never happen
-    if (!arrayRef->getType()->isPointerTy()) {
+    if (!arrayType->isPointerTy()) {
         throw Message::Exception("Can't find the length of a non-referenced array.");
     }
     
-    Value *sizePtr = Builder.CreateGEP(ConstantPointerNull::get(cast<PointerType>(arrayRef->getType())),indices,"arraysizeptr");
+    Value *sizePtr = Builder.CreateGEP(ConstantPointerNull::get(cast<PointerType>(arrayType)),indices,"arraysizeptr");
     return Builder.CreatePointerCast(sizePtr,Types.getType("int")->getLLVMType(),"arrlengthint");
 }
 
@@ -231,26 +244,35 @@ std::pair<TuringValue*,TuringValue*> CodeGen::compileRange(ASTNode *node) {
     return std::pair<TuringValue*,TuringValue*>(start,end);
 }
 
+void CodeGen::compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, Value *newSize) {
+    // caller should check this but just to be safe...
+    if (!isFlexibleArray(arr->getType())) {
+        throw Message::Exception("Can't resize something that is not a flexible array.");
+    }
+    TuringArrayType *arrtype = static_cast<TuringArrayType*>(arr->getType());
+    
+    Value *prevArr;
+    if(allocateNew) {
+        prevArr = ConstantPointerNull::get(cast<PointerType>(Types.getType("voidptr")->getLLVMType(true)));
+    } else {
+        // the symbol passed is a pointer to a buffer, load the symbol and then cast it to a voidptr
+        Value *arrBuffer = Builder.CreateLoad(arr->getVal(), "flexibleArrBuffer");
+        prevArr = Builder.CreatePointerCast(arrBuffer, Types.getType("voidptr")->getLLVMType(true));
+    }
+    
+    // if newSize is not null, use it
+    Value *arrLength = newSize ? newSize : getConstantInt(arrtype->getSize())->getVal();
+    Value *byteSize = compileArrayByteSize(arrtype->getLLVMType(true), arrLength);
+    Value *buffer = Builder.CreateCall3(TheModule->getFunction("TuringAllocateFlexibleArray"),
+                                        prevArr,byteSize,arrLength);
+    Value *castedBuffer = Builder.CreatePointerCast(buffer, arrtype->getLLVMType(true));
+    Builder.CreateStore(castedBuffer,arr->getVal()); // store the pointer to the buffer
+}
+
 //! properly initializes complex data structures. It's main duty is initializing the length of arrays.
 //! \param declared A pointer to a newly allocated buffer to be initialized
 void CodeGen::compileInitializeComplex(Symbol *declared) {
-    // must initialize the length part of the array struct
-    if (declared->getType()->isArrayTy()) {
-        TuringArrayType *arrtype = static_cast<TuringArrayType*>(declared->getType());
-        Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared->getVal(),0,0,"arrlengthptr");
-        Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
-        Builder.CreateStore(length,arrLengthPtr);
-        
-        // initialize the subelements
-        // TODO make the loop at runtime not compile time. This is inefficient and hacky.
-        if (arrtype->getElementType()->isComplexTy()) {
-            // use 1 and <= because we are using Turing's one based indices
-            for (unsigned int i = 1; i <= arrtype->getSize(); ++i) {
-                Symbol *indexed = abstractCompileIndex(declared, getConstantInt(i));
-                compileInitializeComplex(indexed);
-            }
-        }
-    }
+    // might need to initialize record fields
     if (declared->getType()->isRecordTy()) {
         TuringRecordType *recType = static_cast<TuringRecordType*>(declared->getType());
         // initialize fields if they are complex
@@ -262,6 +284,36 @@ void CodeGen::compileInitializeComplex(Symbol *declared) {
                 // initialize it
                 compileInitializeComplex(fieldSym);
             }            
+        }
+        return;
+    }
+    
+    // only arrays from here on
+    if (!declared->getType()->isArrayTy()) {
+        return;
+    }
+    
+    TuringArrayType *arrtype = static_cast<TuringArrayType*>(declared->getType());
+    
+    //! flexible arrays are heap allocated with a special function
+    if (arrtype->isFlexible()) {
+        compileAllocateFlexibleArray(declared, true); // true = allocate new
+        // TODO initialize elements
+        return;
+    }
+    
+    // must initialize the length part of the array struct   
+    Value *arrLengthPtr = Builder.CreateConstGEP2_32(declared->getVal(),0,0,"arrlengthptr");
+    Value *length = ConstantInt::get(getGlobalContext(),APInt(32,arrtype->getSize()));
+    Builder.CreateStore(length,arrLengthPtr);
+    
+    // initialize the subelements
+    // TODO make the loop at runtime not compile time. This is inefficient and hacky.
+    if (arrtype->getElementType()->isComplexTy()) {
+        // use 1 and <= because we are using Turing's one based indices
+        for (unsigned int i = 1; i <= arrtype->getSize(); ++i) {
+            Symbol *indexed = abstractCompileIndex(declared, getConstantInt(i));
+            compileInitializeComplex(indexed);
         }
     }
 }
@@ -304,6 +356,7 @@ TuringType *CodeGen::getRecordType(ASTNode *node) {
 // TODO TEST fancy logic. Test this.
 TuringType *CodeGen::getArrayType(ASTNode *node) {
     TuringType *arrayType = getType(node->children[0]);
+    bool isFlexible = (node->str.compare("flexible") == 0);
     // the node can contain multiple ranges. These denote multi-dimensional arrays.
     // Since these are just arrays in arrays. We keep wrapping the previous type
     // in an array until there are no more ranges. Starting from the end so that
@@ -312,11 +365,13 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
         ASTNode *range = node->children[i];
         
         TuringValue *upperVal;
+        bool isAnySize = false;
         // arrays support special endpoints like 1..* or 1..char
         if (range->children[1]->root == Language::RANGE_SPECIAL_END) {
             ASTNode *specialEnd = range->children[1];
             if (specialEnd->str.compare("*") == 0) {
                 upperVal = getConstantInt(0);
+                isAnySize = true;
             } else if (specialEnd->str.compare("char") == 0) {
                 upperVal = getConstantInt(255); // char array size
             } else {
@@ -352,7 +407,7 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
             throw Message::Exception("Array limit out of bounds.");
         }
         // wrap it up
-        arrayType = Types.getArrayType(arrayType,upper);
+        arrayType = new TuringArrayType(arrayType,upper,isAnySize,isFlexible);
     }
     return arrayType;
 }
@@ -396,9 +451,15 @@ TuringValue *CodeGen::promoteType(TuringValue *val, TuringType *destType, Twine 
         return val;
     }
     
+    // any pointer can be cast to voidptr
+    if (destType->getName().compare("voidptr") == 0 && val->getType()->getLLVMType(true)->isPointerTy()) {
+        Value *casted = Builder.CreatePointerCast(val->getVal(), destType->getLLVMType());
+        return new TuringValue(casted,Types.getType("voidptr"));
+    }
+    
     // any array can be converted to an array 1..*
     if (val->getType()->isArrayTy() && destType->isArrayTy() && 
-        static_cast<TuringArrayType*>(destType)->getSize() == 0) {
+        static_cast<TuringArrayType*>(destType)->isAnySize()) {
         return new TuringValue(val->getVal(),destType);
     }
     
@@ -488,6 +549,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true;
         case Language::GET_STAT:
             compileGetStat(node);
+            return true;
+        case Language::RESIZE_STAT:
+            compileResizeStat(node);
             return true;
         case Language::QUIT_STAT:
         {
@@ -832,23 +896,29 @@ TuringValue *CodeGen::abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bo
     return new TuringValue(ret,Types.getType("boolean"));
 }
 
-Symbol *CodeGen::compileLHS(ASTNode *node) {
+//! \param autoDeref    Wether to dereference pointers to flexible array buffers.
+//!                     Normally true except when buffer location needs to be changed.
+Symbol *CodeGen::compileLHS(ASTNode *node, bool autoDeref) {
+    Symbol *result;
     switch (node->root) {
         case Language::VAR_REFERENCE:
-            return Scopes->curScope()->resolve(node->str);
+            result = Scopes->curScope()->resolve(node->str);
+            break;
         case Language::FIELD_REF_OP:
         {
             ASTNode *lhs = node->children[0];
             // is it a module? If so, retrieve its scope and resolve the variable without searching up.
             if (lhs->root == Language::VAR_REFERENCE &&
                 Scopes->namedScopeExists(lhs->str)) {
-                return Scopes->getNamedScope(lhs->str)->resolveVarThis(node->str);
+                result = Scopes->getNamedScope(lhs->str)->resolveVarThis(node->str);
+                break;
             }
             
             // is it a record?
-            Symbol *rec = compileLHS(lhs);
+            Symbol *rec = compileLHS(lhs,autoDeref);
             if (rec->getType()->isRecordTy()) {
-                return compileRecordFieldRef(rec, node->str);
+                result = compileRecordFieldRef(rec, node->str);
+                break;
             }
             
             // TODO other reference types
@@ -857,18 +927,26 @@ Symbol *CodeGen::compileLHS(ASTNode *node) {
         case Language::CALL:
         {
             // must be an array reference
-            Symbol *callee = compileLHS(node->children[0]);
+            Symbol *callee = compileLHS(node->children[0],autoDeref);
             if (!callee->getType() || !callee->getType()->isArrayTy()) {
                 throw Message::Exception("Can't index something that isn't an array.");
             }
             
-            return compileIndex(callee,node);
+            result = compileIndex(callee,node);
+            break;
         }
         default:
             throw Message::Exception(Twine("LHS AST type ") + Language::getTokName(node->root) + 
                                      " not recognized. You might be using a feature that hasn't been implemented yet");
     }
-    return new VarSymbol(); // never reaches here
+    
+    // dereference flexible arrays so they are the same type as normal array references
+    if (isFlexibleArray(result->getType()) && autoDeref) {
+        result = new VarSymbol(Builder.CreateLoad(result->getVal(), "derefedFlexibleArray"),
+                               result->getType());
+    }
+    
+    return result;
 }
 
 TuringValue *CodeGen::compileAssignOp(ASTNode *node) {
@@ -997,6 +1075,20 @@ void CodeGen::compileGetStat(ASTNode *node) {
     Builder.CreateCall(calleeFunc, val);
 }
 
+void CodeGen::compileResizeStat(ASTNode *node) {
+    Symbol *sym = compileLHS(node->children[0],false); // false = don't dereference the array
+    if (!isFlexibleArray(sym->getType())) {
+        throw Message::Exception("Can only allocate new elements for flexible arrays.");
+    }
+    
+    TuringValue *newSize = compile(node->children[1]);
+    newSize = promoteType(newSize, Types.getType("int"));
+    
+    // resize it
+    compileAllocateFlexibleArray(sym, false, newSize->getVal());
+    // TODO initialize elements
+}
+
 void CodeGen::compileVarDecl(ASTNode *node) {
     std::vector<VarDecl> args = getDecls(node->children[0]);
     
@@ -1015,8 +1107,8 @@ void CodeGen::compileVarDecl(ASTNode *node) {
             }
             type = initializer->getType();
         }
-        
         Symbol *declared = Scopes->curScope()->declareVar(args[i].Name,type);
+        
         // must initialize the length part of the array struct
         if (type->isComplexTy()) {
             compileInitializeComplex(declared);

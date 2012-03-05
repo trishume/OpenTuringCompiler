@@ -69,7 +69,7 @@ module Print13
     end if
     
     % test module variables
-    var lolArr,lolArr2 : array 1..13 of int
+    var lolArr,lolArr2 : flexible array 1..0 of int
 
     fcn CalcStuff(num1 : int, num2 : int) : int
         result num1 - num2**2
@@ -96,7 +96,8 @@ fcn Second( arr : array 1..* of int ) : int
     result arr(2)
 end Second
 
-for i : 1..upper(Print13.lolArr)
+for i : 1..13
+    new Print13.lolArr, upper(Print13.lolArr) + 1
     Print13.lolArr(i) := i
 end for
 % lolArr = 1,2,3,4...
@@ -109,6 +110,7 @@ end loop
 
 
 % test implicit copy of arrays
+new Print13.lolArr2, upper(Print13.lolArr)
 Print13.lolArr2 := Print13.lolArr
 
 % set bob to 5

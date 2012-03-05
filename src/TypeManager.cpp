@@ -21,10 +21,6 @@ TuringType *TypeManager::getType(std::string name){
     }
     return NameMap[name];
 }
-TuringType *TypeManager::getArrayType(TuringType *elementType, unsigned int upper) {
-    //TODO LEAK this may never get released
-    return new TuringArrayType(elementType, upper);
-}
 bool TypeManager::addType(std::string name,TuringType *turType){
     if (NameMap.find(name) != NameMap.end()) {
         Message::error(llvm::Twine("Type ") + name + " already exists.");
