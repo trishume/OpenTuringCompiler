@@ -182,6 +182,13 @@ TuringValue *CodeGen::getConstantInt(int index) {
                            Types.getType("int"));
 }
 
+//! allocates a local variable but does not put it in the symbol table
+Symbol *CodeGen::createEntryAlloca(TuringType *type) {
+    BasicBlock *entryBlock = &currentFunction()->getEntryBlock();
+    IRBuilder<> TmpB(entryBlock,entryBlock->begin());
+    return new VarSymbol(TmpB.CreateAlloca(type->getLLVMType(false),0,"internalVar"),type);
+}
+
 //! gets the size in bytes of a type. Used for memcmp and memcpy operations
 //! \param type the pointer type of an allocated buffer of that type. 
 //!             I.E {i32,i32}* for a record of two ints. Or i32* for an int.
@@ -244,6 +251,10 @@ std::pair<TuringValue*,TuringValue*> CodeGen::compileRange(ASTNode *node) {
     return std::pair<TuringValue*,TuringValue*>(start,end);
 }
 
+//! allocates or resizes a flexible array
+//! \param arr the flexible array to be resized. Not dereferenced.
+//! \param allocateNew are we resizing or allocating?
+//! \param if we are resizing then to what size. Can be NULL to use the starting size specified in the array type.
 void CodeGen::compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, Value *newSize) {
     // caller should check this but just to be safe...
     if (!isFlexibleArray(arr->getType())) {
@@ -267,6 +278,44 @@ void CodeGen::compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, Value 
                                         prevArr,byteSize,arrLength);
     Value *castedBuffer = Builder.CreatePointerCast(buffer, arrtype->getLLVMType(true));
     Builder.CreateStore(castedBuffer,arr->getVal()); // store the pointer to the buffer
+}
+
+//! uses a runtime loop to initialize all the elements in an array.
+//! \param from the integer starting index to initialize
+//! \param to the integer ending index to initialize
+void CodeGen::compileInitializeArrayElements(Symbol *arr, Value *from, Value *to) {    
+    Function *theFunction = currentFunction();    
+    BasicBlock *loopBB = BasicBlock::Create(getGlobalContext(), "initializeArray", theFunction);
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "initializeArrayCont");
+    
+    // loop induction variable. node->str is the name
+    Symbol *inductionVar = createEntryAlloca(Types.getType("int"));
+    
+    // starting at the first number
+    Builder.CreateStore(from,inductionVar->getVal());
+    
+    // if the first value is greater than the second then skip it
+    // I.E for i : 6..5
+    Value *overEnd = Builder.CreateICmpUGT(from,to);
+    Builder.CreateCondBr(overEnd,mergeBB,loopBB);    
+    Builder.SetInsertPoint(loopBB);
+    
+    // ACTUAL INITIALIZATION!
+    Symbol *indexed = abstractCompileIndex(arr, abstractCompileVarReference(inductionVar));
+    compileInitializeComplex(indexed);
+    
+    if (!isCurBlockTerminated()) {
+        // increment = load -> add 1 -> store
+        Value *incremented = Builder.CreateAdd(Builder.CreateLoad(inductionVar->getVal(),"inductvarval"),
+                                                 getConstantInt(1)->getVal(),"incremented");
+        Builder.CreateStore(incremented,inductionVar->getVal());        
+        // finished yet?
+        Value *done = Builder.CreateICmpUGT(incremented,to);
+        Builder.CreateCondBr(done,mergeBB,loopBB);
+    }
+    // Emit merge block.
+    theFunction->getBasicBlockList().push_back(mergeBB);
+    Builder.SetInsertPoint(mergeBB);
 }
 
 //! properly initializes complex data structures. It's main duty is initializing the length of arrays.
@@ -298,7 +347,13 @@ void CodeGen::compileInitializeComplex(Symbol *declared) {
     //! flexible arrays are heap allocated with a special function
     if (arrtype->isFlexible()) {
         compileAllocateFlexibleArray(declared, true); // true = allocate new
-        // TODO initialize elements
+        if (arrtype->getElementType()->isComplexTy()) {
+            Symbol *derefed = new VarSymbol(Builder.CreateLoad(declared->getVal(), "derefedArr"),
+                                            declared->getType());
+            compileInitializeArrayElements(derefed, getConstantInt(1)->getVal(), 
+                                           getConstantInt(arrtype->getSize())->getVal());
+            delete derefed;
+        }
         return;
     }
     
@@ -310,11 +365,8 @@ void CodeGen::compileInitializeComplex(Symbol *declared) {
     // initialize the subelements
     // TODO make the loop at runtime not compile time. This is inefficient and hacky.
     if (arrtype->getElementType()->isComplexTy()) {
-        // use 1 and <= because we are using Turing's one based indices
-        for (unsigned int i = 1; i <= arrtype->getSize(); ++i) {
-            Symbol *indexed = abstractCompileIndex(declared, getConstantInt(i));
-            compileInitializeComplex(indexed);
-        }
+        compileInitializeArrayElements(declared, getConstantInt(1)->getVal(), 
+                                       getConstantInt(arrtype->getSize())->getVal());
     }
 }
 
@@ -1084,9 +1136,26 @@ void CodeGen::compileResizeStat(ASTNode *node) {
     TuringValue *newSize = compile(node->children[1]);
     newSize = promoteType(newSize, Types.getType("int"));
     
+    bool complexElements = static_cast<TuringArrayType*>(sym->getType())->getElementType()->isComplexTy();
+    
+    // if we are initializing new elements we start at one mor than the original size of the array
+    Value *initStart;
+    if (complexElements) {
+        Value *derefed = Builder.CreateLoad(sym->getVal(), "derefedFlexibleArr");
+        initStart = Builder.CreateAdd(compileArrayLength(derefed),getConstantInt(1)->getVal());
+    }
+    
     // resize it
     compileAllocateFlexibleArray(sym, false, newSize->getVal());
-    // TODO initialize elements
+    
+    // initialize the new elements if they are complex
+    if (complexElements) {
+        // have to reload because the resize changes the buffer location
+        Value *derefed = Builder.CreateLoad(sym->getVal(), "derefedFlexibleArr");
+        Symbol *derefedSym = new VarSymbol(derefed,sym->getType());
+        compileInitializeArrayElements(derefedSym, initStart, newSize->getVal());
+        delete derefedSym;
+    }    
 }
 
 void CodeGen::compileVarDecl(ASTNode *node) {

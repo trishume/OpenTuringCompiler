@@ -43,6 +43,7 @@ protected:
     bool isMainFunction(llvm::Function *f);
     bool isCurBlockTerminated();
     
+    Symbol *createEntryAlloca(TuringType *type);
     TuringValue *getConstantInt(int index);
     llvm::Value *compileByteSize(TuringType *type);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
@@ -52,6 +53,8 @@ protected:
     std::pair<TuringValue*,TuringValue*> compileRange(ASTNode *node);
     void compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, 
                                       llvm::Value *newSize = NULL);
+    void compileInitializeArrayElements(Symbol *arr, llvm::Value *from,
+                                        llvm::Value *to);
     void compileInitializeComplex(Symbol *declared);
     
     TuringType *getType(ASTNode *node);

@@ -22,6 +22,8 @@
 //! abstract class representing things in the scope system: variables and functions
 class Symbol {
 public:
+    virtual ~Symbol() {};
+    
     virtual TuringType *getType() = 0;
     virtual llvm::Value *getVal() = 0;
     
@@ -35,6 +37,8 @@ class VarSymbol : public Symbol {
 public:
     VarSymbol() : Val(NULL), Type(NULL) {}
     VarSymbol(llvm::Value *val, TuringType *type) : Val(val), Type(type) {}
+    virtual ~VarSymbol() {}
+    
     virtual TuringType *getType() {return Type;}
     virtual llvm::Value *getVal();
     
@@ -48,6 +52,8 @@ protected:
 class FunctionSymbol : public Symbol {
 public:
     FunctionSymbol(llvm::Function *llvmFunc, TuringType *type, const std::vector<VarDecl> &args) : IsSRet(false), Func(llvmFunc), Args(args), RetType(type)  {}
+    virtual ~FunctionSymbol() {}
+    
     virtual TuringType *getType() {return RetType;}
     virtual llvm::Value *getVal() {return Func;}
     
