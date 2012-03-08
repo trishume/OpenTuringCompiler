@@ -741,7 +741,9 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
     }
     
     bool fp = false;
-    if (Types.isType(L,"real") || Types.isType(R,"real")) {
+    // if one side of the operator is floating point, it all is. 
+    // Division is always floating point.
+    if (Types.isType(L,"real") || Types.isType(R,"real") || op.compare("/") == 0) {
         fp = true;
         L = promoteType(L, Types.getType("real"), Twine("left side of ") + op + " operator");
         R = promoteType(R, Types.getType("real"), Twine("right side of ") + op + " operator");
@@ -778,9 +780,6 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
     } else if (op.compare("*") == 0) {
         binOp = fp ? Instruction::FMul : Instruction::Mul;
     } else if (op.compare("/") == 0) {
-        if (!fp) { // this one is always floating point
-            L = promoteType(L, Types.getType("real")); R = promoteType(R, Types.getType("real"));
-        }
         binOp = Instruction::FDiv;
     } else if (op.compare("div") == 0) {
         if (fp) { // floating point 'div' just truncates the division

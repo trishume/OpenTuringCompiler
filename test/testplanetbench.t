@@ -1,14 +1,12 @@
 % number of iterations
-const its := 50000000 % currently takes around 162.85s
-%const its := 2000000 % currently takes around 6.6s and 69s in open turing
+%const its := 50000000 % currently takes around 162.85s
+const its := 2000000 % currently takes around 6.6s and 69s in open turing
 
 type Body : record
     x, y, z,
     vx, vy, vz,
     mass : real
   end record
-
-external function sqrt(val : real) : real
 
 const pi := 3.141592653589793
 var solarMass := 4 * (pi**2)
@@ -130,7 +128,9 @@ end advance
 
 OffsetMomentum
 put energy()
+var start := Time.Elapsed()
 for i : 1..its
   advance(0.01)
 end for
 put energy()
+put "took ", (Time.Elapsed() - start) / 1000 , " seconds."
