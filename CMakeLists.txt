@@ -20,9 +20,8 @@ link_directories( ${LLVM_LIB_DIR} )
 set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
 
 add_subdirectory(test)
-
 add_subdirectory(src)
-
 add_subdirectory(stdlib)
+add_subdirectory(stdlib-sfml)
 
 install(FILES predefs.t DESTINATION ${INSTALL_DIR}/lib)

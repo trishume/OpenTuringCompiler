@@ -1,11 +1,11 @@
-include_directories (src includes)
+include_directories (src includes ../)
 
 set(StdLibSources 
     src/Math.cpp
 	)
 
 set(StdLibHeaders
-    src/openTuringLibDefs.h
+    ../openTuringLibDefs.h
 	)
 
 # here so they can be edited in the xcode project
