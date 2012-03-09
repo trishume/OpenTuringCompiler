@@ -30,6 +30,7 @@ static const std::string defaultIncludes =
     "external proc TuringGetInt(var val : int)\n"
     "external \"length\" fcn TuringStringLength(val : string) : int\n"
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
+    "external fcn TuringStringCompare(lhs,rhs : string) : boolean\n"
     "external proc TuringPrintNewline()\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
     "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
@@ -905,8 +906,8 @@ TuringValue *CodeGen::abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bo
     bool fp = false;
     if (L->getVal()->getType()->isFloatingPointTy() || R->getVal()->getType()->isFloatingPointTy()) {
         fp = true;
-        L = promoteType(L, Types.getType("real"));
-        R = promoteType(R, Types.getType("real"));
+        L = promoteType(L, Types.getType("real"),"left side of = operator");
+        R = promoteType(R, Types.getType("real"),"right side of = operator");
     } else if (!L->getType()->compare(R->getType())) {
         throw Message::Exception(Twine("Can't compare an expression of type \"") + L->getType()->getName() +
                                  "\" to one of type \"" + R->getType()->getName() + "\".");
@@ -920,7 +921,10 @@ TuringValue *CodeGen::abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bo
         ret = Builder.CreateICmpEQ(L->getVal(),R->getVal(),"equal");        
     } else if (fp) {
         ret = Builder.CreateFCmpOEQ(L->getVal(), R->getVal(),"fpequal");
-    } else if (type->isArrayTy()) { // strings and arrays
+    } else if (type->getName().compare("string") == 0 ) { // strings
+        ret = Builder.CreateCall2(TheModule->getFunction("TuringStringCompare"),
+                                  L->getVal(),R->getVal());
+    } else if (type->isArrayTy()) { // arrays
         Value *srcSize = compileArrayByteSize(L->getVal());
         Value *destSize = compileArrayByteSize(R->getVal());
         Value *fromPtr = Builder.CreatePointerCast(L->getVal(),Types.getType("voidptr")->getLLVMType(),"fromptr");

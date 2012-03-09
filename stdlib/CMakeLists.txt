@@ -2,6 +2,7 @@ include_directories (src includes ../)
 
 set(StdLibSources 
     src/Math.cpp
+    src/Time.cpp
 	)
 
 set(StdLibHeaders
@@ -12,6 +13,7 @@ set(StdLibHeaders
 set(StdLibIncludes
 	includes/stdlib.t
 	includes/Math.t
+	includes/Time.t
 	)
 
 # module builds a plugin-like library

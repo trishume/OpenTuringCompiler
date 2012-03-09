@@ -18,7 +18,7 @@ namespace Message {
     void setCurLine(int line,std::string fileName);
     
     //! returns false on fatality (false for Error true for others)
-    bool error(const llvm::Twine &message);
+    bool error(const llvm::Twine &message, bool warning = false);
     bool log(const llvm::Twine &message);
     bool ifNull(void *cond, const llvm::Twine &message);
     

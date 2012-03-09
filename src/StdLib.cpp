@@ -87,6 +87,10 @@ extern "C" {
         strcpy(retStr->strdata, lhs->strdata);
         strcat(retStr->strdata, rhs->strdata);
     }
+    
+    bool TuringStringCompare(TString *from, TString *to) {
+        return strcmp(from->strdata, to->strdata) == 0;
+    }
     //! copy an array, leaving the destination length element intact
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
         if (fromLength > toLength) {

@@ -46,7 +46,15 @@ void ScopeManager::pushLocalScope(llvm::Function *func) {
 
 void ScopeManager::pushNamedScope(std::string name) {
     if (NamedScopes.find(name) != NamedScopes.end()) {
-        throw Message::Exception(llvm::Twine("Module ") + name + " already exists.");
+        Scope *existingScope = NamedScopes[name];
+        // if there is no parent conflicts we can add stuff to a module
+        if (existingScope->Parent == CurrentScope) {
+            //Message::error("Redefining module.",true); // true = warning
+            CurrentScope = existingScope;
+            return;
+        } else {
+            throw Message::Exception(llvm::Twine("Tried to redefine module ") + name + ".");
+        }
     }    
     pushScope();
     NamedScopes[name] = CurrentScope;

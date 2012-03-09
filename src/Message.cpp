@@ -18,11 +18,12 @@ namespace Message {
         curFile = fileName;
     }
     
-    bool error(const llvm::Twine &message) {
+    bool error(const llvm::Twine &message,bool warning) {
+        std::string messageType(warning ? "WARNING" : "ERROR");
         if (curLine < 1 || curFile.empty()) {
-            std::cerr << "ERROR: ";
+            std::cerr << messageType << ": ";
         } else {
-            std::cerr << "ERROR on line " << curLine << " in file " << curFile << ": ";
+            std::cerr << messageType << " on line " << curLine << " in file " << curFile << ": ";
         }
         std::cerr << message.str() << std::endl;
         return true;

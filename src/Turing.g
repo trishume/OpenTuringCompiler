@@ -29,6 +29,10 @@
         delete[] cstr;
         return cppstr;
     }
+    std::string literalString(const D_ParseNode &node) {
+        std::string str = nodeString(node);
+        return str.substr(1,str.size()-2);
+    }
     
     //! used for node* and node+
     //! adds each child of the parse node to the AST node
@@ -248,10 +252,10 @@ newstat
     }
     ;
 
-includestat :   'include' '"' STRING '"'
+includestat :   'include' STRING_LITERAL
         {
             $$ = new ASTNode(Language::INCLUDE_STAT,$n0.start_loc.line);
-            $$->str = nodeString($n2);
+            $$->str = literalString($n1);
         }
         ;
 
@@ -503,10 +507,10 @@ externdecl
     ;
 
 libdecl
-    : 'linklibrary' '"' ID '"' 
+    : 'linklibrary' STRING_LITERAL
     {
         $$ = new ASTNode(Language::LIBRARY_DECL,$n0.start_loc.line);
-        $$->str = nodeString($n2);
+        $$->str = literalString($n1);
     }
     ;
 
@@ -563,6 +567,10 @@ LT
 
 STRING
     :   "([^\"\\]|\\[^])*"
+    ;
+
+STRING_LITERAL
+    :   "\"([^\"\\]|\\[^])*\""
     ;
 
 CHAR:   "([^'\\]|\\[^])"
@@ -664,7 +672,11 @@ primaryExpression
         $$ = new ASTNode(Language::REAL_LITERAL,$n0.start_loc.line);
         $$->str = nodeString($n0); // literal string
     }
-    |   '"' STRING '"'  { $$ = new ASTNode(Language::STRING_LITERAL,$n0.start_loc.line); $$->str = nodeString($n1);}
+    |   STRING_LITERAL  
+    { 
+        $$ = new ASTNode(Language::STRING_LITERAL,$n0.start_loc.line); 
+        $$->str = literalString($n0);
+    }
     |   '\'' CHAR  '\'' { $$ = new ASTNode(Language::CHAR_LITERAL,$n0.start_loc.line); $$->str = nodeString($n1);}
     |   'true' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}
     |   'false' { $$ = new ASTNode(Language::BOOL_LITERAL,$n0.start_loc.line); $$->str = nodeString($n0);}

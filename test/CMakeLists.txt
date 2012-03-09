@@ -1,6 +1,7 @@
 set(TEST_FILES
 	test.t
 	test13.t
+	stdlibtest.t
 	tonymathtest.t
 	testplanetbench.t
 	tonymathtest.t
