@@ -11,6 +11,7 @@
 #include "codegen.h"
 
 #define DEFAULT_INCLUDE "lib/predefs.t"
+#define DEFAULT_POST_INCLUDE "lib/postdefs.t"
 
 extern int d_verbose_level;
 
@@ -22,6 +23,18 @@ std::string get_file_contents(const char *filename)
         return(std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>()));
     }
     return "";
+}
+
+bool compileIfExists(const std::string &fileName,CodeGen &gen) {
+    std::ifstream includes_file(fileName.c_str());
+    if (includes_file.good())
+    {
+        if(!gen.compileFile(fileName)) {
+            std::cerr << "Failed to compile default include. This shouldn't happen and is not your fault, probably." << std::endl;
+            return false;
+        }
+    }
+    return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -37,17 +50,9 @@ int main(int argc, char *argv[]) {
     
     CodeGen gen(source);
     
-    // if the default include file exists then try to compile it.
-    std::ifstream includes_file(DEFAULT_INCLUDE);
-    if (includes_file.good())
-    {
-        if(!gen.compileFile(DEFAULT_INCLUDE)) {
-            std::cerr << "Failed to compile default includes. This shouldn't happen and is not your fault, probably." << std::endl;
-            return 1;
-        }
-    }
-    
-    if(gen.compileFile(argv[1])) {
+    if(compileIfExists(DEFAULT_INCLUDE,gen) && 
+       gen.compileFile(argv[1]) && 
+       compileIfExists(DEFAULT_POST_INCLUDE, gen)) {
         gen.execute(true);
     }
 }

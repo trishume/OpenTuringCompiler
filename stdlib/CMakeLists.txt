@@ -7,6 +7,7 @@ set(StdLibSources
 
 set(StdLibHeaders
     ../openTuringLibDefs.h
+    ../openTuringRuntimeError.h
 	)
 
 # here so they can be edited in the xcode project
