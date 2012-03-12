@@ -1077,7 +1077,7 @@ void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
     }
     Value *fromSize = compileByteSize(from->getType());
     // llvm intrinsic memcpy. Auto-converts and optimizes well.
-    Builder.CreateMemCpy(to->getVal(), from->getVal(), fromSize, 0);
+    Builder.CreateMemCpy(to->getVal(), from->getVal(), fromSize, 0, true);
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {

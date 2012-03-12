@@ -135,10 +135,10 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     
     //set up OpenGL
     win->Win.SetActive();
-    glViewport( 0, 0, win->Width, win->Height );
+    //glViewport( 0, 0, win->Width, win->Height );
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
-    glOrtho (0, win->Width, win->Height, 0, -1, 1);
+    glOrtho (0, win->Width, 0, win->Height, -1, 1);
     glDisable(GL_DEPTH_TEST);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity();
