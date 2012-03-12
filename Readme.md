@@ -3,9 +3,14 @@
 A compiler for Turing written using LLVM for code generation and Dparser for parsing.
 
 ####If you want to compile it yourself you have to:
- * Install dparser from http://http://dparser.sourceforge.net/
- * Install LLVM from SVN head. It might work with regular 3.0 but I haven't tried it
- * Run 'cmake' and then 'make'
+ * Install the dependencies:
+   * dparser from http://http://dparser.sourceforge.net/
+   * LLVM from SVN head. It should work with regular 3.0 but I don't test it regularly http://llvm.org/
+   * SFML 1.6 http://www.sfml-dev.org/
+   * Cmake (so that you can build it)
+ * Build it
+   * Run 'cmake' and then 'make' (or figure out how to make it build a VC++ project or something)
+ * Check the dist folder for the "compiler" executable and then run that, passing the file to compile as a parameter
 
 If any of this goes wrong it's your problem. I haven't made any effort to make it easy for other people to contribute yet.
 I will eventually though, once the compiler is in a state where I have tested it and it is usable.
