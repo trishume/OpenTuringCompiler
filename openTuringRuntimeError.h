@@ -1,7 +1,6 @@
-#include <iostream>
+#ifndef _TURING_RUNTIME_ERROR_H_
+#define _TURING_RUNTIME_ERROR_H_
 
-void turingRuntimeError(const char *errMsg, bool isWarning = false) {
-	std::string message = isWarning ? "WARNING" : "ERROR";
-	std::cout << message << ": " << errMsg << std::endl;
-	if(!isWarning) exit(2);
-}
+void turingRuntimeError(const char *errMsg, bool isWarning = false);
+
+#endif

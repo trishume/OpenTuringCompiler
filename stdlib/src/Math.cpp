@@ -55,21 +55,8 @@ extern "C" {
 	double Turing_Stdlib_Rand_Real() {
 	    return rand() / double(RAND_MAX);
 	}
-	//
-	// Generate a random integer between 1 and a given value.
-	// param n the largest value 
-	// return a uniform random value in [1,...,n]
 	TInt Turing_Stdlib_Rand_Int(TInt start, TInt end) {
-	    TInt n = end - start;
-	    if (n < 0) n = -n;
-	    if (n==0) return 0;
-	    /* There is a slight error in that this code can produce a return value of n+1
-	    **
-	    **  return long(unifRand()*n) + 1;
-	    */
-	    //Fixed code
-	    long guard = (long) (Turing_Stdlib_Rand_Real() * n) +1;
-	    return ((guard > n)? n : guard) + start;
+	    return (rand() % (end+1-start)) + start;
 	}
 	//
 	// Reset the random number generator with the system clock.

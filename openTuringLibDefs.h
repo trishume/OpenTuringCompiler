@@ -1,3 +1,6 @@
+#ifndef _OPENTURING_LIBDEFS_H_
+#define _OPENTURING_LIBDEFS_H_
+
 #include <stdint.h>
 
 #define TURING_STRING_LENGTH 255
@@ -9,3 +12,5 @@ typedef struct {
     TInt length;
     char strdata[TURING_STRING_LENGTH]; // length is dummy, can be anything
 } TString;
+
+#endif

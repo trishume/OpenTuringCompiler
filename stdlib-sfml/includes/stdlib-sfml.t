@@ -5,5 +5,7 @@ external proc Turing_StdlibSFML_Window_Init()
 Turing_StdlibSFML_Window_Init()
 
 include "Time.t"
+include "View.t"
+include "Draw.t"
 
 const SFML_STDLIB_INCLUDED := true

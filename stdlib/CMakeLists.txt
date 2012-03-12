@@ -6,8 +6,6 @@ set(StdLibSources
 	)
 
 set(StdLibHeaders
-    ../openTuringLibDefs.h
-    ../openTuringRuntimeError.h
 	)
 
 # here so they can be edited in the xcode project
@@ -18,7 +16,8 @@ set(StdLibIncludes
 	)
 
 # module builds a plugin-like library
-add_library(OpenTuringStdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes})
+add_library(OpenTuringStdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes}
+									${StdLibCommonHeaders} ${StdLibCommonSources})
 
 # install
 set(STDLIB_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib)

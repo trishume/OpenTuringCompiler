@@ -21,6 +21,16 @@ set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
 
 add_subdirectory(test)
 add_subdirectory(src)
+
+set(StdLibCommonHeaders
+	${PROJECT_SOURCE_DIR}/openTuringLibDefs.h
+    ${PROJECT_SOURCE_DIR}/openTuringRuntimeError.h
+	)
+
+set(StdLibCommonSources
+	${PROJECT_SOURCE_DIR}/openTuringRuntimeError.cpp
+	)
+
 add_subdirectory(stdlib)
 add_subdirectory(stdlib-sfml)
 

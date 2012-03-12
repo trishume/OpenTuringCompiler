@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <iterator>
 
+#include <SFML/Window.hpp>
+
 #include "openturingRuntimeError.h"
 
-#define DEF_WIN_PARAMS "graphics:600;500,title:Open Turing Run Window"
+WindowManager *WinMan = NULL;
 
 
 extern "C" {
@@ -18,17 +20,19 @@ extern "C" {
         }
     }
     void Turing_StdlibSFML_Window_Cleanup() {
-        if (WinMan == NULL) {
+        if (WinMan != NULL) {
             delete WinMan;
             WinMan = NULL;
         } else {
-            turingRuntimeError("Window cleanup when there is no window to clean up.");
+            turingRuntimeError("Window cleanup called when there is no window to clean up.");
         }
     }
 }
 
 WindowManager::WindowManager() : CurWin(0){
-    TInt mainWin = newWin(DEF_WIN_PARAMS);
+    Settings.AntialiasingLevel = 2;  // Request 2 levels of antialiasing
+    
+    TInt mainWin = newWin("");
     setCurWin(mainWin);
 }
 
@@ -72,6 +76,7 @@ TInt WindowManager::newWin(const std::string &params) {
     TInt id = Windows.size()-1;
     setWinParams(id, params);
     newWin->Win.UseVerticalSync(true);
+    setCurWin(id);
     
     return id;
 }
@@ -93,6 +98,7 @@ void WindowManager::closeWin(TInt winId) {
 // this uses strings and vectors heavily so it is OK to use 'using'
 void WindowManager::setWinParams(TInt winId, const std::string &params) {
     TuringWindow* win = getWin(winId);
+    
     std::vector<std::string> items;
     WindowManager::split(items, params, ",");
     
@@ -111,12 +117,11 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
             if (x < 1 || y < 1) {
                 turingRuntimeError("Tried to create a window with negative or zero size");
             }
-            win->Win.Create(sf::VideoMode(x,y), win->Title,0);
+            win->Width  = x;
+            win->Height = y;
             win->Win.SetSize(x,y);
         } else if (tagname.compare("title") == 0 && parts.size() == 2) { // title:name
-            std::string title = parts[1];
-            win->Title = title;
-            win->Win.Create(sf::VideoMode(win->Win.GetWidth(),win->Win.GetHeight()), title,0);
+            win->Title = parts[1];
         } else if (tagname.compare("offscreenonly") == 0) {
             win->OffScreenOnly = true;
         } else if (tagname.compare("nooffscreenonly") == 0) {
@@ -126,17 +131,63 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
         }
     }
     
+    win->Win.Create(sf::VideoMode(win->Width,win->Height), win->Title,sf::Style::Close,Settings);
+    
+    //set up OpenGL
+    win->Win.SetActive();
+    glViewport( 0, 0, win->Width, win->Height );
+    glMatrixMode (GL_PROJECTION);
+    glLoadIdentity ();
+    glOrtho (0, win->Width, win->Height, 0, -1, 1);
+    glDisable(GL_DEPTH_TEST);
+    glMatrixMode (GL_MODELVIEW);
+    glLoadIdentity();
+    // Displacement trick for exact pixelization
+    glTranslatef(0.375, 0.375, 0);
+    curWin()->Win.SetActive();
+    clearWin(winId);
 }
 
 void WindowManager::updateWindow(TInt winId, bool force) {
     TuringWindow* win = getWin(winId);
     if (force || !win->OffScreenOnly) {
-        win->Win.Show(true);
-        win->Win.Display();
+        doWinUpdate(win);
+    }
+}
+
+void WindowManager::updateCurWin() {
+    TuringWindow* win = curWin();
+    if (!win->OffScreenOnly) {
+        doWinUpdate(win);
+        
+    }
+}
+
+void WindowManager::clearWin(TInt winId) {
+    getWin(winId)->Win.Clear(sf::Color(255,255,255));
+}
+
+void WindowManager::surface() {
+    sf::Event Event;
+    while (curWin()->Win.GetEvent(Event))
+    {
+        // Process event
     }
 }
 
 #pragma mark Protected and Private Methods
+
+void WindowManager::doWinUpdate(TuringWindow *win) {
+    win->Win.Show(true);
+    
+    void *pixBuf = malloc(win->Width * win->Height * sizeof(GLfloat) * 4);
+    glReadPixels(0, 0, win->Width, win->Width, GL_RGBA, GL_FLOAT, pixBuf);
+    win->Win.Display();
+    win->Win.Clear(sf::Color(255,255,255));
+    glWindowPos2i(0, 0);
+    glDrawPixels(win->Width, win->Height, GL_RGBA, GL_FLOAT, pixBuf);
+    free(pixBuf);
+}
 
 void WindowManager::assertWinExists(TInt winId) {
     if (!winExists(winId)) {

@@ -1,17 +1,19 @@
 include_directories (src ../)
 
 find_package(SFML REQUIRED system window graphics network audio)
+find_package(OpenGL)
 
 set(StdLibSFMLSources 
     src/Time.cpp
     src/Draw.cpp
+    src/View.cpp
+    src/RGB.cpp
     src/WindowManager.cpp
 	)
 
 set(StdLibSFMLHeaders
-    ../openTuringLibDefs.h
-    ../openTuringRuntimeError.h
     src/WindowManager.h
+    src/RGB.h
 	)
 
 # here so they can be edited in the xcode project
@@ -20,11 +22,13 @@ set(StdLibSFMLIncludes
 	includes/stdlib-sfml-post.t
 	includes/Time.t
 	includes/Draw.t
+	includes/View.t
 	)
 
 # module builds a plugin-like library
-add_library(OpenTuringStdlibSFML MODULE ${StdLibSFMLSources} ${StdLibSFMLHeaders} ${StdLibSFMLIncludes})
-target_link_libraries(OpenTuringStdlibSFML ${SFML_LIBRARIES})
+add_library(OpenTuringStdlibSFML MODULE ${StdLibSFMLSources} ${StdLibSFMLHeaders} ${StdLibSFMLIncludes}
+										${StdLibCommonHeaders} ${StdLibCommonSources})
+target_link_libraries(OpenTuringStdlibSFML ${SFML_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # install
 set(STDLIB_SFML_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib-sfml)
