@@ -91,9 +91,16 @@ extern "C" {
     bool TuringStringCompare(TString *from, TString *to) {
         return strcmp(from->strdata, to->strdata) == 0;
     }
+    //! optimization of TuringCopyArray for strings
+    //! also allows copying of strings of different sizes
+    void TuringStringCopy(TString *from, TString *to) {
+        //! TODO don't rely on strncpy to catch overflows. Implement proper length checking.
+        //std::cout << "Copying string " << from->strdata << std::endl;
+        strncpy(to->strdata, from->strdata,to->length);
+    }
     //! copy an array, leaving the destination length element intact
     void TuringCopyArray(void *from, void *to, int fromLength, int toLength) {
-        if (fromLength > toLength) {
+        if (fromLength != toLength) {
             // TODO better runtime error handling
             Message::runtimeError(Twine("Tried to copy an array of length ") + Twine(fromLength) + 
                                   " to one of length " + Twine(toLength));

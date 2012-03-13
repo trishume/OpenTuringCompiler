@@ -96,10 +96,15 @@ fcn Second( arr : array 1..* of int ) : int
     result arr(2)
 end Second
 
-for i : 1..13
+
+var inittedArr : array 1..4 of int := init(5,6,13,9)
+for i : 1..inittedArr(3)
     new Print13.lolArr, upper(Print13.lolArr) + 1
     Print13.lolArr(i) := i
 end for
+if upper(Print13.lolArr) ~= 13 then
+    put "FAILED flexible arrays or array initialization"
+end if
 % lolArr = 1,2,3,4...
 
 

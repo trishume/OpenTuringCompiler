@@ -69,7 +69,9 @@ protected:
 	TuringValue *compile(ASTNode *node);
     Symbol *compileLHS(ASTNode *node, bool autoDeref = true);
     
+    TuringValue *abstractCompileArrayLiteral(TuringType *arrType,const std::vector<llvm::Constant*> &vals);
     TuringValue *compileStringLiteral(const std::string &str);
+    TuringValue *compileArrayLiteral(ASTNode *node);
 
 	TuringValue *compileBinaryOp(ASTNode *node);
     TuringValue *abstractCompileBinaryOp(TuringValue *L, 

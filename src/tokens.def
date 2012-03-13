@@ -39,6 +39,7 @@ AST_TOKEN(REAL_LITERAL) /* children: string: real */
 AST_TOKEN(STRING_LITERAL) /* children: string: string without quotes */
 AST_TOKEN(CHAR_LITERAL) /* children: string: char without quotes */
 AST_TOKEN(ARRAY_UPPER) /* children: expr string: */
+AST_TOKEN(ARRAY_INIT) /* children: expr+ string: */
 AST_TOKEN(BOOL_LITERAL) /* children: string: true or false */
 AST_TOKEN(CALL) /* children: assignableExpr arg* string: */
 AST_TOKEN(PTRDEREF) /* children: assignableExpr string: */

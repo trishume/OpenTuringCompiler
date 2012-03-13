@@ -31,6 +31,7 @@ static const std::string defaultIncludes =
     "external \"length\" fcn TuringStringLength(val : string) : int\n"
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "external fcn TuringStringCompare(lhs,rhs : string) : boolean\n"
+    "external proc TuringStringCopy(lhs,rhs : string)\n"
     "external proc TuringPrintNewline()\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
     "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
@@ -657,6 +658,8 @@ TuringValue *CodeGen::compile(ASTNode *node) {
         case Language::ARRAY_UPPER:
             return new TuringValue(compileArrayLength(compile(node->children[0])->getVal()),
                                    Types.getType("int"));
+        case Language::ARRAY_INIT:
+            return compileArrayLiteral(node);
         case Language::VAR_REFERENCE:
         case Language::FIELD_REF_OP:
             // compileLHS knows how to handle these. We just have to load them.
@@ -680,15 +683,44 @@ TuringValue *CodeGen::compile(ASTNode *node) {
             throw Message::Exception(Twine("AST type ") + Language::getTokName(node->root) + " not recognized");
     }
 }
+
+TuringValue *CodeGen::abstractCompileArrayLiteral(TuringType *type,const std::vector<Constant*> &arrayVals) {
+    assert(type->isArrayTy()); // caller should guarantee this
+    
+    TuringArrayType *arrTy = static_cast<TuringArrayType*>(type);
+    
+    std::vector<Constant*> arrayStructVals;
+    
+    // string length
+    arrayStructVals.push_back(ConstantInt::get(getGlobalContext(),APInt(32,arrayVals.size())));
+    
+    // add the string to the struct
+    ArrayType *llvmArrTy = ArrayType::get(arrTy->getElementType()->getLLVMType(false),arrayVals.size());
+    arrayStructVals.push_back(ConstantArray::get(llvmArrTy,arrayVals));
+    
+    std::vector<Type *> structTypes;
+    structTypes.push_back(Types.getType("int")->getLLVMType());
+    structTypes.push_back(llvmArrTy);
+    StructType *structTy = StructType::get(getGlobalContext(),structTypes);
+    
+    Constant *structConst = ConstantStruct::get(structTy,arrayStructVals);
+    
+    Value *gvar = new GlobalVariable(/*Module=*/*TheModule,
+                                     /*Type=*/structTy,
+                                     /*isConstant=*/true,
+                                     /*Linkage=*/GlobalValue::InternalLinkage,
+                                     /*Initializer=*/structConst,
+                                     "arrConst");
+    Type *refType = arrTy->getLLVMType(true);
+    
+    return new TuringValue(Builder.CreatePointerCast(gvar,refType,"castedarrayconstant"),
+                           arrTy);
+}
+
 //! creates a constant struct to represent a string literal
 //! \returns an array reference to the string literal
 TuringValue *CodeGen::compileStringLiteral(const std::string &str) {
-    std::vector<Constant*> arrayStructVals,arrayVals;
-    
-    // string length
-    arrayStructVals.push_back(ConstantInt::get(getGlobalContext(),APInt(32,str.size()+1)));
-    
-    // create string array
+    std::vector<Constant*> arrayVals;
     
     // iterate and add the characters, C STYLE!
     // TODO maybe make this not use C style pointer iteration
@@ -701,27 +733,36 @@ TuringValue *CodeGen::compileStringLiteral(const std::string &str) {
     // add null terminator
     arrayVals.push_back(ConstantInt::get(getGlobalContext(),APInt(8,0)));
     
-    // add the string to the struct
-    ArrayType *arrTy = ArrayType::get(Types.getType("int8")->getLLVMType(),str.size()+1);
-    arrayStructVals.push_back(ConstantArray::get(arrTy,arrayVals));
+    return abstractCompileArrayLiteral(Types.getType("string"), arrayVals);
+}
+
+//! compiles init(vars) statements
+//! \returns an array reference
+TuringValue *CodeGen::compileArrayLiteral(ASTNode *node) {
+    std::vector<Constant*> arrayVals;
+    TuringType *elemType = NULL;
     
-    std::vector<Type *> structTypes;
-    structTypes.push_back(Types.getType("int")->getLLVMType());
-    structTypes.push_back(arrTy);
-    StructType *structTy = StructType::get(getGlobalContext(),structTypes);
-    
-    Constant *structConst = ConstantStruct::get(structTy,arrayStructVals);
-    
-    Value *gvar = new GlobalVariable(/*Module=*/*TheModule,
-                                     /*Type=*/structTy,
-                                     /*isConstant=*/true,
-                                     /*Linkage=*/GlobalValue::InternalLinkage,
-                                     /*Initializer=*/structConst,
-                                     "stringConst");
-    Type *stringRefType = Types.getType("string")->getLLVMType(true);
-    
-    return new TuringValue(Builder.CreatePointerCast(gvar,stringRefType,"castedstringconstant"),
-                           Types.getType("string"));
+    for (unsigned int i = 0; i < node->children.size(); ++i) {
+        TuringValue *val = compile(node->children[i]);
+        if (elemType == NULL) {
+            elemType = val->getType();
+        } else if(!elemType->compare(val->getType())) {
+            throw Message::Exception(Twine("Element ") + Twine(i+1) + 
+                                     " of array initializer is type \"" + val->getType()->getName() +
+                                     "\" which is not the same as the first element, which is type \"" +
+                                     elemType->getName() + 
+                                     "\". All elements in an array must be the same type.");
+        }
+        
+        Constant *constVal = dyn_cast<Constant>(val->getVal());
+        if (constVal == NULL) {
+            throw Message::Exception(Twine("Element ") + Twine(i+1) + 
+                                     " of array initializer must be a constant.");
+        }
+        arrayVals.push_back(constVal);
+    }
+    TuringArrayType *arrTy = new TuringArrayType(elemType,arrayVals.size());
+    return abstractCompileArrayLiteral(arrTy, arrayVals);
 }
 
 // Compiles binary operators.
@@ -1045,6 +1086,13 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
     
     // assigning an array to an array copies it
     if (assignSym->getType()->isArrayTy() && val->getType()->isArrayTy()) {
+        // special case for strings
+        if (assignSym->getType()->getName().compare("string") == 0 &&
+            val->getType()->getName().compare("string") == 0) {
+            Value *castedSym = Builder.CreatePointerCast(assignSym->getVal(), Types.getType("string")->getLLVMType(true));
+            Builder.CreateCall2(TheModule->getFunction("TuringStringCopy"), val->getVal(), castedSym);
+            return;
+        }
         compileArrayCopy(val,assignSym);
         return;
     } else if (assignSym->getType()->isRecordTy() && val->getType()->isRecordTy()) {
@@ -1062,6 +1110,10 @@ void CodeGen::abstractCompileAssign(TuringValue *val, Symbol *assignSym) {
 }
 
 void CodeGen::compileArrayCopy(TuringValue *from, Symbol *to) {
+    if (!from->getType()->compare(to->getType())) {
+        throw Message::Exception(Twine("Tried to assign an array of type \"") + from->getType()->getName() +
+                                 "\" to one of type \"" + to->getType()->getName() + "\".");
+    }
     Value *srcSize = compileArrayByteSize(from->getVal());
     Value *destSize = compileArrayByteSize(to->getVal());
     Value *fromPtr = Builder.CreatePointerCast(from->getVal(),Types.getType("voidptr")->getLLVMType(),"fromptr");

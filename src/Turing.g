@@ -102,12 +102,13 @@
         keywords.insert("if");
         keywords.insert("for");
         keywords.insert("loop");
-        keywords.insert("class");
         keywords.insert("var");
         keywords.insert("return");
         keywords.insert("result");
         keywords.insert("label");
         keywords.insert("upper");
+        keywords.insert("init");
+        // WARNING on my computer adding another keyword can cause weird memory corruption
 
         return keywords.find(ident) != keywords.end();
     }
@@ -684,6 +685,12 @@ primaryExpression
     {
         $$ = new ASTNode(Language::ARRAY_UPPER,$n0.start_loc.line);
         $$->addChild($2);
+    }
+    |   'init' '(' expr (',' (LT*) expr)* ')'
+    {
+        $$ = new ASTNode(Language::ARRAY_INIT,$n0.start_loc.line);
+        $$->addChild($2);
+        addParseGroupItems(&$n3,$$,2); // rest of args
     }
     |   assignableExpression '(' ')' // function call with no args
     {
