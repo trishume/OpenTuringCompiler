@@ -35,6 +35,7 @@ Draw.FillOval(400,300,100,50,3)
 
 Draw.Arc(200,300,40,40,50,100,5)
 Draw.FillArc(400,400,100,50,0,180,5)
+% TODO test Draw.Polygon
 for i : 1..100
 	Draw.Dot(Rand.Int(400,450),Rand.Int(50,70),32)
 end for

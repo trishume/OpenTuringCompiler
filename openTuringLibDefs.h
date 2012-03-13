@@ -13,4 +13,9 @@ typedef struct {
     char strdata[TURING_STRING_LENGTH]; // length is dummy, can be anything
 } TString;
 
+typedef struct {
+    TInt length;
+    char data[1]; // length is dummy, can be anything
+} TIntArray;
+
 #endif

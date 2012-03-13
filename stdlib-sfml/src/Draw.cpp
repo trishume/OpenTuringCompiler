@@ -44,6 +44,50 @@ extern "C" {
         
         WinMan->updateCurWin();
 	}
+    void Turing_StdlibSFML_Draw_ThickLine(TInt x1, TInt y1, TInt x2, TInt y2, TInt width, TInt colour) {
+        glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
+        
+        glLineWidth(width);
+        
+        glBegin(GL_LINES);
+        glVertex2i(x1, y1);
+        glVertex2i(x2, y2);
+        glEnd();
+        
+        glLineWidth(1);
+        
+        WinMan->updateCurWin();
+	}
+    void Turing_StdlibSFML_Draw_Polygon(TIntArray *x, TIntArray *y, TInt n, TInt colour) {
+        glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
+        
+        if (x->length < n || y->length < n) {
+            turingRuntimeError("Not enough points in polygon array.");
+        }
+        
+        glBegin(GL_LINE_LOOP);
+        for (unsigned int i = 0; i < n; ++i) {
+            glVertex2i(x->data[i], y->data[i]);
+        }
+        glEnd();
+        
+        WinMan->updateCurWin();
+	}
+    void Turing_StdlibSFML_Draw_FillPolygon(TIntArray *x, TIntArray *y, TInt n, TInt colour) {
+        glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
+        
+        if (x->length < n || y->length < n) {
+            turingRuntimeError("Not enough points in polygon array.");
+        }
+        
+        glBegin(GL_TRIANGLE_FAN);
+        for (unsigned int i = 0; i < n; ++i) {
+            glVertex2i(x->data[i], y->data[i]);
+        }
+        glEnd();
+        
+        WinMan->updateCurWin();
+	}  
     void Turing_StdlibSFML_Draw_Box(TInt x1, TInt y1, TInt x2, TInt y2, TInt colour) {
         glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
         
