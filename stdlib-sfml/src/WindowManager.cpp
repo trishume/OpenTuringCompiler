@@ -29,30 +29,21 @@ extern "C" {
     }
 }
 
-WindowManager::WindowManager() : CurWin(0){
+WindowManager::WindowManager() : Windows("Window"), CurWin(0){
     Settings.AntialiasingLevel = 2;  // Request 2 levels of antialiasing
     
     TInt mainWin = newWin("");
     setCurWin(mainWin);
 }
 
-WindowManager::~WindowManager() {
-    for (unsigned int i = 0; i < Windows.size(); ++i) {
-        TuringWindow *curWindow = Windows[i];
-        if (curWindow != NULL) {
-            curWindow->Win.Close();
-            delete curWindow;
-        }
-    }
-}
+WindowManager::~WindowManager() {}
 
 TuringWindow *WindowManager::curWin() {
-    return Windows[CurWin];
+    return Windows.get(CurWin);
 }
 
 TuringWindow *WindowManager::getWin(TInt winId) {
-    assertWinExists(winId);
-    return Windows[winId];
+    return Windows.get(winId);
 }
 
 void WindowManager::setCurWin(TInt winId) {
@@ -65,15 +56,10 @@ TInt WindowManager::curWinID() {
     return CurWin;
 }
 
-bool WindowManager::winExists(TInt winId) {
-    return winId >= 0 && winId < Windows.size() && Windows[winId] != NULL;
-}
-
 TInt WindowManager::newWin(const std::string &params) {
-    TuringWindow *newWin = new TuringWindow();
-    Windows.push_back(newWin);
+    TInt id = Windows.getNew();
+    TuringWindow *newWin = Windows.get(id);
     
-    TInt id = Windows.size()-1;
     setWinParams(id, params);
     newWin->Win.UseVerticalSync(true);
     setCurWin(id);
@@ -85,9 +71,7 @@ void WindowManager::closeWin(TInt winId) {
     if (winId == 0) {
         turingRuntimeError("Can't close the main window.");
     }
-    TuringWindow *win = getWin(winId);
-    Windows[winId] = NULL;
-    delete win;
+    Windows.remove(winId);
     
     // set the active window to the main one if we just closed it
     if (CurWin == winId) {
@@ -187,12 +171,6 @@ void WindowManager::doWinUpdate(TuringWindow *win) {
     glWindowPos2i(0, 0);
     glDrawPixels(win->Width, win->Height, GL_RGBA, GL_FLOAT, pixBuf);
     free(pixBuf);
-}
-
-void WindowManager::assertWinExists(TInt winId) {
-    if (!winExists(winId)) {
-        turingRuntimeError("Window ID does not exist.");
-    }
 }
 
 void WindowManager::split(std::vector<std::string>& lst, const std::string& input, const std::string& separators, bool remove_empty)

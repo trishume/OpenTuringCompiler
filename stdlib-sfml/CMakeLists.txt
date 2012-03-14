@@ -10,10 +10,12 @@ set(StdLibSFMLSources
     src/Draw.cpp
     src/View.cpp
     src/RGB.cpp
+    src/Pic.cpp
     src/WindowManager.cpp
 	)
 
 set(StdLibSFMLHeaders
+	src/IDManager.h
     src/WindowManager.h
     src/RGB.h
 	)
@@ -25,6 +27,7 @@ set(StdLibSFMLIncludes
 	includes/Time.t
 	includes/Draw.t
 	includes/View.t
+	includes/Pic.t
 	)
 
 # module builds a plugin-like library

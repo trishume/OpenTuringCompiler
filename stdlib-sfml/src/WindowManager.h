@@ -1,12 +1,13 @@
 #ifndef _WINMANAGER_H_
 #define _WINMANAGER_H_
 
-#include <vector>
+#include <map>
 #include <string>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 
 #include "openTuringLibDefs.h"
+#include "IDManager.h"
 
 #define DEFAULT_WINDOW_WIDTH 600
 #define DEFAULT_WINDOW_HEIGHT 500
@@ -35,7 +36,6 @@ public:
     TuringWindow *getWin(TInt winId);
     void setCurWin(TInt winId);
     TInt curWinID();
-    bool winExists(TInt winId);
     
     // life cycle
     TInt newWin(const std::string &params);
@@ -56,10 +56,9 @@ public:
     //! from thinking the app is frozen.
     void surface();
 protected:
-    void assertWinExists(TInt winId);
     void doWinUpdate(TuringWindow *win);
     
-    std::vector<TuringWindow *> Windows;
+    IDManager<TuringWindow> Windows;
     TInt CurWin;
     sf::WindowSettings Settings;
     sf::Sprite BufferSprite;

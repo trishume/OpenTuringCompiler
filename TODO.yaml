@@ -1,0 +1,252 @@
+Concurrency:
+    - Concurrency.empty
+    - Concurrency.getpriority
+    - Concurrency.setpriority
+    - Concurrency.simutime 
+Config:
+    - Config.Display
+    - Config.Lang
+    - Config.Machine 
+Dir:
+    - Dir.Change
+    - Dir.Close
+    - Dir.Create
+    - Dir.Current
+    - Dir.Delete
+    - Dir.Get
+    - Dir.GetLong
+    - Dir.Open 
+Draw:
+    - Draw.Fill
+    - Draw.FillMapleLeaf
+    - Draw.FillStar
+    - Draw.MapleLeaf
+    - Draw.Star
+    - Draw.Text 
+Error:
+    - Error.Last
+    - Error.LastMsg
+    - Error.LastStr
+    - Error.Msg
+    - Error.Str
+    - Error.Trip 
+ErrorNum:
+Exceptions:
+File:
+    - File.Copy
+    - File.Delete
+    - File.DiskFree
+    - File.Exists
+    - File.Rename
+    - File.Status 
+Font:
+    - Font.Draw
+    - Font.Free
+    - Font.GetName
+    - Font.GetSize
+    - Font.GetStyle
+    - Font.Name
+    - Font.New
+    - Font.Sizes
+    - Font.StartName
+    - Font.StartSize
+    - Font.Width
+Input:
+    - Input.KeyDown - get keyboard state
+    - Input.Pause - pause for keystroke
+    - Input.getch
+    - Input.getchar
+    - Input.hasch 
+Joystick:
+    - Joystick.GetInfo 
+Keyboard:
+Limits:
+    - maxint - maximum integer function
+    - maxnat - maximum natural number function
+    - minint - minimum integer function
+    - minnat - minimum natural number function 
+Math:
+    - abs - absolute value function
+    - max - maximum function
+    - min - minimum function
+Mouse:
+    - Mouse.ButtonChoose
+    - Mouse.ButtonMoved
+    - Mouse.ButtonWait
+    - Mouse.Where 
+Music:
+    - Music.Play
+    - Music.PlayFile
+    - Music.PlayFileStop
+    - Music.Sound
+    - Music.SoundOff 
+Net:
+    - Net.BytesAvailable
+    - Net.CharAvailable
+    - Net.CloseConnection
+    - Net.HostAddressFromName
+    - Net.HostNameFromAddress
+    - Net.LineAvailable
+    - Net.LocalAddress
+    - Net.LocalName
+    - Net.OpenConnection
+    - Net.OpenURLConnection
+    - Net.TokenAvailable
+    - Net.WaitForConnection 
+PC:
+    - PC.ParallelGet
+    - PC.ParallelPut
+    - parallelget - parallel port function
+    - parallelput - parallel port procedure 
+Pic:
+    - Pic.Blend
+    - Pic.Blur
+    - Pic.Draw
+    - Pic.DrawFrames
+    - Pic.DrawFramesBack
+    - Pic.DrawSpecial
+    - Pic.DrawSpecialBack
+    - Pic.FileNew
+    - Pic.FileNewFrames
+    - Pic.Flip
+    - Pic.Frames
+    - Pic.Free
+    - Pic.Height
+    - Pic.Mirror
+    - Pic.New
+    - Pic.Rotate
+    - Pic.Save
+    - Pic.Scale
+    - Pic.ScreenLoad
+    - Pic.ScreenSave
+    - Pic.SetTransparentColor
+    - Pic.SetTransparentColour
+    - Pic.Width 
+RGB:
+    - RGB.AddColor
+    - RGB.AddColour
+    - RGB.GetColor
+    - RGB.GetColour
+    - RGB.SetColor
+    - RGB.SetColour
+    - RGB.maxcolor
+    - RGB.maxcolour 
+Rand:
+Sprite:
+    - Sprite.Animate
+    - Sprite.ChangePic
+    - Sprite.Free
+    - Sprite.Hide
+    - Sprite.New
+    - Sprite.SetFrameRate
+    - Sprite.SetHeight
+    - Sprite.SetPosition
+    - Sprite.Show 
+Str:
+    - index - find pattern in string function
+    - length - of a string function
+    - repeat - make copies of string:function 
+Stream:
+    - Stream.Flush
+    - Stream.FlushAll
+    - Stream.eof
+    - eof - end-of-file function 
+Sys:
+    - Sys.Exec
+    - Sys.FetchArg
+    - Sys.GetComputerName
+    - Sys.GetEnv
+    - Sys.GetPid
+    - Sys.GetUserName
+    - Sys.Nargs
+    - getenv - get environment function
+    - getpid - get process id function 
+Text:
+    - Text.Cls
+    - Text.Color
+    - Text.ColorBack
+    - Text.Colour
+    - Text.ColourBack
+    - Text.Locate
+    - Text.LocateXY
+    - Text.WhatCol
+    - Text.WhatColor
+    - Text.WhatColorBack
+    - Text.WhatColour
+    - Text.WhatColourBack
+    - Text.WhatRow
+    - Text.maxcol
+    - Text.maxrow 
+Time:
+    - Time.Date
+    - Time.DateSec
+    - Time.Delay
+    - Time.Elapsed
+    - Time.ElapsedCPU
+    - Time.PartsSec
+    - Time.Sec
+    - Time.SecDate
+    - Time.SecParts 
+TypeConv:
+    From Integer:
+        - intreal - integer-to-real function
+        - intstr - integer-to-string function 
+    From Nat:
+        - natreal - natural number to real function
+        - natstr - natural-number-to-string function 
+    From Real:
+        - ceil - real-to-integer function
+        - erealstr - real-to-string function
+        - floor - real-to-integer function
+        - frealstr - real-to-string function
+        - realstr - real-to-string function
+        - round - real-to-integer function 
+    From String:
+        - strint - string-to-integer:function
+        - strintok - string-to-integer:function
+        - strnat - string to natural number function
+        - strnatok - string to natural number function
+        - strreal - string-to-real function
+        - strrealok - string-to-real function 
+    To/From ASCII:
+        - chr - integer-to-character function
+        - ord - character-to-integer function 
+View:
+    - View.ClipAdd
+    - View.ClipOff
+    - View.ClipSet
+    - View.WhatDotColor
+    - View.WhatDotColour
+    - View.maxcolor
+    - View.maxcolour
+    - View.maxx
+    - View.maxy 
+Window:
+    - Window.Close
+    - Window.GetActive
+    - Window.GetPosition
+    - Window.GetSelect
+    - Window.Hide
+    - Window.Open
+    - Window.Select
+    - Window.Set
+    - Window.SetActive
+    - Window.SetPosition
+    - Window.Show
+    - Window.Update 
+Miscellaneous Subprograms:
+    Addresses and Sizes:
+        - addr - address of a variable
+        - sizeof - size of a type 
+    Arrays:
+        - lower - bound
+    Bit Manipulation:
+        - bits - extraction 
+    Classes:
+        - objectclass - of a pointer
+        - self - pointer to current object 
+    Enumerated Types:
+        - pred - predecessor function
+        - succ - successor function 
+    Type Cheats:
+        - cheat - type cheating 
