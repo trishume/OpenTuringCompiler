@@ -38,6 +38,11 @@ public:
     //! I.E global scopes have global children and locals have local children
     virtual Scope *createChildScope() = 0;
     
+    //! \returns    the name of the scope. I.E the module name
+    //!             Returns a blank string if not named
+    virtual std::string getScopeName() = 0;
+    virtual void setScopeName(const std::string &name) = 0;
+    
     virtual ~Scope() {};
     
     Scope *Parent;

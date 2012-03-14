@@ -27,13 +27,24 @@ public:
     virtual void setVar(std::string name, llvm::Value *val, TuringType *type = NULL);
     virtual void setVar(std::string name, Symbol *val);
     
+    virtual std::string getScopeName() {return ScopeName;}
+    virtual void setScopeName(const std::string &name) {
+        ScopeName = name;
+    }
+    
+    virtual Symbol *declareVar(std::string name, TuringType *type);
+    
     virtual ~BasicScope() {}
     
 protected:
     BasicScope(Scope *parent) : Scope(parent) {}
     virtual bool isDeclaredThis(std::string name);
+    //! overriden by subclasses to allocate the memory in the right place
+    virtual llvm::Value *allocateSpace(TuringType *type,
+                                       const std::string &name) = 0;
     
     std::map<std::string,Symbol*> symbols;
+    std::string ScopeName;
 };
 
 class LocalScope : public BasicScope {
@@ -43,8 +54,10 @@ public:
     
     virtual Scope *createChildScope();
     
-    virtual Symbol *declareVar(std::string name, TuringType *type);
+    
 protected:
+    virtual llvm::Value *allocateSpace(TuringType *type,
+                                       const std::string &name);
     llvm::Function *TheFunction;
 };
 
@@ -54,8 +67,9 @@ public:
     GlobalScope(llvm::Module *mod, Scope *parent);
     virtual Scope *createChildScope();
     
-    virtual Symbol *declareVar(std::string name, TuringType *type);
 protected:
+    virtual llvm::Value *allocateSpace(TuringType *type,
+                                       const std::string &name);
     llvm::Module *TheModule;
 };
 

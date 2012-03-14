@@ -1558,8 +1558,11 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
 Function *CodeGen::compileFunction(ASTNode *node) {
     ASTNode *proto = node->children[0];
     std::vector<VarDecl> args = getDecls(proto->children[1]);
-    // true = internal, "" = don't alias
-    FunctionSymbol *fSym = compilePrototype(proto->str,getType(proto->children[0]),args,"",true);
+    // put the module in the function name so functions in modules don't clash with those out of modules
+    // at the llvm IR level. Use the format ModuleFuncName I.E DrawFillBox so it works with no module name
+    std::string llvmName = (Twine(Scopes->curScope()->getScopeName()) + proto->str).str();
+    // true = internal
+    FunctionSymbol *fSym = compilePrototype(llvmName,getType(proto->children[0]),args,proto->str,true);
     Function *f = fSym->getFunc();
     
     /* using allocas, allows modification of parameters. Saving the code in case it is needed

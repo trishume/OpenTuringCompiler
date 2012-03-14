@@ -37,6 +37,23 @@ bool BasicScope::isDeclaredThis(std::string name) {
     return symbols.find(name) != symbols.end();
 }
 
+Symbol *BasicScope::declareVar(std::string name, TuringType *type) {
+    if (isDeclaredThis(name)) {
+        throw Message::Exception(Twine("Variable ") + name + " is already defined.");
+    }
+    
+    // prefix the scope name to avoid clashes at the LLVM level
+    std::string llvmName = (Twine(getScopeName()) + name).str();
+    Value *var = allocateSpace(type, llvmName);
+    
+    Symbol *sym = new VarSymbol(var,type);
+    
+    // store in the symbol table
+    symbols[name] = sym;
+    
+    return sym;
+}
+
 GlobalScope::GlobalScope(llvm::Module *mod, Scope *parent) : BasicScope(parent), TheModule(mod) {
     
 }
@@ -45,24 +62,13 @@ Scope *GlobalScope::createChildScope() {
     return new GlobalScope(TheModule,this);
 }
 
-Symbol *GlobalScope::declareVar(std::string name, TuringType *type) {
-    if (isDeclaredThis(name)) {
-        throw Message::Exception(Twine("Variable ") + name + " is already defined.");
-    }
-    
-    GlobalVariable* gvar = new GlobalVariable(/*Module=*/*TheModule, 
-                                              /*Type=*/type->getLLVMType(false),
-                                              /*isConstant=*/false,
-                                              /*Linkage=*/GlobalValue::CommonLinkage,
-                                              /*Initializer=*/Constant::getNullValue(type->getLLVMType(false)), // has initializer, specified below
-                                              /*Name=*/name);
-    //gvar->setThreadLocal(true);
-    Symbol *sym = new VarSymbol(gvar,type);
-    
-    // store in the symbol table
-    symbols[name] = sym;
-    
-    return sym;
+Value *GlobalScope::allocateSpace(TuringType *type, const std::string &name) {
+    return new GlobalVariable(/*Module=*/*TheModule, 
+                              /*Type=*/type->getLLVMType(false),
+                              /*isConstant=*/false,
+                              /*Linkage=*/GlobalValue::CommonLinkage,
+                              /*Initializer=*/Constant::getNullValue(type->getLLVMType(false)), // has initializer, specified below
+                              /*Name=*/name);
 }
 
 LocalScope::LocalScope(llvm::Function *func, Scope *parent) : BasicScope(parent), TheFunction(func)  {}
@@ -71,19 +77,8 @@ Scope *LocalScope::createChildScope() {
     return new LocalScope(TheFunction,this);
 }
 
-Symbol *LocalScope::declareVar(std::string name, TuringType *type) {
-    if (isDeclaredThis(name)) {
-        throw Message::Exception(Twine("Variable ") + name + " is already defined.");
-    }
-    
+Value *LocalScope::allocateSpace(TuringType *type, const std::string &name) {
     IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
                      TheFunction->getEntryBlock().begin());
-    Value *lvar = TmpB.CreateAlloca(type->getLLVMType(false), 0,name);
-    
-    Symbol *sym = new VarSymbol(lvar,type);
-    
-    // store in the symbol table
-    symbols[name] = sym;
-    
-    return sym;
+    return TmpB.CreateAlloca(type->getLLVMType(false), 0,name);
 }

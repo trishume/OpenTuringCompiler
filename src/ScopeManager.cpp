@@ -55,8 +55,10 @@ void ScopeManager::pushNamedScope(std::string name) {
         } else {
             throw Message::Exception(llvm::Twine("Tried to redefine module ") + name + ".");
         }
-    }    
-    pushScope();
+    } else {
+        pushScope();
+        CurrentScope->setScopeName(name);
+    }
     NamedScopes[name] = CurrentScope;
     AllNamed.insert(CurrentScope);
 }
