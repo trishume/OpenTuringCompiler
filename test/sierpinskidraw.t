@@ -40,12 +40,19 @@ Draw.FillArc(400,400,100,50,0,180,5)
 % test with an octagon with a concave side
 var x : array 1..8 of int := init (100, 100, 135, 185, 220, 220, 185, 135)
 var y : array 1..8 of int := init (100, 150, 185, 150, 150, 100, 65, 65)
-Draw.FillPolygon (x, y, 8, 1)
+Draw.FillPolygon (x, y, 8, 48)
 Draw.Polygon (x, y, 8, 3)
-for i : 1..100
+
+for i : 1..300
 	Draw.Dot(Rand.Int(400,450),Rand.Int(50,70),32)
 end for
+
+% take a picture of part of the octagon
+var picId := Pic.New(70,70,150,150)
+Pic.Draw(picId,400,50,picMerge)
+Pic.Free(picId)
+
 View.Update
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
-delay(7000)
+delay(8000)

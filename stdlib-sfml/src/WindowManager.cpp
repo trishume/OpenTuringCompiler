@@ -128,6 +128,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     glLoadIdentity();
     // Displacement trick for exact pixelization
     glTranslatef(0.375, 0.375, 0);
+    
     curWin()->Win.SetActive();
     clearWin(winId);
 }
