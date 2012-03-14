@@ -660,8 +660,20 @@ TuringValue *CodeGen::compile(ASTNode *node) {
                                    Types.getType("int"));
         case Language::ARRAY_INIT:
             return compileArrayLiteral(node);
-        case Language::VAR_REFERENCE:
         case Language::FIELD_REF_OP:
+        {
+            Symbol *var = compileLHS(node);
+            // functions in modules with no parameters can be called with no brackets
+            if (var->isFunction()) {
+                FunctionSymbol *funcSym = static_cast<FunctionSymbol*>(var);
+                if (!isProcedure(funcSym->getFunc()) && funcSym->numArgs() == 0) {
+                    return abstractCompileCall(var, std::vector<TuringValue*>(), true);
+                }
+            }
+            // otherwise we are just referencing a module variable or a record field
+            return abstractCompileVarReference(var,(Twine("field:") + node->str).str());
+        }
+        case Language::VAR_REFERENCE:
             // compileLHS knows how to handle these. We just have to load them.
             return abstractCompileVarReference(compileLHS(node),node->str);
         case Language::STRING_LITERAL:

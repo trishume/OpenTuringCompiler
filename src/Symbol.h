@@ -58,6 +58,7 @@ public:
     virtual llvm::Value *getVal() {return Func;}
     
     VarDecl getArgDecl(unsigned int index) {return Args[index];}
+    unsigned int numArgs() {return Args.size();}
     
     virtual bool isFunction() {return true;}
     llvm::Function *getFunc() {return Func;}

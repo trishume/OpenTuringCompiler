@@ -3,5 +3,5 @@
 
 include "stdlibtest.t"
 include "test13.t"
-%include "sierpinskidraw.t"
+include "sierpinskidraw.t"
 %include "testplanetbench.t"

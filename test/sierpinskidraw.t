@@ -15,7 +15,7 @@ verts(3).y := 10
 var p : point
 p.x := 210
 p.y := 110
-var start := Time.Elapsed()
+var start := Time.Elapsed
 for i : 1..1000000
 	var randomvert := Rand.Int(1,3)
 	var v : point := verts(randomvert)
@@ -29,17 +29,24 @@ Draw.Box(10,70,80,20,44)
 
 Draw.FillBox(300,200,320,370,52)
 Draw.Line(10,70,320,370,48)
+Draw.ThickLine(100,100,10,450,6,9)
 
 Draw.Oval(200,300,20,30,3)
 Draw.FillOval(400,300,100,50,3)
 
 Draw.Arc(200,300,40,40,50,100,5)
 Draw.FillArc(400,400,100,50,0,180,5)
-% TODO test Draw.Polygon
+
+var x : array 1..8 of int := init (100, 100, 135, 185, 
+                                   220, 220, 185, 135)
+var y : array 1..8 of int := init (100, 150, 185, 185,
+                           150, 100, 65, 65)
+Draw.FillPolygon (x, y, 8, 1)
+Draw.Polygon (x, y, 8, 3)
 for i : 1..100
 	Draw.Dot(Rand.Int(400,450),Rand.Int(50,70),32)
 end for
-View.Update()
+View.Update
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
-put "Done drawing. Took ", Time.Elapsed() - start, "ms"
+put "Done drawing. Took ", Time.Elapsed - start, "ms"
 delay(7000)

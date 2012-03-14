@@ -66,7 +66,7 @@ extern "C" {
         }
         
         glBegin(GL_LINE_LOOP);
-        for (unsigned int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i) {
             glVertex2i(x->data[i], y->data[i]);
         }
         glEnd();
@@ -81,7 +81,7 @@ extern "C" {
         }
         
         glBegin(GL_TRIANGLE_FAN);
-        for (unsigned int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i) {
             glVertex2i(x->data[i], y->data[i]);
         }
         glEnd();
@@ -101,9 +101,9 @@ extern "C" {
     void Turing_StdlibSFML_Draw_FillBox(TInt x1, TInt y1, TInt x2, TInt y2, TInt colour) {
         glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
         
-        glBegin(GL_QUADS);
-        glVertex2i(x1, y1); glVertex2i(x2, y1); 
-        glVertex2i(x2, y2); glVertex2i(x1, y2);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex2i(x1, y1); glVertex2i(x1, y2); 
+        glVertex2i(x2, y1); glVertex2i(x2, y2);
         glEnd();
         
         WinMan->updateCurWin();

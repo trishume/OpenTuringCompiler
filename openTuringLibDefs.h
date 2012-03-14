@@ -15,7 +15,7 @@ typedef struct {
 
 typedef struct {
     TInt length;
-    char data[1]; // length is dummy, can be anything
+    TInt data[1]; // length is dummy, can be anything
 } TIntArray;
 
 #endif

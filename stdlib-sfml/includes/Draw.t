@@ -3,6 +3,7 @@ module Draw
 
 	external "Dot" proc Turing_StdlibSFML_Draw_Dot(x,y,colour : int)
     external "Line" proc Turing_StdlibSFML_Draw_Line(x1,y1,x2,y2,colour : int)
+    external "ThickLine" proc Turing_StdlibSFML_Draw_ThickLine(x1,y1,x2,y2,width,colour : int)
 
     external "Polygon" proc Turing_StdlibSFML_Draw_Polygon(x, y : array 1 .. * of int, n : int,
 colourNum : int)
