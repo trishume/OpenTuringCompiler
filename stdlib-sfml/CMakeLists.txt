@@ -1,7 +1,9 @@
 include_directories (src ../)
 
 find_package(SFML REQUIRED system window graphics network audio)
-find_package(OpenGL)
+find_package(OpenGL REQUIRED)
+find_package(GLUT REQUIRED)
+INCLUDE_DIRECTORIES(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
 
 set(StdLibSFMLSources 
     src/Time.cpp
@@ -28,7 +30,7 @@ set(StdLibSFMLIncludes
 # module builds a plugin-like library
 add_library(OpenTuringStdlibSFML MODULE ${StdLibSFMLSources} ${StdLibSFMLHeaders} ${StdLibSFMLIncludes}
 										${StdLibCommonHeaders} ${StdLibCommonSources})
-target_link_libraries(OpenTuringStdlibSFML ${SFML_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(OpenTuringStdlibSFML ${SFML_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
 
 # install
 set(STDLIB_SFML_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib-sfml)
