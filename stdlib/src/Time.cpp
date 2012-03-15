@@ -7,8 +7,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "openTuringLibDefs.h"
-#include "openTuringRuntimeError.h"
+#include "TuringCommon/LibDefs.h"
+#include "TuringCommon/RuntimeError.h"
 
 /*************/
 /* Constants */
@@ -134,7 +134,7 @@ extern "C" {
 
 	    if (*pmDateTimeStr == 0) 
 	    {
-			turingRuntimeError("Invalid time string.");
+			TuringCommon::runtimeError("Invalid time string.");
 	    }
 
 	    if (pmDateTimeStr [2] == ':') 
@@ -144,7 +144,7 @@ extern "C" {
 
 		if (myOOTTime == -1) 
 		{
-		    turingRuntimeError("Invalid time string.");
+		    TuringCommon::runtimeError("Invalid time string.");
 		}
 	    }
 	    else 
@@ -155,7 +155,7 @@ extern "C" {
 
 		if (myOOTTime == -1) 
 		{
-		    turingRuntimeError("Invalid time string.");
+		    TuringCommon::runtimeError("Invalid time string.");
 		}
 
 		myTimeStr += DATE_STR_LEN;
@@ -166,7 +166,7 @@ extern "C" {
 
 		    if (myTimeSecs == -1) 
 		    {
-		        turingRuntimeError("Invalid time string.");
+		        TuringCommon::runtimeError("Invalid time string.");
 		    }
 		    myOOTTime += myTimeSecs;
 		}
@@ -203,7 +203,7 @@ extern "C" {
 	    if (pmOOTTime == -1)
 	    {
 		pmOOTimeStr [0] = 0;
-		turingRuntimeError("Seconds time out of range. Maybe you used a date too far in the past or future.");
+		TuringCommon::runtimeError("Seconds time out of range. Maybe you used a date too far in the past or future.");
 	    }
 	    else
 	    {

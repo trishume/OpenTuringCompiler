@@ -262,7 +262,7 @@ char TuringPalette[256][3] = {
 
 char *getRGBColourFromNum(TInt num) {
     if (num < 0 || num > 255) {
-        turingRuntimeError("Colour number out of range.");
+        TuringCommon::runtimeError("Colour number out of range.");
     }
     return TuringPalette[num];
 }

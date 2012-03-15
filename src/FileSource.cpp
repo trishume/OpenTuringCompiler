@@ -16,6 +16,8 @@
 
 #include <llvm/ADT/Twine.h>
 
+#include "TuringCommon/FileSystem.h"
+
 extern D_ParserTables parser_tables_gram;
 //! from parser
 extern ASTNode *treeRoot;
@@ -38,16 +40,16 @@ std::string FileSource::getLibraryPath(const std::string &libName, const std::st
     // library path is OS dependent. Find the right one.
     // TODO use a preprocessor define to stop .so includes on windows and vice-versa
     
-    path = FileSource::includeFilePath((llvm::Twine(libName) + ".dll").str(),
-                                       includedFrom);
+    path = TuringCommon::includeFilePath((llvm::Twine(libName) + ".dll").str(),
+                                       includedFrom,BasePath);
     std::ifstream dll_file(path.c_str());
     if (dll_file.good())
     {
         return path;
     }
     
-    path = FileSource::includeFilePath((llvm::Twine("lib") + libName + ".so").str(),
-                                       includedFrom);
+    path = TuringCommon::includeFilePath((llvm::Twine("lib") + libName + ".so").str(),
+                                       includedFrom,BasePath);
     std::ifstream so_file(path.c_str());
     if (so_file.good())
     {
@@ -55,19 +57,6 @@ std::string FileSource::getLibraryPath(const std::string &libName, const std::st
     }
     
     return ""; // FAIL
-}
-
-std::string FileSource::includeFilePath(const std::string &fileName, const std::string &includedFrom) {
-    std::string includedFolder = FileSource::folderFromFilePath(includedFrom);
-    
-    std::string path = (llvm::Twine(BasePath) + includedFolder + fileName).str();
-    return path;
-}
-
-std::string FileSource::folderFromFilePath(const std::string &fileName) {
-    size_t found = fileName.find_last_of("/\\");
-    // if it is npos then there was no separator. Just a name. in wich case the folder is blank.
-    return (found == std::string::npos ? "" : fileName.substr(0,found+1));
 }
 
 ASTNode *FileSource::parseString(const std::string &fileData, bool printAST) {

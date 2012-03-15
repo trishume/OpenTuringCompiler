@@ -6,8 +6,8 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 
-#include "openTuringLibDefs.h"
-#include "IDManager.h"
+#include "TuringCommon/LibDefs.h"
+#include "TuringCommon/IDManager.h"
 
 #define DEFAULT_WINDOW_WIDTH 600
 #define DEFAULT_WINDOW_HEIGHT 500
@@ -58,7 +58,7 @@ public:
 protected:
     void doWinUpdate(TuringWindow *win);
     
-    IDManager<TuringWindow> Windows;
+    TuringCommon::IDManager<TuringWindow> Windows;
     TInt CurWin;
     sf::WindowSettings Settings;
     sf::Sprite BufferSprite;

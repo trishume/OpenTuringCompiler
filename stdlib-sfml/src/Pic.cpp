@@ -1,10 +1,10 @@
 #include <SFML/Graphics/Image.hpp>
 #include <SFML/Window.hpp>
 
-#include "openTuringLibDefs.h"
+#include "TuringCommon/LibDefs.h"
 
 #include "WindowManager.h"
-#include "IDManager.h"
+#include "TuringCommon/IDManager.h"
 
 #define PIC_MODE_COPY 0
 #define PIC_MODE_MERGE 1
@@ -19,7 +19,7 @@ struct TuringPic{
     TInt Width,Height;
 };
 
-static IDManager<TuringPic> Pics("Pic");
+static TuringCommon::IDManager<TuringPic> Pics("Pic");
 static sf::Color transparentColour(255,255,255);
 
 extern "C" {

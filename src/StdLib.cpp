@@ -13,16 +13,9 @@
 #include "TypeManager.h"
 #include "Message.h"
 
-typedef int32_t TInt;
-typedef double TReal;
+#include "TuringCommon/LibDefs.h"
 
 using namespace llvm;
-
-
-typedef struct {
-    TInt length;
-    char strdata[255]; // length is dummy, can be anything
-} TString;
 
 extern "C" {
     

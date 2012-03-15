@@ -19,17 +19,11 @@ link_directories( ${LLVM_LIB_DIR} )
 
 set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
 
+set(CommonLibIncludeDir ${PROJECT_SOURCE_DIR}/commonlib/include)
+add_subdirectory(commonlib)
+
 add_subdirectory(test)
 add_subdirectory(src)
-
-set(StdLibCommonHeaders
-	${PROJECT_SOURCE_DIR}/openTuringLibDefs.h
-    ${PROJECT_SOURCE_DIR}/openTuringRuntimeError.h
-	)
-
-set(StdLibCommonSources
-	${PROJECT_SOURCE_DIR}/openTuringRuntimeError.cpp
-	)
 
 add_subdirectory(stdlib)
 add_subdirectory(stdlib-sfml)

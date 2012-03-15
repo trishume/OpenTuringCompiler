@@ -1,7 +1,7 @@
 #include <math.h>
 #include <SFML/System.hpp>
 
-#include "openTuringLibDefs.h"
+#include "TuringCommon/LibDefs.h"
 #include "WindowManager.h"
 
 static sf::Clock mainClock;

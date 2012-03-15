@@ -1,4 +1,4 @@
-include_directories (.)
+include_directories (. ${CommonLibIncludeDir})
 
 add_custom_command(	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g.d_parser.cpp 
 					COMMAND /usr/local/bin/make_dparser ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g -v -Xcpp
@@ -54,7 +54,7 @@ add_executable(compiler ${MySources} ${MyHeaders} ${MyExtras})
 set_target_properties(	compiler 
 						PROPERTIES 
 						LINK_FLAGS ${LLVM_LDFLAGS})
-target_link_libraries(compiler ${LLVM_LIBS} -ldparse)
+target_link_libraries(compiler OpenTuringCommonLib ${LLVM_LIBS}  -ldparse)
 
 # install
 set(COMPILER_INSTALL_DIR ${INSTALL_DIR})

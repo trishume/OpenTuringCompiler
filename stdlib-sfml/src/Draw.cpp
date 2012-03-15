@@ -7,8 +7,8 @@
 #include <GL/glut.h> 
 #endif
 
-#include "openTuringLibDefs.h"
-#include "openTuringRuntimeError.h"
+#include "TuringCommon/LibDefs.h"
+#include "TuringCommon/RuntimeError.h"
 #include "WindowManager.h"
 #include "RGB.h"
 
@@ -38,9 +38,9 @@ static void tcbCombine (GLdouble c[3], void *d[4], GLfloat w[4], void **out) {
 //! creates vertices for ovals and arcs. Should be wrapped in a glBegin if the desired type
 static void MyMakeOvalVertices(TInt x, TInt y, TInt rx, TInt ry, TInt startAngle, TInt endAngle) {
     if (startAngle < 0 || startAngle > 360)
-        turingRuntimeError("Start angle of arc out of range.");
+        TuringCommon::runtimeError("Start angle of arc out of range.");
     if (endAngle < 0 || endAngle > 360)
-        turingRuntimeError("End angle of arc out of range.");
+        TuringCommon::runtimeError("End angle of arc out of range.");
     
     for (int i=startAngle; i < endAngle; i++)
     {
@@ -104,7 +104,7 @@ extern "C" {
         glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
         
         if (x->length < n || y->length < n) {
-            turingRuntimeError("Not enough points in polygon array.");
+            TuringCommon::runtimeError("Not enough points in polygon array.");
         }
         
         std::vector<GLdouble*> points;
@@ -138,7 +138,7 @@ extern "C" {
         glColor3ubv((GLubyte *)getRGBColourFromNum(colour));
         
         if (x->length < n || y->length < n) {
-            turingRuntimeError("Not enough points in polygon array.");
+            TuringCommon::runtimeError("Not enough points in polygon array.");
         }
         
         glBegin(GL_LINE_LOOP);

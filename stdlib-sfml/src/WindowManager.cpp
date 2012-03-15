@@ -6,7 +6,7 @@
 
 #include <SFML/Window.hpp>
 
-#include "openturingRuntimeError.h"
+#include "TuringCommon/RuntimeError.h"
 
 WindowManager *WinMan = NULL;
 
@@ -16,7 +16,7 @@ extern "C" {
         if (WinMan == NULL) {
             WinMan = new WindowManager();
         } else {
-            turingRuntimeError("Window init called when there is already a window.");
+            TuringCommon::runtimeError("Window init called when there is already a window.");
         }
     }
     void Turing_StdlibSFML_Window_Cleanup() {
@@ -24,7 +24,7 @@ extern "C" {
             delete WinMan;
             WinMan = NULL;
         } else {
-            turingRuntimeError("Window cleanup called when there is no window to clean up.");
+            TuringCommon::runtimeError("Window cleanup called when there is no window to clean up.");
         }
     }
 }
@@ -69,7 +69,7 @@ TInt WindowManager::newWin(const std::string &params) {
 
 void WindowManager::closeWin(TInt winId) {
     if (winId == 0) {
-        turingRuntimeError("Can't close the main window.");
+        TuringCommon::runtimeError("Can't close the main window.");
     }
     Windows.remove(winId);
     
@@ -90,7 +90,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     for (; item != items.end(); ++item) {
         std::vector<std::string> parts;
         split(parts,*item, ":;"); // split by either
-        if (parts.size() == 0) turingRuntimeError("Malformed window format specifier component.");
+        if (parts.size() == 0) TuringCommon::runtimeError("Malformed window format specifier component.");
         
         std::string tagname = parts[0];
         
@@ -99,7 +99,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
             int x = atoi(parts[1].c_str());
             int y = atoi(parts[2].c_str());
             if (x < 1 || y < 1) {
-                turingRuntimeError("Tried to create a window with negative or zero size");
+                TuringCommon::runtimeError("Tried to create a window with negative or zero size");
             }
             win->Width  = x;
             win->Height = y;
@@ -111,7 +111,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
         } else if (tagname.compare("nooffscreenonly") == 0) {
             win->OffScreenOnly = false;
         } else {
-            turingRuntimeError("Don't recognize window option. Might just not be implemented.",true); // true = warn
+            TuringCommon::runtimeError("Don't recognize window option. Might just not be implemented.",true); // true = warn
         }
     }
     

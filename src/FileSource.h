@@ -33,12 +33,6 @@ public:
     std::string getLibraryPath(const std::string &libName, const std::string &includedFrom);
     //! \returns the parsed AST or NULL on parsing error
     virtual ASTNode *parseString(const std::string &fileData, bool printAST = true);
-    //! \param fileName the relative file path of the file. Turing form.
-    //! \param includedFrom the relative path of the file to which fileName is relative. Turing form.
-    //! \returns the native absolute file path to the file
-    std::string includeFilePath(const std::string &fileName, const std::string &includedFrom);
-    //! returns the folder part of a file path
-    static std::string folderFromFilePath(const std::string &fileName);
 protected:
     //! get the contents of a file.
     //! \param filePath absolute, os native path to the file.

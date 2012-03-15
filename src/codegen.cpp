@@ -9,6 +9,8 @@
 #include <llvm/Attributes.h>
 #include <llvm/Support/DynamicLibrary.h>
 
+#include "TuringCommon/FileSystem.h"
+
 #include "language.h"
 #include "ast.h"
 
@@ -72,7 +74,7 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
 
 bool CodeGen::compileFile(std::string fileName) {
     Message::log(Twine("Compiling file \"") + fileName + "\".");
-    std::string path = TheSource->includeFilePath(fileName, CurFile);
+    std::string path = TuringCommon::includeFilePath(fileName, CurFile);
     ASTNode *fileRoot = TheSource->parseFile(path);
     
     if (fileRoot == NULL) {

@@ -1,4 +1,4 @@
-include_directories (src includes ../)
+include_directories (src includes ../ ${CommonLibIncludeDir})
 
 set(StdLibSources 
     src/Math.cpp
@@ -18,6 +18,7 @@ set(StdLibIncludes
 # module builds a plugin-like library
 add_library(OpenTuringStdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes}
 									${StdLibCommonHeaders} ${StdLibCommonSources})
+target_link_libraries(OpenTuringStdlib OpenTuringCommonLib)
 
 # install
 set(STDLIB_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib)

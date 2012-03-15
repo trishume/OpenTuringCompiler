@@ -10,7 +10,7 @@
 #include <ctime>
 #include <cstdlib>
 
-#include "openTuringLibDefs.h"
+#include "TuringCommon/LibDefs.h" 
 
 static TReal MyDegToRad(TReal deg) {
 	return deg * (M_PI / 180.0);

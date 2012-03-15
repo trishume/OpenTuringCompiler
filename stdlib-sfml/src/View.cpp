@@ -1,7 +1,7 @@
 #include <math.h>
 #include <SFML/Window.hpp>
 
-#include "openTuringLibDefs.h"
+#include "TuringCommon/LibDefs.h"
 #include "WindowManager.h"
 #include "RGB.h"
 
