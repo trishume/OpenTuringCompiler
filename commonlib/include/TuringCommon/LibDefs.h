@@ -1,5 +1,5 @@
-#ifndef _OPENTURING_LIBDEFS_H_
-#define _OPENTURING_LIBDEFS_H_
+#ifndef _TuringCommon_LibDefs_H_
+#define _TuringCommon_LibDefs_H_
 
 #include <stdint.h>
 

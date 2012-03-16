@@ -1,5 +1,5 @@
-#ifndef _IDMANAGER_H_
-#define _IDMANAGER_H_
+#ifndef _TuringCommon_IDManager_H_
+#define _TuringCommon_IDManager_H_
 
 #include <map>
 #include <string>

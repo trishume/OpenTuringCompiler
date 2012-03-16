@@ -1,7 +1,7 @@
 //! various path manipulation routines
 
-#ifndef _FILESYSTEM_H_
-#define _FILESYSTEM_H_
+#ifndef _TuringCommon_FileSystem_H_
+#define _TuringCommon_FileSystem_H_
 
 #include <string>
 namespace TuringCommon {
