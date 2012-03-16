@@ -15,15 +15,19 @@
 #include <llvm/Module.h>
 #include <llvm/Function.h>
 
+#include "TuringCommon/StreamManager.h"
+
 class Executor {
 public:
-    Executor(llvm::Module *mod);
+    Executor(llvm::Module *mod, TuringCommon::StreamManager *streamManager);
     
     void optimize();
-    bool run(bool timeRun = false);
+    bool run();
 private:
     llvm::Module *TheModule;
     llvm::ExecutionEngine *TheExecutionEngine;
+    
+    TuringCommon::StreamManager *TheStreamManager;
 };
 
 #endif

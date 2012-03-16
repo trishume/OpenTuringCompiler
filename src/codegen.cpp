@@ -24,17 +24,17 @@ for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->
 
 static const std::string defaultIncludes =
     "external proc TuringQuitWithCode(code : int)\n"
-    "external proc TuringPrintInt(val : int)\n"
-    "external proc TuringPrintReal(val : real)\n"
-    "external proc TuringPrintBool(val : boolean)\n"
-    "external proc TuringPrintString(val : string)\n"
+    "external proc TuringPrintInt(val : int, streamManager : voidptr, streamNum : int)\n"
+    "external proc TuringPrintReal(val : real, streamManager : voidptr, streamNum : int)\n"
+    "external proc TuringPrintBool(val : boolean, streamManager : voidptr, streamNum : int)\n"
+    "external proc TuringPrintString(val : string, streamManager : voidptr, streamNum : int)\n"
+    "external proc TuringPrintNewline(streamManager : voidptr, streamNum : int)\n"
     "external proc TuringGetString(val : string)\n"
     "external proc TuringGetInt(var val : int)\n"
     "external \"length\" fcn TuringStringLength(val : string) : int\n"
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "external fcn TuringStringCompare(lhs,rhs : string) : boolean\n"
     "external proc TuringStringCopy(lhs,rhs : string)\n"
-    "external proc TuringPrintNewline()\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
     "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
     "external fcn TuringIndexArray(index : int, length : int) : int\n"
@@ -57,12 +57,23 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
     // Get the module ready to start compiling
     
     /* Create the top level interpreter function to call as entry */
+    Type *voidPtrTy = Types.getType("voidptr")->getLLVMType(true);
 	std::vector<Type*> argTypes;
+    argTypes.push_back(voidPtrTy); // pointer to the stream manager
 	FunctionType *mainFuntionType = FunctionType::get(Type::getVoidTy(getGlobalContext()), argTypes, false);
 	MainFunction = Function::Create(mainFuntionType, GlobalValue::ExternalLinkage, MAIN_FUNC_NAME, TheModule);
 	BasicBlock *mainBlock = BasicBlock::Create(getGlobalContext(), "entry", MainFunction, 0);
-    
 	Builder.SetInsertPoint(mainBlock);
+    
+    // initialize the stream manager variable. Store the parameter into a global
+    StreamManagerPtr = new GlobalVariable(/*Module=*/*TheModule,
+                                          /*Type=*/voidPtrTy,
+                                          /*isConstant=*/false,
+                                          /*Linkage=*/GlobalValue::InternalLinkage,
+                                          /*Initializer=*/Constant::getNullValue(voidPtrTy),
+                                          "streamManagerPtr");
+    Value *streamManager = &(*(MainFunction->arg_begin()));
+    Builder.CreateStore(streamManager, StreamManagerPtr);
     
     // Add all the functions that the language needs to function
     ASTNode *includesRoot = TheSource->parseString(defaultIncludes,false);
@@ -106,13 +117,11 @@ bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {
 
 #pragma mark Execution
 
-bool CodeGen::execute(bool dumpModule) {
-    
-    if(dumpModule) TheModule->dump();
-    
+llvm::Module *CodeGen::getFinalizedModule() {
+    Message::setCurLine(0, "");
     if (!CanExecute) {
         Message::error("Code generation failed. Can not execute.");
-        return false; // fail
+        return NULL; // fail
     }
     
     // Finalize the main function
@@ -127,15 +136,7 @@ bool CodeGen::execute(bool dumpModule) {
     // we have it finalized. No more!
     CanExecute = false;
     
-    // run it!
-    Message::setCurLine(0, "");
-    Message::log("JIT compiling and optimizing...");
-    Executor jit(TheModule);
-    jit.optimize();
-    Message::log("RUNNING...");
-    jit.run(false); // true = time run
-    
-	return true; // success
+	return TheModule; // success
 }
 
 #pragma mark Utilities
@@ -1132,6 +1133,9 @@ void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {
+    Value *streamManager = Builder.CreateLoad(StreamManagerPtr,"streamManager");
+    // TODO stream specifiers in statement
+    Value *stream = getConstantInt(TURINGCOMMON_STREAM_STDOUT)->getVal(); 
     // print out all the comma separated expressions
     ITERATE_CHILDREN(node, curNode) {
         TuringValue *val = compile(*curNode);
@@ -1140,6 +1144,8 @@ void CodeGen::compilePutStat(ASTNode *node) {
         Function *calleeFunc;
         std::vector<Value*> argVals;
         argVals.push_back(val->getVal());
+        argVals.push_back(streamManager);
+        argVals.push_back(stream);
         
         if (type->getName().compare("int") == 0) {
             calleeFunc = TheModule->getFunction("TuringPrintInt");
@@ -1158,7 +1164,10 @@ void CodeGen::compilePutStat(ASTNode *node) {
     
     // if the string is not ".." print a newline
     if (node->str.compare("..") != 0) {
-        Builder.CreateCall(TheModule->getFunction("TuringPrintNewline"),std::vector<Value*>());
+        std::vector<Value*> argVals;
+        argVals.push_back(streamManager);
+        argVals.push_back(stream);
+        Builder.CreateCall(TheModule->getFunction("TuringPrintNewline"),argVals);
     }
 }
 

@@ -47,6 +47,10 @@ namespace TuringCommon {
         typedef void (*ReadStreamFunc)(TInt,TString*,TInt);
         
         StreamManager() : Streams("Stream") {}
+        
+        //! convenience method to initialize all the special streams
+        //! with stdin, stdout and stderr
+        void initWithStandardStreams();
 
         //! registers a stream. Passed two stream functions.
         //! Either of the function pointers may be NULL if the stream

@@ -23,7 +23,7 @@
 
 using namespace llvm;
 
-Executor::Executor(Module *mod) : TheModule(mod) {
+Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager) : TheModule(mod), TheStreamManager(streamManager) {
     InitializeNativeTarget();
     std::string errStr;
     //TheExecutionEngine = ExecutionEngine::create(TheModule,false,&errStr);
@@ -78,7 +78,7 @@ void Executor::optimize() {
     
 }
 
-bool Executor::run(bool timeRun) {
+bool Executor::run() {
     Function *mainFunc = TheModule->getFunction("main");
     
     if (!mainFunc) {
@@ -87,17 +87,10 @@ bool Executor::run(bool timeRun) {
     }
     
     void *funcPtr = TheExecutionEngine->getPointerToFunction(mainFunc);
-    void (*programMain)() = (void (*)())(intptr_t)funcPtr; // cast it into a function
-    
-    clock_t startTime;
-    if (timeRun) startTime = clock();
-    programMain();
-    if (timeRun) {
-        clock_t endTime = clock();
-        clock_t runTime = endTime - startTime;
-        int milliseconds = (runTime / CLOCKS_PER_SEC) * 1000;
-        Message::log(Twine("Execution finished. Program took ") + Twine(milliseconds) + "ms to run.");
-    }
+    void (*programMain)(TuringCommon::StreamManager*) = 
+        (void (*)(TuringCommon::StreamManager*))(intptr_t)funcPtr; // cast it into a function
+
+    programMain(TheStreamManager);
     
     return true;
 }

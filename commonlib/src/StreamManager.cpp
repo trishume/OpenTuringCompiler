@@ -1,8 +1,40 @@
 #include "TuringCommon/StreamManager.h"
 
 #include <sstream>
+#include <iostream>
+
+// TODO these are just testing methods. For example, they can overflow the buffer.
+// maybe make them more bulletproof?
+static void StreamStdOut(TInt streamNum,TString* text) {
+    std::cout << text->strdata;
+}
+static void StreamStdErr(TInt streamNum,TString* text) {
+    std::cerr << text->strdata;
+}
+static void StreamStdIn(TInt streamNum,TString* buffer, TInt length) {
+    if (length == TURINGCOMMON_STREAM_READ_LINE) {
+        std::string inString;
+        std::getline(std::cin,inString);
+        strncpy(buffer->strdata, inString.c_str(), buffer->length);
+    } else {
+        std::cin >> buffer->strdata;
+    }
+}
 
 namespace TuringCommon {
+    void StreamManager::initWithStandardStreams() {
+        TInt stream;
+        
+        stream = registerStream(&StreamStdErr, NULL);
+        setSpecialStream(TURINGCOMMON_STREAM_STDERR, stream);
+        
+        stream = registerStream(&StreamStdOut, NULL);
+        setSpecialStream(TURINGCOMMON_STREAM_STDOUT, stream);
+        
+        stream = registerStream(NULL, &StreamStdIn);
+        setSpecialStream(TURINGCOMMON_STREAM_STDIN, stream);
+    }
+    
 	TInt StreamManager::registerStream(WriteStreamFunc outStream, ReadStreamFunc inStream) {
         TInt newStreamId = Streams.getNew();
         TuringStream *newStream = Streams.get(newStreamId);

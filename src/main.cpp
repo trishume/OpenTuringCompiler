@@ -9,6 +9,9 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "Executor.h"
+#include "TuringCommon/StreamManager.h"
+
 
 #define DEFAULT_INCLUDE "lib/predefs.t"
 #define DEFAULT_POST_INCLUDE "lib/postdefs.t"
@@ -37,6 +40,22 @@ bool compileIfExists(const std::string &fileName,CodeGen &gen) {
     return true;
 }
 
+void run(CodeGen &gen) {
+    // set up the stream manager
+    TuringCommon::StreamManager streamManager;
+    streamManager.initWithStandardStreams();
+    // if everything get the finalized module
+    llvm::Module *mainModule = gen.getFinalizedModule();
+    std::cout << "Final Module (unoptimized)";
+    mainModule->dump();
+    // run it!
+    std::cout << "JIT compiling and optimizing...\n";
+    Executor jit(mainModule,&streamManager);
+    jit.optimize();
+    std::cout << "RUNNING...\n";
+    jit.run();
+}
+
 int main(int argc, char *argv[]) {
     //d_verbose_level = 1;
     
@@ -53,7 +72,7 @@ int main(int argc, char *argv[]) {
     if(compileIfExists(DEFAULT_INCLUDE,gen) && 
        gen.compileFile(argv[1]) && 
        compileIfExists(DEFAULT_POST_INCLUDE, gen)) {
-        gen.execute(true);
+        run(gen); // call the run function
     }
     delete plugins;
     delete source;

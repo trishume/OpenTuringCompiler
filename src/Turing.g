@@ -10,6 +10,7 @@
     #include <set>
 
     ASTNode *treeRoot;
+    static std::set<std::string> Keywords;
     
     void errorFunc(std::string msg) {
         std::cerr << "Parser Error: " << msg << std::endl;
@@ -96,21 +97,21 @@
     //! checks if an identifier is a keyword so that put (5)
     //! doesn't interperet put as a function. Etcetera...
     bool isKeyword(std::string ident) {
-        std::set<std::string> keywords;
-        keywords.insert("else");
-        keywords.insert("put");
-        keywords.insert("if");
-        keywords.insert("for");
-        keywords.insert("loop");
-        keywords.insert("var");
-        keywords.insert("return");
-        keywords.insert("result");
-        keywords.insert("label");
-        keywords.insert("upper");
-        keywords.insert("init");
-        // WARNING on my computer adding another keyword can cause weird memory corruption
+        if(Keywords.empty()) {
+            Keywords.insert("else");
+            Keywords.insert("put");
+            Keywords.insert("if");
+            Keywords.insert("for");
+            Keywords.insert("loop");
+            Keywords.insert("var");
+            Keywords.insert("return");
+            Keywords.insert("result");
+            Keywords.insert("label");
+            Keywords.insert("upper");
+            Keywords.insert("init");
+        }
 
-        return keywords.find(ident) != keywords.end();
+        return Keywords.find(ident) != Keywords.end();
     }
 }
 

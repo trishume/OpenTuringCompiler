@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include <stdlib.h>
 
 #include <llvm/ADT/Twine.h>
 
@@ -14,8 +15,17 @@
 #include "Message.h"
 
 #include "TuringCommon/LibDefs.h"
+#include "TuringCommon/StreamManager.h"
 
 using namespace llvm;
+
+static void MySendStringToStream(TString *text,TuringCommon::StreamManager *streamManager, TInt stream) {
+    std::string errMsg;
+    bool worked = streamManager->writeToStream(stream, text, &errMsg);
+    if (!worked) {
+        Message::runtimeError(errMsg);
+    }
+}
 
 extern "C" {
     
@@ -23,20 +33,32 @@ extern "C" {
         Message::runtimeError(Twine("Program quit with error code:") + Twine(errorCode));
     }
     
-    void TuringPrintInt(TInt num) {
-        std::cout << num;
+    void TuringPrintInt(TInt num,TuringCommon::StreamManager *streamManager, TInt stream) {
+        TString text;
+        text.length = TURING_STRING_LENGTH;
+        sprintf(text.strdata, "%d",num);
+        MySendStringToStream(&text, streamManager, stream);
     }
-    void TuringPrintReal(TReal num) {
-        std::cout << num;
+    void TuringPrintReal(TReal num,TuringCommon::StreamManager *streamManager, TInt stream) {
+        TString text;
+        text.length = TURING_STRING_LENGTH;
+        sprintf(text.strdata, "%f",num);
+        MySendStringToStream(&text, streamManager, stream);
     }
-    void TuringPrintBool(bool value) {
-        std::cout << (value ? "true" : "false");
+    void TuringPrintBool(bool value,TuringCommon::StreamManager *streamManager, TInt stream) {
+        TString text;
+        text.length = TURING_STRING_LENGTH;
+        strncpy(text.strdata, (value ? "true" : "false"), TURING_STRING_LENGTH);
+        MySendStringToStream(&text, streamManager, stream);
     }
-    void TuringPrintString(TString *string) {
-        std::cout << string->strdata;
+    void TuringPrintString(TString *string,TuringCommon::StreamManager *streamManager, TInt stream) {
+        MySendStringToStream(string, streamManager, stream);
     }
-    void TuringPrintNewline() {
-        std::cout << std::endl;
+    void TuringPrintNewline(TuringCommon::StreamManager *streamManager, TInt stream) {
+        TString text;
+        text.length = TURING_STRING_LENGTH;
+        strncpy(text.strdata, "\n", TURING_STRING_LENGTH);
+        MySendStringToStream(&text, streamManager, stream);
     }
     int TuringPower(TInt a,TInt ex) {
         if ( 0==ex )  return 1;

@@ -30,8 +30,12 @@ class ASTNode;
 class CodeGen {
 public:
 	CodeGen(FileSource *source, LibManager *plugins);
-
-	bool execute(bool dumpModule = false);
+    
+    //! finalizes code generation and returns a module
+    //! no more files can be compiled after this function is called
+    //! \returns    an LLVM module with a main function taking a pointer
+    //!             to a stream manager as a parameter. Or NULL on fail.
+    llvm::Module *getFinalizedModule();
     
     bool compileFile(std::string fileName);
 
@@ -124,7 +128,10 @@ protected:
     
 	llvm::IRBuilder<> Builder;
     
-    //! the current value to be returned. NULL if not a valid place to return from.
+    //! pointer to the stream manager global variable
+    llvm::Value *StreamManagerPtr;
+    //! the current value to be returned. 
+    //! NULL if not a valid place to return from.
     Symbol *RetVal;
     llvm::BasicBlock *RetBlock;
     //! the block that is the end of the most recent loop
