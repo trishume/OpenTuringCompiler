@@ -45,6 +45,8 @@ namespace TuringCommon {
         // to use the ugly syntax...
         typedef void (*WriteStreamFunc)(TInt,TString*);
         typedef void (*ReadStreamFunc)(TInt,TString*,TInt);
+        
+        StreamManager() : Streams("Stream") {}
 
         //! registers a stream. Passed two stream functions.
         //! Either of the function pointers may be NULL if the stream
@@ -68,9 +70,14 @@ namespace TuringCommon {
         bool writeToStream(TInt streamNumber, TString *text, std::string *errMsg = NULL);
     protected:
         struct TuringStream {
-            WriteStreamFunc writeFunc;
-            ReadStreamFunc readFunc;
+            TuringStream() : WriteFunc(NULL), ReadFunc(NULL) {}
+            WriteStreamFunc WriteFunc;
+            ReadStreamFunc ReadFunc;
         };
+        bool assertValidStream(TInt streamNumber, std::string *errMsg);
+        //! gets a new stream number, following special stream redirection
+        TInt getSpecialStream(TInt specialStream);
+        
         //! manages normal stream numbers
         IDManager<TuringStream> Streams;
         //! maps special stream number -> normal stream
