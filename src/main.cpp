@@ -47,12 +47,14 @@ int main(int argc, char *argv[]) {
     
     // TODO proper base dir
     FileSource *source = new FileSource("");
-    
-    CodeGen gen(source);
+    LibManager *plugins = new LibManager();
+    CodeGen gen(source,plugins);
     
     if(compileIfExists(DEFAULT_INCLUDE,gen) && 
        gen.compileFile(argv[1]) && 
        compileIfExists(DEFAULT_POST_INCLUDE, gen)) {
         gen.execute(true);
     }
+    delete plugins;
+    delete source;
 }

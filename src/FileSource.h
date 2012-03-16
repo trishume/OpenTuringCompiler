@@ -19,18 +19,12 @@ class FileSource {
 public:
     //! \param baseDir the absolute path of the base directory that all paths are relative to. OS native With trailing slash.
     FileSource(std::string baseDir);
+    virtual ~FileSource() {}
     
     //! parses a file and returns the AST
     //! \param fileName the absolute path to the file, os native.
     ASTNode *parseFile(const std::string &filePath);
-    //! get the full path of a library to load
-    //! \param libName  the name of the dynamic library, no prefixes or suffixes
-    //!                 for example "stdlib"
-    //! \param includedFrom the file in the same directory as the library
-    //!                     from which it was included.
-    //! \returns    the full library path, with proper extension. 
-    //!             Or an empty string if it can not be found.
-    std::string getLibraryPath(const std::string &libName, const std::string &includedFrom);
+
     //! \returns the parsed AST or NULL on parsing error
     virtual ASTNode *parseString(const std::string &fileData, bool printAST = true);
 protected:

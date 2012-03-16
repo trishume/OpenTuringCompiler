@@ -7,7 +7,7 @@
 #include <llvm/Constants.h>
 #include <llvm/InstrTypes.h>
 #include <llvm/Attributes.h>
-#include <llvm/Support/DynamicLibrary.h>
+
 
 #include "TuringCommon/FileSystem.h"
 
@@ -48,7 +48,7 @@ using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(FileSource *source) :   TheSource(source), CurFile(""), CanExecute(true),
+CodeGen::CodeGen(FileSource *source, LibManager *plugins) :   PluginManager(plugins),TheSource(source), CurFile(""), CanExecute(true),
 Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
@@ -82,21 +82,6 @@ bool CodeGen::compileFile(std::string fileName) {
         return false;
     }
     return compileRootNode(fileRoot,path);
-}
-
-bool CodeGen::linkLibrary(std::string libName) {
-    std::string libPath = TheSource->getLibraryPath(libName, CurFile);
-    if (libPath.empty()) {
-        Message::error(Twine("Can't find library ") + libName);
-        return false;
-    }
-    std::string errMsg;
-    bool fail = llvm::sys::DynamicLibrary::LoadLibraryPermanently (libPath.c_str(), &errMsg);
-    if (fail) {
-        Message::error(Twine("Failed to load library ") + libName + ": " + errMsg);
-        return false;
-    }
-    return true;
 }
 
 bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {    
@@ -570,7 +555,7 @@ bool CodeGen::compileStat(ASTNode *node) {
         case Language::EXTERN_DECL: // extern declaration
             return compileFunctionPrototype(node->children[0],node->str) != NULL;
         case Language::LIBRARY_DECL:           
-            return linkLibrary(node->str);
+            return PluginManager->linkLibrary(node->str,CurFile);
         case Language::FUNC_DEF:
             return compileFunction(node);
         case Language::MODULE_DEF:

@@ -15,6 +15,7 @@
 #include <stack>
 
 #include "FileSource.h"
+#include "LibManager.h"
 #include "TuringType.h"
 #include "TuringValue.h"
 #include "TypeManager.h"
@@ -28,12 +29,11 @@ class ASTNode;
 
 class CodeGen {
 public:
-	CodeGen(FileSource *source);
+	CodeGen(FileSource *source, LibManager *plugins);
 
 	bool execute(bool dumpModule = false);
     
     bool compileFile(std::string fileName);
-    bool linkLibrary(std::string libName);
 
 protected:
     bool compileRootNode(ASTNode *fileRoot, std::string fileName);
@@ -113,7 +113,7 @@ protected:
     void compileLoopStat(ASTNode *node);
     void compileForStat(ASTNode *node);
     
-
+    LibManager *PluginManager;
 	FileSource *TheSource; // sounds ominous ...
     std::string CurFile;
     //! is the module in a state to finalize and execute?

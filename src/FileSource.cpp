@@ -34,30 +34,7 @@ ASTNode *FileSource::parseFile(const std::string &path) {
     return parseString(parseFile);
 }
 
-std::string FileSource::getLibraryPath(const std::string &libName, const std::string &includedFrom) {
-    std::string path;
-    
-    // library path is OS dependent. Find the right one.
-    // TODO use a preprocessor define to stop .so includes on windows and vice-versa
-    
-    path = TuringCommon::includeFilePath((llvm::Twine(libName) + ".dll").str(),
-                                       includedFrom,BasePath);
-    std::ifstream dll_file(path.c_str());
-    if (dll_file.good())
-    {
-        return path;
-    }
-    
-    path = TuringCommon::includeFilePath((llvm::Twine("lib") + libName + ".so").str(),
-                                       includedFrom,BasePath);
-    std::ifstream so_file(path.c_str());
-    if (so_file.good())
-    {
-        return path;
-    }
-    
-    return ""; // FAIL
-}
+
 
 ASTNode *FileSource::parseString(const std::string &fileData, bool printAST) {
     char *s = new char[fileData.length()];

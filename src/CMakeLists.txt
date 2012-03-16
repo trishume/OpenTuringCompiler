@@ -6,6 +6,7 @@ add_custom_command(	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Turing.g.d_parser.cpp
 
 set(MySources 
     FileSource.cpp
+    LibManager.cpp
 	BasicScopes.cpp 
 	Executor.cpp 
 	Message.cpp 
@@ -24,6 +25,7 @@ set(MySources
 
 set(MyHeaders
     FileSource.h
+    LibManager.h
 	BasicScopes.h 
 	Executor.h 
 	Message.h 
