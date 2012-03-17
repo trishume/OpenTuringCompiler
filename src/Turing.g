@@ -98,6 +98,7 @@
     //! doesn't interperet put as a function. Etcetera...
     bool isKeyword(std::string ident) {
         if(Keywords.empty()) {
+            Keywords.insert("assert");
             Keywords.insert("else");
             Keywords.insert("put");
             Keywords.insert("if");
@@ -170,6 +171,7 @@ instruction
     |   quitstat {$$ = $0; /* pass up */}
     |   newstat {$$ = $0; /* pass up */}
     |   includestat {$$ = $0; /* pass up */}
+    |   assertstat {$$ = $0; /* pass up */}
     |   constdecl {$$ = $0; /* pass up */}
     |   ifstat {$$ = $0; /* pass up */}
     |   forstat {$$ = $0; /* pass up */}
@@ -267,13 +269,21 @@ newstat
     }
     ;
 
-includestat :   'include' STRING_LITERAL
-        {
-            $$ = new ASTNode(Language::INCLUDE_STAT,$n0.start_loc.line);
-            $$->str = literalString($n1);
-        }
-        ;
-
+includestat 
+    :   'include' STRING_LITERAL
+    {
+        $$ = new ASTNode(Language::INCLUDE_STAT,$n0.start_loc.line);
+        $$->str = literalString($n1);
+    }
+    ;
+assertstat
+    : 'assert' expr
+    {
+        $$ = new ASTNode(Language::ASSERT_STAT,$n0.start_loc.line);
+        $$->str = nodeString($n1); // add the expression string
+        $$->addChild($1);
+    }
+    ;
 //variables
 vardecl 
     :   'var' decls ':=' expr

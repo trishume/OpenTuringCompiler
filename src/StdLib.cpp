@@ -36,7 +36,12 @@ static void MyReadStringFromStream(TString *text, TInt length,
 }
 
 extern "C" {
-    
+    void TuringAssert(bool val, TString *exprStr, TInt line, TString *file) {
+        if (!val) {
+            Message::runtimeError(Twine("Assertion failed: \"") + exprStr->strdata + 
+                                  "\" at " + file->strdata + ":" + Twine(line));
+        }
+    }
     void TuringQuitWithCode(TInt errorCode) {
         Message::runtimeError(Twine("Program quit with error code:") + Twine(errorCode));
     }

@@ -91,6 +91,7 @@ protected:
     
     void compilePutStat(ASTNode *node);
     void compileGetStat(ASTNode *node);
+    void compileAssertStat(ASTNode *node);
     void compileResizeStat(ASTNode *node);
     void compileVarDecl(ASTNode *node);
     void compileConstDecl(ASTNode *node);

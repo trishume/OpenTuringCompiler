@@ -23,6 +23,7 @@
 for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->children.end();var < e;++var)
 
 static const std::string defaultIncludes =
+    "external proc TuringAssert(test : boolean, exprStr : string, line : int, file : string)\n"
     "external proc TuringQuitWithCode(code : int)\n"
     "external proc TuringPrintInt(val : int, streamManager : voidptr, streamNum : int)\n"
     "external proc TuringPrintReal(val : real, streamManager : voidptr, streamNum : int)\n"
@@ -591,6 +592,9 @@ bool CodeGen::compileStat(ASTNode *node) {
             return true;
         case Language::GET_STAT:
             compileGetStat(node);
+            return true;
+        case Language::ASSERT_STAT:
+            compileAssertStat(node);
             return true;
         case Language::RESIZE_STAT:
             compileResizeStat(node);
@@ -1207,6 +1211,16 @@ void CodeGen::compileGetStat(ASTNode *node) {
         argVals.push_back(stream);
         Builder.CreateCall(calleeFunc, argVals);
     }
+}
+
+void CodeGen::compileAssertStat(ASTNode *node) {
+    std::vector<TuringValue*> args;
+    TuringValue *test = promoteType(compile(node->children[0]), Types.getType("boolean"), "assert statement");
+    args.push_back(test);
+    args.push_back(compileStringLiteral(node->str));
+    args.push_back(getConstantInt(node->getLine()));
+    args.push_back(compileStringLiteral(CurFile));
+    abstractCompileCall(Scopes->curScope()->resolve("TuringAssert"), args, false);
 }
 
 void CodeGen::compileResizeStat(ASTNode *node) {
