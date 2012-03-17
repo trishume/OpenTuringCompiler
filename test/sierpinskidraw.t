@@ -55,4 +55,4 @@ Pic.Free(picId)
 View.Update
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
-delay(8000)
+delay(5000)

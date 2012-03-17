@@ -3,6 +3,26 @@
 #include <sstream>
 #include <iostream>
 
+// copy-pasted from the internet. Stops stupid behaviour with stream buffering
+template <typename CharT>
+static std::streamsize ignore_line (
+                             std::basic_istream<CharT>& in, bool always_discard = false )
+{
+    std::streamsize nread = 0;
+    
+    if ( always_discard
+        || ( in.rdbuf()->sungetc() != std::char_traits<CharT>::eof()
+            && in.get() != in.widen ( '\n' ) ) )
+    {
+        // The stream is good, and we haven't
+        // read a full line yet, so clear it out
+        in.ignore ( std::numeric_limits<std::streamsize>::max(), in.widen ( '\n' ) );
+        nread = in.gcount();
+    }
+    
+    return nread;
+}
+
 // TODO these are just testing methods. For example, they can overflow the buffer.
 // maybe make them more bulletproof?
 static void StreamStdOut(TInt streamNum,TString* text) {
@@ -13,6 +33,7 @@ static void StreamStdErr(TInt streamNum,TString* text) {
 }
 static void StreamStdIn(TInt streamNum,TString* buffer, TInt length) {
     if (length == TURINGCOMMON_STREAM_READ_LINE) {
+        ignore_line(std::cin);
         std::string inString;
         std::getline(std::cin,inString);
         strncpy(buffer->strdata, inString.c_str(), buffer->length);

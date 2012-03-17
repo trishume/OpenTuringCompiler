@@ -26,6 +26,14 @@ static void MySendStringToStream(TString *text,TuringCommon::StreamManager *stre
         Message::runtimeError(errMsg);
     }
 }
+static void MyReadStringFromStream(TString *text, TInt length, 
+                                   TuringCommon::StreamManager *streamManager, TInt stream) {
+    std::string errMsg;
+    bool worked = streamManager->readFromStream(stream, text, length, &errMsg);
+    if (!worked) {
+        Message::runtimeError(errMsg);
+    }
+}
 
 extern "C" {
     
@@ -42,7 +50,7 @@ extern "C" {
     void TuringPrintReal(TReal num,TuringCommon::StreamManager *streamManager, TInt stream) {
         TString text;
         text.length = TURING_STRING_LENGTH;
-        sprintf(text.strdata, "%f",num);
+        sprintf(text.strdata, "%g",num);
         MySendStringToStream(&text, streamManager, stream);
     }
     void TuringPrintBool(bool value,TuringCommon::StreamManager *streamManager, TInt stream) {
@@ -76,19 +84,14 @@ extern "C" {
             return y;
         }
     }
-    void TuringGetString(TString *string) {
-        std::string inStr;
-        std::cin >> inStr;
-        if ((int)inStr.size() > string->length) {
-            Message::runtimeError(Twine("Tried to read a string of size ") + Twine(inStr.size()) + 
-                                  " into a string of size " + Twine(string->length));
-        }
-        strcpy(string->strdata, inStr.c_str());
+    void TuringGetString(TString *string, TInt length, TuringCommon::StreamManager *streamManager, TInt stream) {
+        MyReadStringFromStream(string,length, streamManager, stream);
     }
-    void TuringGetInt(TInt *numRef) {
-        int inInt;
-        std::cin >> inInt;
-        *numRef = inInt;
+    void TuringGetInt(TInt *numRef, TInt length, TuringCommon::StreamManager *streamManager, TInt stream) {
+        TString text;
+        text.length = TURING_STRING_LENGTH;
+        MyReadStringFromStream(&text,length, streamManager, stream);
+        *numRef = atoi(text.strdata);
     }
     int TuringStringLength(TString *string) {
         return strlen(string->strdata);

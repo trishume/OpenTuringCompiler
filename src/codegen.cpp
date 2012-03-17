@@ -29,8 +29,8 @@ static const std::string defaultIncludes =
     "external proc TuringPrintBool(val : boolean, streamManager : voidptr, streamNum : int)\n"
     "external proc TuringPrintString(val : string, streamManager : voidptr, streamNum : int)\n"
     "external proc TuringPrintNewline(streamManager : voidptr, streamNum : int)\n"
-    "external proc TuringGetString(val : string)\n"
-    "external proc TuringGetInt(var val : int)\n"
+    "external proc TuringGetString(val : string, length : int, streamManager : voidptr, streamNum : int)\n"
+    "external proc TuringGetInt(var val : int, length : int, streamManager : voidptr, streamNum : int)\n"
     "external \"length\" fcn TuringStringLength(val : string) : int\n"
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "external fcn TuringStringCompare(lhs,rhs : string) : boolean\n"
@@ -1134,8 +1134,8 @@ void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
 
 void CodeGen::compilePutStat(ASTNode *node) {
     Value *streamManager = Builder.CreateLoad(StreamManagerPtr,"streamManager");
-    // TODO stream specifiers in statement
-    Value *stream = promoteType(compile(node->children[0]), Types.getType("int"),"stream number of 'put'")->getVal(); 
+    Value *stream = promoteType(compile(node->children[0]), 
+                                Types.getType("int"),"stream number of 'put'")->getVal(); 
     // print out all the comma separated expressions
     for (unsigned int i = 1; i < node->children.size(); ++i) {
         TuringValue *val = compile(node->children[i]);
@@ -1172,22 +1172,41 @@ void CodeGen::compilePutStat(ASTNode *node) {
 }
 
 void CodeGen::compileGetStat(ASTNode *node) {
-    Symbol *var = compileLHS(node->children[1]);
-    Value *val = var->getVal();
     
-    TuringType *type = var->getType();
-    
-    Function *calleeFunc;
-    if (type->compare(Types.getType("string"))) {
-        calleeFunc = TheModule->getFunction("TuringGetString");
-        val = Builder.CreatePointerCast(val, var->getType()->getLLVMType(true));
-    } else if (type->compare(Types.getType("int"))) {
-        calleeFunc = TheModule->getFunction("TuringGetInt");
+    Value *streamManager = Builder.CreateLoad(StreamManagerPtr,"streamManager");
+    Value *stream = promoteType(compile(node->children[0]), 
+                                Types.getType("int"),"stream number of 'put'")->getVal(); 
+    Value *length;
+    if (node->str.compare("*") == 0) { // get var : * read the whole line
+        length = getConstantInt(TURINGCOMMON_STREAM_READ_LINE)->getVal();
+    } else if (node->str.empty()) {
+        length = getConstantInt(TURINGCOMMON_STREAM_READ_TOKEN)->getVal();
     } else {
-        throw Message::Exception("Can't 'get' type \"" + type->getName() + "\".");
+        length = getConstantInt(atoi(node->str.c_str()))->getVal(); // get var : num reads num tokens
     }
     
-    Builder.CreateCall(calleeFunc, val);
+    for (unsigned int i = 1; i < node->children.size(); ++i) {
+        Symbol *var = compileLHS(node->children[i]);
+        Value *val = var->getVal();
+        TuringType *type = var->getType();
+        
+        Function *calleeFunc;
+        if (type->compare(Types.getType("string"))) {
+            calleeFunc = TheModule->getFunction("TuringGetString");
+            val = Builder.CreatePointerCast(val, var->getType()->getLLVMType(true));
+        } else if (type->compare(Types.getType("int"))) {
+            calleeFunc = TheModule->getFunction("TuringGetInt");
+        } else {
+            throw Message::Exception("Can't 'get' type \"" + type->getName() + "\".");
+        }
+        
+        std::vector<Value*> argVals;
+        argVals.push_back(val);
+        argVals.push_back(length);
+        argVals.push_back(streamManager);
+        argVals.push_back(stream);
+        Builder.CreateCall(calleeFunc, argVals);
+    }
 }
 
 void CodeGen::compileResizeStat(ASTNode *node) {

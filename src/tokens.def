@@ -6,7 +6,7 @@ AST_TOKEN(RECORD_TYPE) /* children: decls* string: */
 AST_TOKEN(DEFERRED_TYPE) /* children: string: */
 AST_TOKEN(VOID_TYPE) /* children: */
 AST_TOKEN(PUT_STAT) /* children: streamNumber expr+ string: (.. if no newline) */
-AST_TOKEN(GET_STAT) /* children: streamNumber assignableExpression string: (* if read whole line) */
+AST_TOKEN(GET_STAT) /* children: streamNumber assignableExpression+ string: (* if read whole line) */
 AST_TOKEN(QUIT_STAT) /* children: errCode string: */
 AST_TOKEN(RESIZE_STAT) /* children: flexibleArrRef newSize string: */
 AST_TOKEN(INCLUDE_STAT) /* children: string: file name to include */

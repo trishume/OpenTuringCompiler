@@ -3,5 +3,6 @@
 
 include "stdlibtest.t"
 include "test13.t"
+%include "testGetAndPut.t"
 include "sierpinskidraw.t"
 %include "testplanetbench.t"

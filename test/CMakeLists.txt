@@ -1,12 +1,13 @@
 set(TEST_FILES
 	test.t
 	test13.t
-	stdlibtest.t
-	tonymathtest.t
+	teststdlib.t
+	testmath.t
 	testplanetbench.t
-	tonymathtest.t
 	heapsort.t
-	sierpinskidraw.t)
+	sierpinskidraw.t
+	3DSphere.t
+	testGetAndPut.t)
 
 enable_testing()
 add_test (Compiler13Test src/compiler test.t)

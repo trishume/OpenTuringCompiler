@@ -109,6 +109,7 @@
             Keywords.insert("label");
             Keywords.insert("upper");
             Keywords.insert("init");
+            Keywords.insert("include");
         }
 
         return Keywords.find(ident) != Keywords.end();
@@ -231,11 +232,11 @@ put : 'put' (':' expr ',')? expr (',' expr)* ('.' '.')?
         addParseGroupItems(&$n3,$$,1); // rest of them
   }
   ;
-get :   'get' (':' expr ',')? assignableExpression (':' '*')?
+get :   'get' (':' expr ',')? assignableExpression (',' assignableExpression)* (':' '*')?
     {
         // TODO streams
         $$ = new ASTNode(Language::GET_STAT);
-        if(d_get_number_of_children(&$n3) > 0) {
+        if(d_get_number_of_children(&$n4) > 0) {
             $$->str = "*"; // string = "*" if whole line
         }
         // add the stream number. If it does not exist use standard in
@@ -244,7 +245,8 @@ get :   'get' (':' expr ',')? assignableExpression (':' '*')?
             intConstant->str = "-2";
             $$->addChild(intConstant);
         }
-        $$->addChild($2); // first expr
+        $$->addChild($2); // first var
+        addParseGroupItems(&$n3,$$,1); // rest of them
     }
     ;
 
