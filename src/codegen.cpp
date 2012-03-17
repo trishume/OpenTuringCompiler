@@ -826,7 +826,7 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
     } else if (op.compare("div") == 0) {
         if (fp) { // floating point 'div' just truncates the division
             Value *unTruncated = Builder.CreateFDiv(L->getVal(), R->getVal());
-            Value *truncated = Builder.CreateFPTrunc(unTruncated, Types.getType("int")->getLLVMType());
+            Value *truncated = Builder.CreateFPToSI(unTruncated, Types.getType("int")->getLLVMType());
             return new TuringValue(truncated,Types.getType("int"));
         }
         binOp = Instruction::SDiv;
@@ -1135,10 +1135,10 @@ void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
 void CodeGen::compilePutStat(ASTNode *node) {
     Value *streamManager = Builder.CreateLoad(StreamManagerPtr,"streamManager");
     // TODO stream specifiers in statement
-    Value *stream = getConstantInt(TURINGCOMMON_STREAM_STDOUT)->getVal(); 
+    Value *stream = promoteType(compile(node->children[0]), Types.getType("int"),"stream number of 'put'")->getVal(); 
     // print out all the comma separated expressions
-    ITERATE_CHILDREN(node, curNode) {
-        TuringValue *val = compile(*curNode);
+    for (unsigned int i = 1; i < node->children.size(); ++i) {
+        TuringValue *val = compile(node->children[i]);
         TuringType *type = val->getType();
         
         Function *calleeFunc;
@@ -1172,7 +1172,7 @@ void CodeGen::compilePutStat(ASTNode *node) {
 }
 
 void CodeGen::compileGetStat(ASTNode *node) {
-    Symbol *var = compileLHS(node->children[0]);
+    Symbol *var = compileLHS(node->children[1]);
     Value *val = var->getVal();
     
     TuringType *type = var->getType();

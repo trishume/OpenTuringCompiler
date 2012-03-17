@@ -153,7 +153,6 @@ instructionsOrDefs
     }
     ;
 
-// TODO calling procs without call brackets. As in View.Update
 instructionOrDef
     :   instruction {$$ = $0; /* pass up */}
     |   funcdef {$$ = $0; /* pass up */}
@@ -215,23 +214,35 @@ type
     }
     ;
 
-put : 'put' (':' assignableExpression ',')? expr (',' expr)* ('.' '.')? 
+put : 'put' (':' expr ',')? expr (',' expr)* ('.' '.')? 
   {
         // TODO streams
         $$ = new ASTNode(Language::PUT_STAT);
         if(d_get_number_of_children(&$n4) > 0) {
             $$->str = ".."; // string = ".." if not to print newline
         }
+        // add the stream number. If it does not exist use standard out
+        if(addParseGroupItems(&$n1,$$,1) == 0) {
+            ASTNode *intConstant = new ASTNode(Language::INT_LITERAL);
+            intConstant->str = "-1";
+            $$->addChild(intConstant);
+        }
         $$->addChild($2); // first expr
         addParseGroupItems(&$n3,$$,1); // rest of them
   }
   ;
-get :   'get' (':' assignableExpression ',')? assignableExpression (':' '*')?
+get :   'get' (':' expr ',')? assignableExpression (':' '*')?
     {
         // TODO streams
         $$ = new ASTNode(Language::GET_STAT);
         if(d_get_number_of_children(&$n3) > 0) {
             $$->str = "*"; // string = "*" if whole line
+        }
+        // add the stream number. If it does not exist use standard in
+        if(addParseGroupItems(&$n1,$$,1) == 0) {
+            ASTNode *intConstant = new ASTNode(Language::INT_LITERAL);
+            intConstant->str = "-2";
+            $$->addChild(intConstant);
         }
         $$->addChild($2); // first expr
     }
