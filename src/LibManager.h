@@ -3,9 +3,13 @@
 
 #include <string>
 #include <set>
+#include <vector>
 
 class LibManager {
 public:
+    typedef void (*IntermittentCallbackFunction)();
+    typedef void (*InitRunFunction)(const char *executionDir);
+    
     LibManager() {}
     
     //! link a dynamic plugin library and initialize it
@@ -16,6 +20,9 @@ public:
     //! \returns    false if an error occurs. 
     //!             Prints a Message::error with an error message.
     bool linkLibrary(const std::string &libName, const std::string &includedFrom);
+    
+    std::vector<IntermittentCallbackFunction> IntermittentCallbacks;
+    std::vector<InitRunFunction> InitRunFunctions;
 protected:
     //! get the full path of a library to load
     //! \param libName  the name of the dynamic library, no prefixes or suffixes
@@ -26,6 +33,7 @@ protected:
     //!             Or an empty string if it can not be found.
     std::string getLibraryPath(const std::string &libName, const std::string &includedFrom);
 private:
+    void checkForFunctions(const std::string &libName);
     //! The set of linked libraries. Keep it to avoid the overhead of loading a library twice.
     std::set<std::string> Linked;
 };

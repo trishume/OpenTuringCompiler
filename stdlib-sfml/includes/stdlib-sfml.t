@@ -1,4 +1,4 @@
-linklibrary "OpenTuringStdlibSFML"
+linklibrary "StdlibSFML"
 
 % create the window
 external proc Turing_StdlibSFML_Window_Init()

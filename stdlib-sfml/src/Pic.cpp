@@ -2,7 +2,9 @@
 #include <SFML/Window.hpp>
 
 #include "TuringCommon/LibDefs.h"
+#include "TuringCommon/FileSystem.h"
 
+#include "Main.h"
 #include "WindowManager.h"
 #include "TuringCommon/IDManager.h"
 
@@ -23,11 +25,13 @@ static TuringCommon::IDManager<TuringPic> Pics("Pic");
 static sf::Color transparentColour(255,255,255);
 
 extern "C" {
-    /*TInt Turing_StdlibSFML_Pic_FileNew(TString *fileName) {
+    TInt Turing_StdlibSFML_Pic_FileNew(TString *fileName) {
         TInt id = Pics.getNew();
         TuringPic *pic = Pics.get(id);
-        pic->Image.LoadFromFile(fileName->strdata);
-    }*/
+        std::string filePath = TuringCommon::includeFilePath(fileName->strdata, "", Turing_StdLibSFML_GetExecutionDir());
+        pic->Image.LoadFromFile(filePath);
+        return id;
+    }
     TInt Turing_StdlibSFML_Pic_New(TInt x1, TInt y1, TInt x2, TInt y2) {
         TInt id = Pics.getNew();
         TuringPic *pic = Pics.get(id);

@@ -17,17 +17,22 @@
 
 #include "TuringCommon/StreamManager.h"
 
+#include "LibManager.h"
+
 class Executor {
 public:
-    Executor(llvm::Module *mod, TuringCommon::StreamManager *streamManager);
+    Executor(llvm::Module *mod, TuringCommon::StreamManager *streamManager,
+             LibManager *libManager, const std::string &executionDir);
     
     void optimize();
     bool run();
 private:
     llvm::Module *TheModule;
     llvm::ExecutionEngine *TheExecutionEngine;
-    
     TuringCommon::StreamManager *TheStreamManager;
+    LibManager *TheLibManager;
+    
+    std::string ExecutionDir;
 };
 
 #endif

@@ -11,6 +11,7 @@
 #include "codegen.h"
 #include "Executor.h"
 #include "TuringCommon/StreamManager.h"
+#include "TuringCommon/FileSystem.h"
 
 
 #define DEFAULT_INCLUDE "lib/predefs.t"
@@ -40,7 +41,7 @@ bool compileIfExists(const std::string &fileName,CodeGen &gen) {
     return true;
 }
 
-void run(CodeGen &gen) {
+void run(CodeGen &gen, LibManager *libManager, const std::string &execDir) {
     // set up the stream manager
     TuringCommon::StreamManager streamManager;
     streamManager.initWithStandardStreams();
@@ -50,7 +51,7 @@ void run(CodeGen &gen) {
     mainModule->dump();
     // run it!
     std::cout << "JIT compiling and optimizing...\n";
-    Executor jit(mainModule,&streamManager);
+    Executor jit(mainModule,&streamManager, libManager, execDir);
     jit.optimize();
     std::cout << "RUNNING...\n";
     jit.run();
@@ -67,12 +68,14 @@ int main(int argc, char *argv[]) {
     // TODO proper base dir
     FileSource *source = new FileSource("");
     LibManager *plugins = new LibManager();
+    std::string execFile = argv[1];
     CodeGen gen(source,plugins);
     
     if(compileIfExists(DEFAULT_INCLUDE,gen) && 
-       gen.compileFile(argv[1]) && 
+       gen.compileFile(execFile) && 
        compileIfExists(DEFAULT_POST_INCLUDE, gen)) {
-        run(gen); // call the run function
+        std::string execDir = TuringCommon::folderFromFilePath(execFile);
+        run(gen,plugins,execDir); // call the run function
     }
     delete plugins;
     delete source;

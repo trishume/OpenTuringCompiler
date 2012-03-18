@@ -7,7 +7,8 @@ set(TEST_FILES
 	heapsort.t
 	sierpinskidraw.t
 	3DSphere.t
-	testGetAndPut.t)
+	testGetAndPut.t
+	icon.jpg)
 
 enable_testing()
 add_test (Compiler13Test src/compiler test.t)

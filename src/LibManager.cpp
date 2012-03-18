@@ -23,6 +23,8 @@ bool LibManager::linkLibrary(const std::string &libName, const std::string &incl
         Message::error(Twine("Failed to load library ") + libName + ": " + errMsg);
         return false;
     }
+    // check for callbacks
+    checkForFunctions(libName);
     return true;
 }
 
@@ -43,4 +45,21 @@ std::string LibManager::getLibraryPath(const std::string &libName, const std::st
     }
     
     return ""; // FAIL
+}
+
+void LibManager::checkForFunctions(const std::string &libName) {
+    std::string funcName; 
+    void *funcPtr;
+    
+    funcName = (Twine("Turing_") + libName + "_IntermittentCallback").str();
+    funcPtr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(funcName);
+    if (funcPtr != NULL) {
+        IntermittentCallbacks.push_back((IntermittentCallbackFunction)funcPtr);
+    }
+    
+    funcName = (Twine("Turing_") + libName + "_InitRun").str();
+    funcPtr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(funcName);
+    if (funcPtr != NULL) {
+        InitRunFunctions.push_back((InitRunFunction)funcPtr);
+    }
 }

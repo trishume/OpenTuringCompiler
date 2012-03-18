@@ -6,6 +6,7 @@ find_package(GLUT REQUIRED)
 INCLUDE_DIRECTORIES(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS} ${CommonLibIncludeDir})
 
 set(StdLibSFMLSources 
+	src/Main.cpp
     src/Time.cpp
     src/Draw.cpp
     src/View.cpp
@@ -15,6 +16,7 @@ set(StdLibSFMLSources
 	)
 
 set(StdLibSFMLHeaders
+	src/Main.h
     src/WindowManager.h
     src/RGB.h
 	)
@@ -30,11 +32,11 @@ set(StdLibSFMLIncludes
 	)
 
 # module builds a plugin-like library
-add_library(OpenTuringStdlibSFML MODULE ${StdLibSFMLSources} ${StdLibSFMLHeaders} ${StdLibSFMLIncludes}
+add_library(StdlibSFML MODULE ${StdLibSFMLSources} ${StdLibSFMLHeaders} ${StdLibSFMLIncludes}
 										${StdLibCommonHeaders} ${StdLibCommonSources})
-target_link_libraries(OpenTuringStdlibSFML OpenTuringCommonLib ${SFML_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
+target_link_libraries(StdlibSFML OpenTuringCommonLib ${SFML_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
 
 # install
 set(STDLIB_SFML_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib-sfml)
 install(FILES ${StdLibSFMLIncludes} DESTINATION ${STDLIB_SFML_INSTALL_DIR})
-install(TARGETS OpenTuringStdlibSFML DESTINATION ${STDLIB_SFML_INSTALL_DIR})
+install(TARGETS StdlibSFML DESTINATION ${STDLIB_SFML_INSTALL_DIR})

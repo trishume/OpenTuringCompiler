@@ -23,14 +23,19 @@
 
 using namespace llvm;
 
-Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager) : TheModule(mod), TheStreamManager(streamManager) {
+Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
+                   LibManager *libManager, const std::string &executionDir) : TheModule(mod), TheStreamManager(streamManager), TheLibManager(libManager), ExecutionDir(executionDir) {
     InitializeNativeTarget();
     std::string errStr;
-    //TheExecutionEngine = ExecutionEngine::create(TheModule,false,&errStr);
-    TheExecutionEngine = ExecutionEngine::createJIT(TheModule,&errStr,
-                                     JITMemoryManager::CreateDefaultMemManager(),
-                                     CodeGenOpt::Aggressive,
-                                     false); // GVs not with code
+    
+    llvm::TargetOptions Opts;
+    Opts.JITExceptionHandling = true;
+    llvm::EngineBuilder factory(TheModule);
+    factory.setEngineKind(llvm::EngineKind::JIT);
+    factory.setAllocateGVsWithCode(false);
+    factory.setTargetOptions(Opts);
+    factory.setOptLevel(CodeGenOpt::Aggressive);
+    TheExecutionEngine = factory.create();
                                     
     
     if (!TheExecutionEngine) {
@@ -86,11 +91,20 @@ bool Executor::run() {
         return false;
     }
     
+    for (unsigned int i = 0; i < TheLibManager->InitRunFunctions.size(); ++i) {
+        LibManager::InitRunFunction initFunc = TheLibManager->InitRunFunctions[i];
+        (*initFunc)(ExecutionDir.c_str()); // call function pointer
+    }
     void *funcPtr = TheExecutionEngine->getPointerToFunction(mainFunc);
     void (*programMain)(TuringCommon::StreamManager*) = 
         (void (*)(TuringCommon::StreamManager*))(intptr_t)funcPtr; // cast it into a function
-
-    programMain(TheStreamManager);
+    
+    try {
+        programMain(TheStreamManager);
+    } catch (int errCode) {
+        Message::error(Twine("Execution failed with error code ") + Twine(errCode));
+    }
+    
     
     return true;
 }

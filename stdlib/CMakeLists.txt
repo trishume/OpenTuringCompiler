@@ -16,11 +16,11 @@ set(StdLibIncludes
 	)
 
 # module builds a plugin-like library
-add_library(OpenTuringStdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes}
+add_library(Stdlib MODULE ${StdLibSources} ${StdLibHeaders} ${StdLibIncludes}
 									${StdLibCommonHeaders} ${StdLibCommonSources})
-target_link_libraries(OpenTuringStdlib OpenTuringCommonLib)
+target_link_libraries(Stdlib OpenTuringCommonLib)
 
 # install
 set(STDLIB_INSTALL_DIR ${INSTALL_DIR}/lib/stdlib)
 install(FILES ${StdLibIncludes} DESTINATION ${STDLIB_INSTALL_DIR})
-install(TARGETS OpenTuringStdlib DESTINATION ${STDLIB_INSTALL_DIR})
+install(TARGETS Stdlib DESTINATION ${STDLIB_INSTALL_DIR})
