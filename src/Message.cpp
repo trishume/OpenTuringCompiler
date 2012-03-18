@@ -9,23 +9,35 @@
 
 #include <iostream>
 
+static void MyDefaultErrorCallBack(std::string message, std::string file, 
+                                   int line, bool isWarning, bool approximate) {
+    std::string messageType(isWarning ? "WARNING" : "ERROR");
+    if (line < 1 || file.empty()) {
+        std::cerr << messageType << ": ";
+    } else {
+        std::cerr << messageType << " on line " << line << " in file " << file << ": ";
+    }
+    std::cerr << message << std::endl;
+}
+
 namespace Message {
     static int curLine = 0;
+    static bool lineApproximate = false;
     static std::string curFile = "";
+    static ErrorCallback curErrCallback = &MyDefaultErrorCallBack;
     
-    void setCurLine(int line,std::string fileName) {
+    void setCurLine(int line,std::string fileName, bool approximate) {
         curLine = line;
         curFile = fileName;
+        lineApproximate = approximate;
+    }
+    
+    void setErrorCallback(ErrorCallback callback) {
+        curErrCallback = callback;
     }
     
     bool error(const llvm::Twine &message,bool warning) {
-        std::string messageType(warning ? "WARNING" : "ERROR");
-        if (curLine < 1 || curFile.empty()) {
-            std::cerr << messageType << ": ";
-        } else {
-            std::cerr << messageType << " on line " << curLine << " in file " << curFile << ": ";
-        }
-        std::cerr << message.str() << std::endl;
+        curErrCallback(message.str(),curFile,curLine,warning,lineApproximate);
         return true;
     }
     bool log(const llvm::Twine &message) {

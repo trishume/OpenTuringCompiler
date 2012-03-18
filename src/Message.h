@@ -13,9 +13,12 @@
 #include <llvm/ADT/Twine.h>
 
 namespace Message {
+    typedef void (*ErrorCallback)(std::string message, std::string file, 
+                                  int line, bool isWarning, bool approximate);
     //! sets the line number to be used for subsequent error messages.
     //! set to 0 for no line number.
-    void setCurLine(int line,std::string fileName);
+    void setCurLine(int line,std::string fileName, bool approximate = false);
+    void setErrorCallback(ErrorCallback callback);
     
     //! returns false on fatality (false for Error true for others)
     bool error(const llvm::Twine &message, bool warning = false);
