@@ -5,10 +5,13 @@
 #include <set>
 #include <vector>
 
+#include "TuringCommon/StreamManager.h"
+
 class LibManager {
 public:
     typedef void (*IntermittentCallbackFunction)();
-    typedef void (*InitRunFunction)(const char *executionDir);
+    typedef void (*InitRunFunction)(const char *executionDir, 
+                                    TuringCommon::StreamManager *streamManager);
     
     LibManager() {}
     

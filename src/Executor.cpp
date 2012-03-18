@@ -9,8 +9,8 @@
 #include "Executor.h"
 
 #include <iostream>
+#include <sstream>
 
-#include "Message.h"
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Analysis/Verifier.h>
@@ -21,13 +21,43 @@
 #include <llvm/ExecutionEngine/JIT.h>
 #include <llvm/ExecutionEngine/JITMemoryManager.h>
 
+#include "TuringCommon/LibDefs.h"
+#include "Message.h"
+
 using namespace llvm;
+
+static std::ostringstream errorBuffer;
+static void MyFlushErrorBuffer() {
+    Message::error(errorBuffer.str());
+    errorBuffer.str("");
+}
+//! this gets set as the standard error stream
+//! if it is passed a string without a newline it is added to the buffer
+//! when it sees a newline it takes the buffer and writes it to a Message::error
+void Executor_RuntimeRuntimeErrorStream(TInt streamNum, const char *error) {
+    std::string errMsg(error);
+    
+    // consume newline-separated messages and write them as Message::error
+    size_t lastFound = 0;
+    size_t found = errMsg.find_first_of("\n");
+    while (found!=std::string::npos)
+    {
+        errorBuffer << errMsg.substr(lastFound,found);
+        MyFlushErrorBuffer();
+        lastFound = found + 1; // +1 to skip over \n
+        found = errMsg.find_first_of("\n",found+1);
+    }
+    errorBuffer << errMsg.substr(lastFound); // add the rest of the string to the buffer
+}
 
 Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
                    LibManager *libManager, const std::string &executionDir) : TheModule(mod), TheStreamManager(streamManager), TheLibManager(libManager), ExecutionDir(executionDir) {
+    // add the error stream
+    TInt errStream = TheStreamManager->registerStream(&Executor_RuntimeRuntimeErrorStream, NULL);
+    TheStreamManager->setSpecialStream(-3, errStream);
+    // do a crapton of JIT initialization
     InitializeNativeTarget();
-    std::string errStr;
-    
+    std::string errStr;    
     llvm::TargetOptions Opts;
     Opts.JITExceptionHandling = true;
     llvm::EngineBuilder factory(TheModule);
@@ -35,13 +65,14 @@ Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
     factory.setAllocateGVsWithCode(false);
     factory.setTargetOptions(Opts);
     factory.setOptLevel(CodeGenOpt::Aggressive);
+    factory.setErrorStr(&errStr);
     TheExecutionEngine = factory.create();
-                                    
-    
     if (!TheExecutionEngine) {
         fprintf(stderr, "Could not create ExecutionEngine: %s\n", errStr.c_str());
         exit(1);
     }
+    
+    
 }
 
 void Executor::optimize() {
@@ -93,7 +124,7 @@ bool Executor::run() {
     
     for (unsigned int i = 0; i < TheLibManager->InitRunFunctions.size(); ++i) {
         LibManager::InitRunFunction initFunc = TheLibManager->InitRunFunctions[i];
-        (*initFunc)(ExecutionDir.c_str()); // call function pointer
+        (*initFunc)(ExecutionDir.c_str(),TheStreamManager); // call function pointer
     }
     void *funcPtr = TheExecutionEngine->getPointerToFunction(mainFunc);
     void (*programMain)(TuringCommon::StreamManager*) = 
@@ -101,7 +132,7 @@ bool Executor::run() {
     
     try {
         programMain(TheStreamManager);
-    } catch (int errCode) {
+    } catch (TInt errCode) {
         Message::error(Twine("Execution failed with error code ") + Twine(errCode));
     }
     

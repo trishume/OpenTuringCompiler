@@ -40,6 +40,6 @@ namespace Message {
     
     void runtimeError(const llvm::Twine &message) {
         error(message);
-        exit(1);
+        throw 1; // unwind to Executor run function
     }
 }

@@ -25,11 +25,11 @@ static std::streamsize ignore_line (
 
 // TODO these are just testing methods. For example, they can overflow the buffer.
 // maybe make them more bulletproof?
-static void StreamStdOut(TInt streamNum,TString* text) {
-    std::cout << text->strdata;
+static void StreamStdOut(TInt streamNum,const char* text) {
+    std::cout << text;
 }
-static void StreamStdErr(TInt streamNum,TString* text) {
-    std::cerr << text->strdata;
+static void StreamStdErr(TInt streamNum,const char* text) {
+    std::cerr << text;
 }
 static void StreamStdIn(TInt streamNum,TString* buffer, TInt length) {
     if (length == TURINGCOMMON_STREAM_READ_LINE) {
@@ -97,7 +97,7 @@ namespace TuringCommon {
         return true;
     }
     
-    bool StreamManager::writeToStream(TInt streamNumber, TString *text, std::string *errMsg) {
+    bool StreamManager::writeToStream(TInt streamNumber, const char *text, std::string *errMsg) {
         streamNumber = getSpecialStream(streamNumber);
         if (!assertValidStream(streamNumber, errMsg)) return false;
         TuringStream *stream = Streams.get(streamNumber);

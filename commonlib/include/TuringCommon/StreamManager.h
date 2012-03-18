@@ -43,7 +43,7 @@ namespace TuringCommon {
     public:
         // typedefs for the function pointers so we don't have
         // to use the ugly syntax...
-        typedef void (*WriteStreamFunc)(TInt,TString*);
+        typedef void (*WriteStreamFunc)(TInt,const char*);
         typedef void (*ReadStreamFunc)(TInt,TString*,TInt);
         
         StreamManager() : Streams("Stream") {}
@@ -71,7 +71,7 @@ namespace TuringCommon {
         bool readFromStream(TInt streamNumber, TString *buffer, TInt length, std::string *errMsg = NULL);
         //! writes text to a stream.
         //! \returns true on success. returns false and sets errMsg on error.
-        bool writeToStream(TInt streamNumber, TString *text, std::string *errMsg = NULL);
+        bool writeToStream(TInt streamNumber, const char *text, std::string *errMsg = NULL);
     protected:
         struct TuringStream {
             TuringStream() : WriteFunc(NULL), ReadFunc(NULL) {}

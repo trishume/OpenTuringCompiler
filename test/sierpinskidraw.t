@@ -38,8 +38,8 @@ Draw.Arc(200,300,40,40,50,100,5)
 Draw.FillArc(400,400,100,50,0,180,5)
 
 % test with an octagon with a concave side
-var x : array 1..7 of int := init (100, 100, 135, 185, 220, 220, 185)
-var y : array 1..8 of int := init (100, 150, 185, 150, 150, 100, 65, 65)
+var x := init (100, 100, 135, 185, 220, 220, 185, 135)
+var y := init (100, 150, 185, 150, 150, 100, 65, 65)
 Draw.FillPolygon (x, y, 8, 48)
 Draw.Polygon (x, y, 8, 3)
 
