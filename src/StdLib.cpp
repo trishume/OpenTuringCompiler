@@ -46,6 +46,10 @@ extern "C" {
         throw errorCode;
     }
     
+    void TuringSetApproximatePos(TInt line,TString *file, TInt lineRange) {
+        Message::setCurLine(line, file->strdata,lineRange);
+    }
+    
     void TuringPrintInt(TInt num,TuringCommon::StreamManager *streamManager, TInt stream) {
         char text[TURING_STRING_LENGTH];
         sprintf(text, "%d",num);

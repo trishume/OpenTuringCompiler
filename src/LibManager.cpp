@@ -16,6 +16,10 @@ bool LibManager::linkLibrary(const std::string &libName, const std::string &incl
         Message::error(Twine("Can't find library ") + libName);
         return false;
     }
+    // have we already linked it? Linking is expensive so scram!
+    if (Linked.find(libPath) != Linked.end()) {
+        return true;
+    }
     // dynamically link it
     std::string errMsg;
     bool fail = llvm::sys::DynamicLibrary::LoadLibraryPermanently (libPath.c_str(), &errMsg);
@@ -25,6 +29,8 @@ bool LibManager::linkLibrary(const std::string &libName, const std::string &incl
     }
     // check for callbacks
     checkForFunctions(libName);
+    // add it to the set of linked libraries
+    Linked.insert(libPath);
     return true;
 }
 
@@ -51,10 +57,10 @@ void LibManager::checkForFunctions(const std::string &libName) {
     std::string funcName; 
     void *funcPtr;
     
-    funcName = (Twine("Turing_") + libName + "_IntermittentCallback").str();
+    funcName = (Twine("Turing_") + libName + "_PeriodicCallback").str();
     funcPtr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(funcName);
     if (funcPtr != NULL) {
-        IntermittentCallbacks.push_back((IntermittentCallbackFunction)funcPtr);
+        PeriodicCallbacks.push_back(funcName);
     }
     
     funcName = (Twine("Turing_") + libName + "_InitRun").str();

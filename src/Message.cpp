@@ -10,26 +10,32 @@
 #include <iostream>
 
 static void MyDefaultErrorCallBack(std::string message, std::string file, 
-                                   int line, bool isWarning, bool approximate) {
+                                   int line, bool isWarning, int lineRange) {
     std::string messageType(isWarning ? "WARNING" : "ERROR");
     if (line < 1 || file.empty()) {
         std::cerr << messageType << ": ";
     } else {
-        std::cerr << messageType << " on line " << line << " in file " << file << ": ";
+        std::cerr << messageType;
+        if (lineRange > 1) {
+            std::cerr << " within " << lineRange << " lines of line ";
+        } else {
+            std::cerr << " on line";
+        }
+        std::cerr << line << " in file " << file << ": ";
     }
     std::cerr << message << std::endl;
 }
 
 namespace Message {
     static int curLine = 0;
-    static bool lineApproximate = false;
+    static int LineRange = 1; // line number is within n lines of curLine
     static std::string curFile = "";
     static ErrorCallback curErrCallback = &MyDefaultErrorCallBack;
     
-    void setCurLine(int line,std::string fileName, bool approximate) {
+    void setCurLine(int line,std::string fileName, int lineRange) {
         curLine = line;
         curFile = fileName;
-        lineApproximate = approximate;
+        LineRange = lineRange;
     }
     
     void setErrorCallback(ErrorCallback callback) {
@@ -37,7 +43,7 @@ namespace Message {
     }
     
     bool error(const llvm::Twine &message,bool warning) {
-        curErrCallback(message.str(),curFile,curLine,warning,lineApproximate);
+        curErrCallback(message.str(),curFile,curLine,warning,LineRange);
         return true;
     }
     bool log(const llvm::Twine &message) {

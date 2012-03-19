@@ -27,6 +27,10 @@ extern "C" {
             TuringCommon::runtimeError("Window cleanup called when there is no window to clean up.");
         }
     }
+    // called every couple of lines. Use it to check for events
+    void Turing_StdlibSFML_PeriodicCallback() {
+        if(WinMan) WinMan->surface();
+    }
 }
 
 WindowManager::WindowManager() : Windows("Window"), CurWin(0){

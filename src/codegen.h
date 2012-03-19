@@ -38,6 +38,11 @@ public:
     llvm::Module *getFinalizedModule();
     
     bool compileFile(std::string fileName);
+    
+    //! sets the frequency of window event updates, line updates, etc...
+    //! higher numbers = lower speed but more accurate line numbers
+    //! for runtime errors
+    void setPeriodicCallbackFrequency(unsigned int freq);
 
 protected:
     bool compileRootNode(ASTNode *fileRoot, std::string fileName);
@@ -49,6 +54,9 @@ protected:
     
     Symbol *createEntryAlloca(TuringType *type);
     TuringValue *getConstantInt(int index);
+    void addPeriodicCallback(llvm::Function *func);
+    void checkForPeriodicCallbacks();
+    void compilePeriodicCallback(int line, const std::string &file);
     llvm::Value *compileByteSize(TuringType *type);
     llvm::Value *compileArrayByteSize(llvm::Value *arrayRef);
     llvm::Value *compileArrayByteSize(llvm::Type *arrayType,
@@ -120,13 +128,14 @@ protected:
     
     LibManager *PluginManager;
 	FileSource *TheSource; // sounds ominous ...
+    TypeManager Types;
+    ScopeManager *Scopes;
     std::string CurFile;
     //! is the module in a state to finalize and execute?
     bool CanExecute;
 
 	llvm::Module *TheModule;
     llvm::Function *MainFunction;
-    
 	llvm::IRBuilder<> Builder;
     
     //! pointer to the stream manager global variable
@@ -137,10 +146,13 @@ protected:
     llvm::BasicBlock *RetBlock;
     //! the block that is the end of the most recent loop
     llvm::BasicBlock *ExitBlock;
-
-	//std::stack<CodeGenBlock *> Blocks;
-    TypeManager Types;
-    ScopeManager *Scopes;
+    
+    FunctionSymbol *PeriodicCallbackFunction;
+    unsigned int PeriodicCallbackFrequency;
+    unsigned int StatsSinceLastCallback;
+    //! callbacks from libraries that have already been added
+    //! to the periodic callback function
+    std::set<std::string> AddedCallbacks;
 };
 
 #endif

@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
     std::string execFile = argv[1];
     CodeGen gen(source,plugins);
     
+    gen.setPeriodicCallbackFrequency(10); // every 10 stats (lines)
     if(compileIfExists(DEFAULT_INCLUDE,gen) && 
        gen.compileFile(execFile) && 
        compileIfExists(DEFAULT_POST_INCLUDE, gen)) {

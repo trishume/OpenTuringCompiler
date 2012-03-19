@@ -9,7 +9,7 @@
 
 class LibManager {
 public:
-    typedef void (*IntermittentCallbackFunction)();
+    typedef void (*PeriodicCallbackFunction)();
     typedef void (*InitRunFunction)(const char *executionDir, 
                                     TuringCommon::StreamManager *streamManager);
     
@@ -24,7 +24,8 @@ public:
     //!             Prints a Message::error with an error message.
     bool linkLibrary(const std::string &libName, const std::string &includedFrom);
     
-    std::vector<IntermittentCallbackFunction> IntermittentCallbacks;
+    //! vector of periodic callback function names
+    std::vector<std::string> PeriodicCallbacks;
     std::vector<InitRunFunction> InitRunFunctions;
 protected:
     //! get the full path of a library to load

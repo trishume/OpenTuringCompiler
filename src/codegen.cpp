@@ -25,6 +25,7 @@ for(std::vector<ASTNode*>::iterator var = (node)->children.begin(), e = (node)->
 static const std::string defaultIncludes =
     "external proc TuringAssert(test : boolean, exprStr : string, line : int, file : string)\n"
     "external proc TuringQuitWithCode(code : int)\n"
+    "external proc TuringSetApproximatePos(line : int, file : string, freq : int)\n"
     "external proc TuringPrintInt(val : int, streamManager : voidptr, streamNum : int)\n"
     "external proc TuringPrintReal(val : real, streamManager : voidptr, streamNum : int)\n"
     "external proc TuringPrintBool(val : boolean, streamManager : voidptr, streamNum : int)\n"
@@ -50,12 +51,25 @@ using namespace llvm;
 #pragma mark Construction
 
 CodeGen::CodeGen(FileSource *source, LibManager *plugins) :   PluginManager(plugins),TheSource(source), CurFile(""), CanExecute(true),
-Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
+Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL), PeriodicCallbackFrequency(0), StatsSinceLastCallback(0) {
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
     Scopes = new ScopeManager(TheModule);
     
     // Get the module ready to start compiling
+    
+    // set up the periodic callback
+    std::vector<VarDecl> periodicArgTypes;
+    periodicArgTypes.push_back(VarDecl("line",Types.getType("int")));
+    periodicArgTypes.push_back(VarDecl("filePath",Types.getType("string")));
+    periodicArgTypes.push_back(VarDecl("freq",Types.getType("int")));
+    PeriodicCallbackFunction = compilePrototype("TuringPeriodicCallback", Types.getType("void"), periodicArgTypes);
+    // add an entry block so it is not interpreted as an extern declaration
+    BasicBlock::Create(getGlobalContext(), "entry", PeriodicCallbackFunction->getFunc());
+    //PeriodicCallbackFunction->getFunc()->setOnlyReadsMemory();
+    //PeriodicCallbackFunction->getFunc()->setDoesNotThrow();
+    
+    
     
     /* Create the top level interpreter function to call as entry */
     Type *voidPtrTy = Types.getType("voidptr")->getLLVMType(true);
@@ -82,6 +96,10 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL) {
         throw Message::Exception("Failed to parse default includes. This shouldn't happen ever.");
     }
     compileRootNode(includesRoot, "<default includes>");
+    
+    // Add one of the standard lib functions to the periodic callback
+    addPeriodicCallback(TheModule->getFunction("TuringSetApproximatePos"));
+    checkForPeriodicCallbacks(); // check for existing ones in the libmanager we got passed
 }
 
 bool CodeGen::compileFile(std::string fileName) {
@@ -116,8 +134,6 @@ bool CodeGen::compileRootNode(ASTNode *fileRoot, std::string fileName) {
     return good;
 }
 
-#pragma mark Execution
-
 llvm::Module *CodeGen::getFinalizedModule() {
     Message::setCurLine(0, "");
     if (!CanExecute) {
@@ -134,10 +150,19 @@ llvm::Module *CodeGen::getFinalizedModule() {
         Builder.CreateRetVoid();
     }
     
+    // finalize the periodic callback
+    BasicBlock *entryBlock = &PeriodicCallbackFunction->getFunc()->getEntryBlock();
+    IRBuilder<> TmpB(entryBlock,entryBlock->end());
+    TmpB.CreateRetVoid();
+    
     // we have it finalized. No more!
     CanExecute = false;
     
 	return TheModule; // success
+}
+
+void CodeGen::setPeriodicCallbackFrequency(unsigned int freq) {
+    PeriodicCallbackFrequency = freq;
 }
 
 #pragma mark Utilities
@@ -171,6 +196,50 @@ bool CodeGen::isCurBlockTerminated() {
 TuringValue *CodeGen::getConstantInt(int index) {
     return new TuringValue(ConstantInt::get(getGlobalContext(), APInt(32,index)),
                            Types.getType("int"));
+}
+
+//! Adds a periodic callback to the periodic callback function. Usually from a library.
+void CodeGen::addPeriodicCallback(llvm::Function *func) {
+    BasicBlock *entryBlock = &PeriodicCallbackFunction->getFunc()->getEntryBlock();
+    IRBuilder<> TmpB(entryBlock,entryBlock->end());
+    if (func->arg_size() == 0) {
+        TmpB.CreateCall(func);
+    } else if(func->arg_size() == 3) { // pass the line and file
+        // caller should guarantee the args are the right type
+        Function::arg_iterator callBackArgIt = PeriodicCallbackFunction->getFunc()->arg_begin();
+        // FANCY SYNTAX EXPLANATION: increments the iterator, returns derefrences the pre-increment
+        // iterator and then gets a pointer to the argument so it conforms to Value *
+        Value *lineArg = &(*(callBackArgIt++));
+        Value *fileArg = &(*(callBackArgIt++));
+        Value *freqArg = &(*(callBackArgIt++));
+        TmpB.CreateCall3(func,lineArg,fileArg,freqArg);
+    } else {
+        throw Message::Exception("Tried to add a periodic callback with the wrong number of args. This is not your fault and is a compiler bug.");
+    }
+    
+}
+
+void CodeGen::checkForPeriodicCallbacks() {
+    for (unsigned int i = 0; i < PluginManager->PeriodicCallbacks.size(); ++i) {
+        std::string callback = PluginManager->PeriodicCallbacks[i];
+        // if we haven't already added it
+        if (AddedCallbacks.find(callback) == AddedCallbacks.end()) {
+            FunctionSymbol *callbackFunc = compilePrototype(callback, Types.getType("void"), 
+                                                            std::vector<VarDecl>(),"",false);
+            addPeriodicCallback(callbackFunc->getFunc());
+            AddedCallbacks.insert(callback);
+        }
+    }
+}
+
+void CodeGen::compilePeriodicCallback(int line, const std::string &file) {
+    std::vector<TuringValue*> args;
+    args.push_back(getConstantInt(line));
+    // TODO all the literals should be constant merged but it still makes the
+    // the pre-optimization bytecode ugly and it slows compilation
+    args.push_back(compileStringLiteral(file));
+    args.push_back(getConstantInt(PeriodicCallbackFrequency));
+    abstractCompileCall(PeriodicCallbackFunction, args, false);
 }
 
 //! allocates a local variable but does not put it in the symbol table
@@ -530,6 +599,14 @@ TuringValue *CodeGen::promoteType(TuringValue *val, TuringType *destType, Twine 
 bool CodeGen::compileBlock(ASTNode *node) {
 	if(node->root == Language::BLOCK) {
 		ITERATE_CHILDREN(node,child) {
+            // periodic callbacks
+            if (PeriodicCallbackFrequency != 0 && StatsSinceLastCallback >= PeriodicCallbackFrequency) {
+                ASTNode *node = *child;
+                compilePeriodicCallback(node->getLine(), CurFile);
+                StatsSinceLastCallback = 0;
+            }
+            ++StatsSinceLastCallback;
+            // compile the stat
 			if(!compileStat(*child)) {
 				throw Message::Exception("");
 			}
@@ -556,8 +633,13 @@ bool CodeGen::compileStat(ASTNode *node) {
     switch(node->root) {
         case Language::EXTERN_DECL: // extern declaration
             return compileFunctionPrototype(node->children[0],node->str) != NULL;
-        case Language::LIBRARY_DECL:           
-            return PluginManager->linkLibrary(node->str,CurFile);
+        case Language::LIBRARY_DECL:
+        {
+            bool status = PluginManager->linkLibrary(node->str,CurFile);
+            if(!status) return false;
+            checkForPeriodicCallbacks();
+            return true;
+        }
         case Language::FUNC_DEF:
             return compileFunction(node);
         case Language::MODULE_DEF:
