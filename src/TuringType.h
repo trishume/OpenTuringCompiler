@@ -55,10 +55,11 @@ protected:
 class TuringArrayType : public TuringType {
 public:
     //! \param upper the size of the array.
-    TuringArrayType(TuringType *elementType, unsigned int upper, bool anySize = false, bool flexible = false);
+    TuringArrayType(TuringType *elementType, unsigned int size, bool anySize = false, bool flexible = false, int lower = 1);
     //! \param isReference returns {i32, [Size x Type]} normally, *{i32, [0 x Type]} by reference
     virtual llvm::Type *getLLVMType(bool isReference = false);
     TuringType *getElementType() {return ElementType;};
+    int getLower() {return Lower;}
     unsigned int getSize() {return Size;}
     bool isAnySize() {return AnySize;}
     bool isFlexible() {return Flexible;}
@@ -76,6 +77,7 @@ public:
     virtual bool isComplexTy() {return true;}
 protected:
     TuringType *ElementType;
+    int Lower;
     unsigned int Size;
     //! true if it is an array 1..*
     bool AnySize;

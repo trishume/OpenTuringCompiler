@@ -10,7 +10,7 @@ const oneConst : real := 1
 
 % test type declarations, records and multi-dimensional arrays
 type recType :  record
-                    mat : array 1..threeConst, 1..2 of boolean
+                    mat : array 1..threeConst, 1..boolean of boolean
                     hovering : real
                 end record
 
@@ -96,13 +96,13 @@ fcn Second( arr : array 1..* of int ) : int
     result arr(2)
 end Second
 
-
-var inittedArr : array 1..4 of int := init(5,6,13,9)
-for i : 1..inittedArr(3)
+% test weird lower bounds
+var inittedArr : array 4..7 of int := init(5,6,13,9)
+for i : 1..inittedArr(6)
     new Print13.lolArr, upper(Print13.lolArr) + 1
     Print13.lolArr(i) := i
 end for
-if upper(Print13.lolArr) ~= 13 then
+if upper(Print13.lolArr) ~= 13 or lower(inittedArr) ~= 4 then
     put "FAILED flexible arrays or array initialization"
 end if
 % lolArr = 1,2,3,4...

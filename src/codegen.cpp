@@ -39,7 +39,7 @@ static const std::string defaultIncludes =
     "external proc TuringStringCopy(lhs,rhs : string)\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
     "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
-    "external fcn TuringIndexArray(index : int, length : int) : int\n"
+    "external fcn TuringIndexArray(index, lowerBound, length : int) : int\n"
     "external proc TuringCopyArray(to : voidptr, from : voidptr, fromLength : int, toLength : int)\n"
     "external fcn TuringCompareRecord(to : voidptr, from : voidptr, fromLength : int) : boolean\n"
     "external fcn TuringCompareArray(to : voidptr, from : voidptr, fromLength : int, toLength : int) : boolean\n"
@@ -294,6 +294,14 @@ Value *CodeGen::compileArrayLength(Value *arrayRef) {
     return Builder.CreateLoad(Builder.CreateConstGEP2_32(arrayRef,0,0,"arrlengthptr"),"arraylengthval");
 }
 
+TuringValue *CodeGen::compileArrayLower(TuringType *type) {
+    if (!type->isArrayTy()) {
+        throw Message::Exception("Can only found the bounds of an array type.");
+    }
+    TuringArrayType *arrTy = static_cast<TuringArrayType*>(type);
+    return getConstantInt(arrTy->getLower());
+}
+
 std::pair<TuringValue*,TuringValue*> CodeGen::compileRange(ASTNode *node) {
     TuringValue *start = compile(node->children[0]);
     
@@ -465,6 +473,26 @@ TuringType *CodeGen::getRecordType(ASTNode *node) {
     return new TuringRecordType(decls);
 }
 
+int CodeGen::getConstantIntValue(Value *constant) {
+    // this is fancy. It checks if the upper bound is a loaded const variable.
+    // if it is, it sets upperVal to the Constant initializer instead of the load instruction
+    if(isa<LoadInst>(constant) && 
+       isa<GlobalVariable>(cast<LoadInst>(constant)->getPointerOperand())) {
+        GlobalVariable *globalVar = cast<GlobalVariable>(cast<LoadInst>(constant)->getPointerOperand());
+        if (globalVar->isConstant()) {
+            constant = globalVar->getInitializer();
+        }
+    }
+    
+    // we don't want someone putting "array bob..upper(bob) of int" because
+    // we have to know the size at compile time.
+    if (!isa<ConstantInt>(constant)) {
+        throw Message::Exception("Value must be an int constants that can be resolved at compile time.");
+    }
+    // *ConstantInt -> APInt -> uint_64
+    return cast<ConstantInt>(constant)->getValue().getLimitedValue();
+}
+
 // TODO TEST fancy logic. Test this.
 TuringType *CodeGen::getArrayType(ASTNode *node) {
     TuringType *arrayType = getType(node->children[0]);
@@ -486,6 +514,8 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
                 isAnySize = true;
             } else if (specialEnd->str.compare("char") == 0) {
                 upperVal = getConstantInt(255); // char array size
+            } else if (specialEnd->str.compare("boolean") == 0) {
+                upperVal = getConstantInt(2); // char array size
             } else {
                 throw Message::Exception(Twine("Special array size value ") + specialEnd->str + " not recognized."); // parser prevents this
             }
@@ -493,33 +523,19 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
             upperVal = compile(range->children[1]);
         }
         
-        Value *upperConst = upperVal->getVal();
+        Value *lowerVal = compile(range->children[0])->getVal();
         
-        // this is fancy. It checks if the upper bound is a loaded const variable.
-        // if it is, it sets upperVal to the Constant initializer instead of the load instruction
-        if(isa<LoadInst>(upperConst) && 
-           isa<GlobalVariable>(cast<LoadInst>(upperConst)->getPointerOperand())) {
-            GlobalVariable *globalVar = cast<GlobalVariable>(cast<LoadInst>(upperConst)->getPointerOperand());
-            if (globalVar->isConstant()) {
-                upperConst = globalVar->getInitializer();
-            }
-        }
-        
-        // we don't want someone putting "array bob..upper(bob) of int" because
-        // we have to know the size at compile time.
-        if (!isa<ConstantInt>(upperConst)) {
-            throw Message::Exception("Bounds of array must be int constants");
-        }
-        // *ConstantInt -> APInt -> uint_64
-        int upper = cast<ConstantInt>(upperConst)->getValue().getLimitedValue();
+        int lower = getConstantIntValue(lowerVal);
+        int upper = getConstantIntValue(upperVal->getVal());
+        int size = upper - lower + 1;
         
         // 800,000,000 should be enough array elements for Turing's target audience
         // the upper limit is just so people don't declare enormous arrays just to crash the computer
-        if (upper<0 || upper > 800000000) {
-            throw Message::Exception("Array limit out of bounds.");
+        if (size<0 || size > 800000000) {
+            throw Message::Exception("Array size out of bounds.");
         }
         // wrap it up
-        arrayType = new TuringArrayType(arrayType,upper,isAnySize,isFlexible);
+        arrayType = new TuringArrayType(arrayType,size,isAnySize,isFlexible,lower);
     }
     return arrayType;
 }
@@ -730,8 +746,17 @@ TuringValue *CodeGen::compile(ASTNode *node) {
         case Language::CALL:
             return compileCallSyntax(node);
         case Language::ARRAY_UPPER:
-            return new TuringValue(compileArrayLength(compile(node->children[0])->getVal()),
-                                   Types.getType("int"));
+        {
+            TuringValue *array = compile(node->children[0]);
+            Value *size = compileArrayLength(array->getVal());
+            Value *lower = compileArrayLower(array->getType())->getVal();
+            // upper = size + (lower - 1)
+            Value *upper = Builder.CreateAdd(size, 
+                                             Builder.CreateSub(lower, getConstantInt(1)->getVal()));
+            return new TuringValue(upper,Types.getType("int"));
+        }
+        case Language::ARRAY_LOWER:
+            return compileArrayLower(compile(node->children[0])->getType());
         case Language::ARRAY_INIT:
             return compileArrayLiteral(node);
         case Language::FIELD_REF_OP:
@@ -1468,6 +1493,7 @@ Symbol *CodeGen::abstractCompileIndex(Symbol *indexed,TuringValue *index) {
         throw Message::Exception(Twine("Can't index non-array type ") + indexed->getType()->getName() + "\".");
     }
     promoteType(index,Types.getType("int")); // type check
+    TuringArrayType *arrTy = static_cast<TuringArrayType*>(indexed->getType());
     
     std::vector<Value*> indices;
     // depointerize
@@ -1475,11 +1501,11 @@ Symbol *CodeGen::abstractCompileIndex(Symbol *indexed,TuringValue *index) {
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
     // take the 1-based index, bounds-check it and return the 0-based index
-    Value *realIndex = Builder.CreateCall2(TheModule->getFunction("TuringIndexArray"),index->getVal(),
-                                            compileArrayLength(indexed->getVal()),"realIndexVal");
-    indices.push_back(realIndex);
     
-    TuringArrayType *arrTy = static_cast<TuringArrayType*>(indexed->getType());
+    Value *realIndex = Builder.CreateCall3(TheModule->getFunction("TuringIndexArray"),index->getVal(),
+                                           getConstantInt(arrTy->getLower())->getVal(),
+                                           compileArrayLength(indexed->getVal()),"realIndexVal");
+    indices.push_back(realIndex);
     
     return new VarSymbol(Builder.CreateInBoundsGEP(indexed->getVal(),indices,"indextemp"),
                            arrTy->getElementType());

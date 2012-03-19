@@ -19,7 +19,7 @@ static void MyDefaultErrorCallBack(std::string message, std::string file,
         if (lineRange > 1) {
             std::cerr << " within " << lineRange << " lines of line ";
         } else {
-            std::cerr << " on line";
+            std::cerr << " on line ";
         }
         std::cerr << line << " in file " << file << ": ";
     }

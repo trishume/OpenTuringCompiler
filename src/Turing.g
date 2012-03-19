@@ -109,6 +109,7 @@
             Keywords.insert("result");
             Keywords.insert("label");
             Keywords.insert("upper");
+            Keywords.insert("lower");
             Keywords.insert("init");
             Keywords.insert("include");
         }
@@ -325,20 +326,12 @@ range
         $$->addChild($0); // begin
         $$->addChild($3); // end
     }
-    |      expr'.''.''*' // only for arrays
+    |      expr'.''.'('*'|'char'|'boolean') // only for arrays
     { 
         $$ = new ASTNode(Language::RANGE,$n0.start_loc.line);
         $$->addChild($0); // begin
         ASTNode *stringEnd = new ASTNode(Language::RANGE_SPECIAL_END,$n3.start_loc.line);
-        stringEnd->str = "*";
-        $$->addChild(stringEnd); // end
-    }
-    |      expr'.''.''char' // only for arrays
-    { 
-        $$ = new ASTNode(Language::RANGE,$n0.start_loc.line);
-        $$->addChild($0); // begin
-        ASTNode *stringEnd = new ASTNode(Language::RANGE_SPECIAL_END,$n3.start_loc.line);
-        stringEnd->str = "char";
+        stringEnd->str = nodeString($n3);
         $$->addChild(stringEnd); // end
     }
     ;
@@ -708,6 +701,11 @@ primaryExpression
     |   'upper' '(' expr ')'
     {
         $$ = new ASTNode(Language::ARRAY_UPPER,$n0.start_loc.line);
+        $$->addChild($2);
+    }
+    |   'lower' '(' expr ')'
+    {
+        $$ = new ASTNode(Language::ARRAY_LOWER,$n0.start_loc.line);
         $$->addChild($2);
     }
     |   'init' '(' expr (',' (LT*) expr)* ')'

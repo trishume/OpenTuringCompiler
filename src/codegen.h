@@ -62,6 +62,7 @@ protected:
     llvm::Value *compileArrayByteSize(llvm::Type *arrayType,
                                       llvm::Value *arrayLength);
     llvm::Value *compileArrayLength(llvm::Value *arrayRef);
+    TuringValue *compileArrayLower(TuringType *type);
     std::pair<TuringValue*,TuringValue*> compileRange(ASTNode *node);
     void compileAllocateFlexibleArray(Symbol *arr, bool allocateNew, 
                                       llvm::Value *newSize = NULL);
@@ -70,6 +71,7 @@ protected:
     void compileInitializeComplex(Symbol *declared);
     
     TuringType *getType(ASTNode *node);
+    int getConstantIntValue(llvm::Value *constant);
     TuringType *getArrayType(ASTNode *node);
     TuringType *getRecordType(ASTNode *node);
     std::vector<VarDecl> getDecls(ASTNode *astDecls,bool allowAutoTypes = true);

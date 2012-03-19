@@ -154,17 +154,20 @@ extern "C" {
     }
     
     //! \param index the 1-based index, unchecked
+    //! \param lower the lower limit of the array
     //! \param length the length of the array
     //! \returns the 0-based index, stops program if there is an index problem
-    int TuringIndexArray(int index, int length) {
-        if (index <= 0) {
-            Message::runtimeError(Twine("Can't index an array with the negative/zero value of ") + Twine(index));
-        }
-        if (index > length) {
-            Message::runtimeError(Twine("Can't index an array of size ") + Twine(length) +  
+    int TuringIndexArray(int index, int lower, int length) {
+        if (index < lower) {
+            Message::runtimeError(Twine("Can't index an array with lower bound ") + Twine(lower) +  
                                   " with the number " + Twine(index));
         }
-        return index - 1;
+        if (index >= lower + length) {
+            int upper = lower + length - 1;
+            Message::runtimeError(Twine("Can't index an array with upper limit ") + Twine(upper) +  
+                                  " with the number " + Twine(index));
+        }
+        return index - lower;
     }
     //! arr may be null to allocate a new array
     void *TuringAllocateFlexibleArray(void *arr,TInt byteSize, TInt length) {

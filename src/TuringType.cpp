@@ -39,6 +39,7 @@ bool TuringArrayType::compare(TuringType *other) {
     }
     
     return getSize() == arrTy->getSize() && // same size
+    //        getLower() == arrTy->getLower() && // same lower bound, should this be enabled?
             getElementType()->compare(arrTy->getElementType()); // same type
 }
 
@@ -54,10 +55,11 @@ void BasicTuringType::setName(const std::string &newName) {
     Name = newName;
 }
 
-TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int upper, bool anySize, bool flexible) : ElementType(elementType), Size(upper), AnySize(anySize), Flexible(flexible) {
-    Twine sizeTwine = AnySize ? "*" : Twine(Size);
+TuringArrayType::TuringArrayType(TuringType *elementType, unsigned int size, bool anySize, bool flexible, int lower) : ElementType(elementType), Lower(lower), Size(size), AnySize(anySize) , Flexible(flexible)  {
+    int upperSize = Size + Lower - 1;
+    Twine sizeTwine = AnySize ? "*" : Twine(upperSize);
     Twine flexTwine = Flexible ? Twine("flexible ") : Twine("");
-    Name = (flexTwine + "array 1.." + sizeTwine + " of " + ElementType->getName()).str();
+    Name = (flexTwine + "array " + Twine(Lower) + ".." + sizeTwine + " of " + ElementType->getName()).str();
 }
 
 Type *TuringArrayType::getLLVMType(bool isReference) {
