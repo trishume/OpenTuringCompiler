@@ -65,7 +65,7 @@ module Print13
         %test no newline
         put assignStr ..
         %test multi-expr
-        put 13,"..."
+        put 13,"...\n" ..
     end if
     
     % test module variables

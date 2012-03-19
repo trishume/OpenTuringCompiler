@@ -812,7 +812,23 @@ TuringValue *CodeGen::compileStringLiteral(const std::string &str) {
     // TODO maybe make this not use C style pointer iteration
     const char *cstr = str.c_str();
     while (*cstr != 0) {
-        arrayVals.push_back(ConstantInt::get(getGlobalContext(),APInt(8,*cstr)));
+        char chr = *cstr;
+        if (chr == '\\') {
+            // get the character right after the backslash
+            char nextchr = *(++cstr); // increment then dereference
+            switch (nextchr) {
+                case 'n':
+                    chr = '\n'; 
+                    break;
+                case 't':
+                    chr = '\t';
+                    break;
+                default:
+                    chr = nextchr; // char = escaped char
+                // TODO weird escape codes like \r = return ?
+            }
+        }
+        arrayVals.push_back(ConstantInt::get(getGlobalContext(),APInt(8,chr)));
         ++cstr;
     }    
     
