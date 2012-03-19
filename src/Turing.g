@@ -112,6 +112,7 @@
             Keywords.insert("lower");
             Keywords.insert("init");
             Keywords.insert("include");
+            Keywords.insert("unchecked");
         }
 
         return Keywords.find(ident) != Keywords.end();
@@ -131,11 +132,14 @@ program
     ;
 
 instructions
-    :   instruction ((LT+) instruction)*
+    :   ('unchecked' LT*)? instruction ((LT+) instruction)*
     {
         $$ = new ASTNode(Language::BLOCK);
-        if ($0 != NULL) $$->addChild($0); // first instruction
-        addParseGroupItems(&$n1,$$,1); // rest of them
+        if ($1 != NULL) $$->addChild($1); // first instruction
+        addParseGroupItems(&$n2,$$,1); // rest of them
+        if(d_get_number_of_children(&$n0) > 0) {
+            $$->str = "unchecked";
+        }
     }
     | LT*
     {
@@ -326,7 +330,7 @@ range
         $$->addChild($0); // begin
         $$->addChild($3); // end
     }
-    |      expr'.''.'('*'|'char'|'boolean') // only for arrays
+    |   expr'.''.'('*'|'char'|'boolean') // only for arrays
     { 
         $$ = new ASTNode(Language::RANGE,$n0.start_loc.line);
         $$->addChild($0); // begin

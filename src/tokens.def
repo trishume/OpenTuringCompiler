@@ -1,4 +1,4 @@
-AST_TOKEN(BLOCK) /* children: statement* string: */
+AST_TOKEN(BLOCK) /* children: statement* string: unchecked? */
 AST_TOKEN(NAMED_TYPE) /* children: string: ID */
 AST_TOKEN(SIZED_STRING_TYPE) /* children: string: size */
 AST_TOKEN(ARRAY_TYPE) /* children: type range+ string: */

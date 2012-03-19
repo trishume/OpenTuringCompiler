@@ -133,9 +133,12 @@ protected:
     TypeManager Types;
     ScopeManager *Scopes;
     std::string CurFile;
+    
     //! is the module in a state to finalize and execute?
     bool CanExecute;
-
+    //! are checking and periodic callbacks enabled at this time
+    bool CheckingEnabled;
+    
 	llvm::Module *TheModule;
     llvm::Function *MainFunction;
 	llvm::IRBuilder<> Builder;

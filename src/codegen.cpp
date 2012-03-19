@@ -50,7 +50,7 @@ using namespace llvm;
 
 #pragma mark Construction
 
-CodeGen::CodeGen(FileSource *source, LibManager *plugins) :   PluginManager(plugins),TheSource(source), CurFile(""), CanExecute(true),
+CodeGen::CodeGen(FileSource *source, LibManager *plugins) :   PluginManager(plugins),TheSource(source), CurFile(""), CanExecute(true), CheckingEnabled(true),
 Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL), PeriodicCallbackFrequency(0), StatsSinceLastCallback(0) {
     Types.addDefaultTypes(getGlobalContext());
     TheModule = new Module("turing JIT module", getGlobalContext());
@@ -614,9 +614,13 @@ TuringValue *CodeGen::promoteType(TuringValue *val, TuringType *destType, Twine 
 //! Returns success
 bool CodeGen::compileBlock(ASTNode *node) {
 	if(node->root == Language::BLOCK) {
+        bool prevCheckingStatus = CheckingEnabled;
+        if (node->str.compare("unchecked") == 0) {
+            CheckingEnabled = false; // SPEED! (makes benchmarks run faster, by cheating!!)
+        }
 		ITERATE_CHILDREN(node,child) {
-            // periodic callbacks
-            if (PeriodicCallbackFrequency != 0 && StatsSinceLastCallback >= PeriodicCallbackFrequency) {
+            // periodic callbacks. Not enabled in unchecked mode since it makes things faster
+            if (PeriodicCallbackFrequency != 0 && CheckingEnabled && StatsSinceLastCallback >= PeriodicCallbackFrequency) {
                 ASTNode *node = *child;
                 compilePeriodicCallback(node->getLine(), CurFile);
                 StatsSinceLastCallback = 0;
@@ -630,6 +634,7 @@ bool CodeGen::compileBlock(ASTNode *node) {
             // instructions past this point will be unreachable so quit early
             if (isCurBlockTerminated()) break;
 		}
+        CheckingEnabled = prevCheckingStatus;
 	} else {
         throw Message::Exception("Node is not a block");
 	}
@@ -1501,10 +1506,15 @@ Symbol *CodeGen::abstractCompileIndex(Symbol *indexed,TuringValue *index) {
     // get the array part of the turing array struct
     indices.push_back(ConstantInt::get(getGlobalContext(), APInt(32,1)));
     // take the 1-based index, bounds-check it and return the 0-based index
-    
-    Value *realIndex = Builder.CreateCall3(TheModule->getFunction("TuringIndexArray"),index->getVal(),
-                                           getConstantInt(arrTy->getLower())->getVal(),
-                                           compileArrayLength(indexed->getVal()),"realIndexVal");
+    Value *realIndex;
+    if (CheckingEnabled) {
+        realIndex = Builder.CreateCall3(TheModule->getFunction("TuringIndexArray"),index->getVal(),
+                                        getConstantInt(arrTy->getLower())->getVal(),
+                                        compileArrayLength(indexed->getVal()),"realIndexVal");
+    } else { // FASTER! MUHAHAHA! Who cares about segfaults? We're in unchecked mode for gods sakes!
+        realIndex = Builder.CreateSub(index->getVal(), 
+                                      getConstantInt(arrTy->getLower())->getVal(),"uncheckedRealIndex");
+    }
     indices.push_back(realIndex);
     
     return new VarSymbol(Builder.CreateInBoundsGEP(indexed->getVal(),indices,"indextemp"),

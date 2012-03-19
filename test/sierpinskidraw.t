@@ -17,6 +17,7 @@ p.x := 210
 p.y := 110
 var start := Time.Elapsed
 for i : 1..1000000
+	unchecked
 	var randomvert := Rand.Int(1,3)
 	var v : point := verts(randomvert)
 	p.x := (p.x + v.x) div 2
