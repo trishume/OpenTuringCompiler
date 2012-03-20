@@ -1,6 +1,6 @@
 % number of iterations
 %const its := 50000000 % currently takes around 162.85s
-const its := 2000000 % currently takes around 6.6s and 69s in open turing
+const its := 2000000 % currently takes around 5.9s and 69s in open turing
 
 type Body : record
     x, y, z,
@@ -62,6 +62,7 @@ neptune.mass :=  5.15138902046611451e-05 * solarMass
 b(5) := neptune
 
 procedure OffsetMomentum
+  unchecked
   var px,py,pz : real := 0.0
   var i : int
 
@@ -76,14 +77,17 @@ procedure OffsetMomentum
 end OffsetMomentum
 
 function distance(i,j : int) : real
+  unchecked
   result sqrt((b(i).x-b(j).x)**2 + ((b(i).y-b(j).y)**2) + (b(i).z-b(j).z)**2)
 end distance
 
 function energy() : real
+  unchecked
   var i,j : int
   var res : real
   res := 0.0
   for i : 1..upper(b)
+      unchecked
       res := res + b(i).mass * ((b(i).vx)**2 + (b(i).vy)**2 + (b(i).vz)**2) / 2
       for j : i+1..upper(b)
         res := res - b(i).mass * b(j).mass / distance(i,j)
@@ -93,6 +97,7 @@ function energy() : real
 end energy
 
 procedure advance(dt : real)
+  unchecked
   var i,j : int
   var dx,dy,dz,mag : real
   var bi,bj : int
@@ -130,6 +135,7 @@ OffsetMomentum
 put energy()
 var start := Time.Elapsed()
 for i : 1..its
+  unchecked
   advance(0.01)
 end for
 put energy()

@@ -37,6 +37,7 @@ static const std::string defaultIncludes =
     "external fcn TuringStringConcat(lhs,rhs : string) : string\n"
     "external fcn TuringStringCompare(lhs,rhs : string) : boolean\n"
     "external proc TuringStringCopy(lhs,rhs : string)\n"
+    "external \"TuringRecordCopy\" fcn memcpy(dest,src : voidptr, size : int) : voidptr\n"
     "external fcn TuringPower(val : int, power : int) : int\n"
     "external \"TuringPowerReal\" fcn pow(val : real, power : real) : real\n" // use the C 'pow' function directly
     "external fcn TuringIndexArray(index, lowerBound, length : int) : int\n"
@@ -1260,8 +1261,11 @@ void CodeGen::compileRecordCopy(TuringValue *from, Symbol *to) {
                                        "\" to one of type \"" + to->getType()->getName() + "\".");
     }
     Value *fromSize = compileByteSize(from->getType());
-    // llvm intrinsic memcpy. Auto-converts and optimizes well.
-    Builder.CreateMemCpy(to->getVal(), from->getVal(), fromSize, 0, true);
+    // llvm intrinsic memcpy. Auto-converts and optimizes well. Really buggy though.
+    //Builder.CreateMemCpy(to->getVal(), from->getVal(), fromSize, 0, true);
+    Builder.CreateCall3(TheModule->getFunction("memcpy"), 
+                        Builder.CreatePointerCast(to->getVal(), Types.getType("voidptr")->getLLVMType()),
+                        Builder.CreatePointerCast(from->getVal(), Types.getType("voidptr")->getLLVMType()), fromSize);
 }
 
 void CodeGen::compilePutStat(ASTNode *node) {
