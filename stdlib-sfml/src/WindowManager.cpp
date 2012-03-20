@@ -5,10 +5,12 @@
 #include <iterator>
 
 #include <SFML/Window.hpp>
+#include <SFML/System.hpp>
 
 #include "TuringCommon/RuntimeError.h"
 
 WindowManager *WinMan = NULL;
+sf::Clock eventClock;
 
 
 extern "C" {
@@ -29,7 +31,12 @@ extern "C" {
     }
     // called every couple of lines. Use it to check for events
     void Turing_StdlibSFML_PeriodicCallback() {
-        if(WinMan) WinMan->surface();
+        // check every quarter of a second. This does make input delayed.
+        // It only stops the system from deeming us unresponsive
+        if(WinMan && eventClock.GetElapsedTime() > 0.5) {
+            WinMan->surface();
+            eventClock.Reset();
+        }
     }
 }
 
