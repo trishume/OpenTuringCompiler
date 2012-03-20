@@ -15,7 +15,6 @@
 
 
 #define DEFAULT_INCLUDE "lib/predefs.t"
-#define DEFAULT_POST_INCLUDE "lib/postdefs.t"
 
 extern int d_verbose_level;
 
@@ -73,8 +72,7 @@ int main(int argc, char *argv[]) {
     
     gen.setPeriodicCallbackFrequency(10); // every 10 stats (lines)
     if(compileIfExists(DEFAULT_INCLUDE,gen) && 
-       gen.compileFile(execFile) && 
-       compileIfExists(DEFAULT_POST_INCLUDE, gen)) {
+       gen.compileFile(execFile)) {
         std::string execDir = TuringCommon::folderFromFilePath(execFile);
         run(gen,plugins,execDir); // call the run function
     }

@@ -112,6 +112,7 @@
             Keywords.insert("lower");
             Keywords.insert("init");
             Keywords.insert("include");
+            Keywords.insert("linklibrary");
             Keywords.insert("unchecked");
         }
 
@@ -588,11 +589,11 @@ LT
     ;
 
 STRING
-    :   "([^\"\\]|\\[^])*"
+    :   "([^\n\"\\]|\\[^])*"
     ;
 
 STRING_LITERAL
-    :   "\"([^\"\\]|\\[^])*\""
+    :   "\"([^\n\"\\]|\\[^])*\""
     ;
 
 CHAR:   "([^'\\]|\\[^])"

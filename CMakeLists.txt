@@ -28,5 +28,5 @@ add_subdirectory(src)
 add_subdirectory(stdlib)
 add_subdirectory(stdlib-sfml)
 
-install(FILES predefs.t postdefs.t
+install(FILES predefs.t
 		DESTINATION ${INSTALL_DIR}/lib)

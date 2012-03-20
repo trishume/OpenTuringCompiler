@@ -122,6 +122,7 @@ bool Executor::run() {
         return false;
     }
     
+    // open windows, pass stream managers, etc...
     for (unsigned int i = 0; i < TheLibManager->InitRunFunctions.size(); ++i) {
         LibManager::InitRunFunction initFunc = TheLibManager->InitRunFunctions[i];
         (*initFunc)(ExecutionDir.c_str(),TheStreamManager); // call function pointer
@@ -136,6 +137,11 @@ bool Executor::run() {
         Message::error(Twine("Execution failed with error code ") + Twine(errCode));
     }
     
+    // close windows and stuff
+    for (unsigned int i = 0; i < TheLibManager->FinalizeRunFunctions.size(); ++i) {
+        LibManager::FinalizeRunFunction finalizeFunc = TheLibManager->FinalizeRunFunctions[i];
+        (*finalizeFunc)(); // call function pointer
+    }
     
     return true;
 }

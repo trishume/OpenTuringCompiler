@@ -67,6 +67,8 @@ private:
     static void split(std::vector<std::string>& lst, const std::string& input, const std::string& separators, bool remove_empty = true);
 };
 
+void Turing_StdlibSFML_Window_Init();
+void Turing_StdlibSFML_Window_Cleanup();
 extern WindowManager *WinMan; // main global instance
 
 #endif

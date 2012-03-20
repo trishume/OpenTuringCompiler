@@ -13,22 +13,25 @@ WindowManager *WinMan = NULL;
 sf::Clock eventClock;
 
 
+
+void Turing_StdlibSFML_Window_Init() {
+    if (WinMan == NULL) {
+        WinMan = new WindowManager();
+    } else {
+        TuringCommon::runtimeError("Window init called when there is already a window.");
+    }
+}
+
+void Turing_StdlibSFML_Window_Cleanup() {
+    if (WinMan != NULL) {
+        delete WinMan;
+        WinMan = NULL;
+    } else {
+        TuringCommon::runtimeError("Window cleanup called when there is no window to clean up.");
+    }
+}
+
 extern "C" {
-    void Turing_StdlibSFML_Window_Init() {
-        if (WinMan == NULL) {
-            WinMan = new WindowManager();
-        } else {
-            TuringCommon::runtimeError("Window init called when there is already a window.");
-        }
-    }
-    void Turing_StdlibSFML_Window_Cleanup() {
-        if (WinMan != NULL) {
-            delete WinMan;
-            WinMan = NULL;
-        } else {
-            TuringCommon::runtimeError("Window cleanup called when there is no window to clean up.");
-        }
-    }
     // called every couple of lines. Use it to check for events
     void Turing_StdlibSFML_PeriodicCallback() {
         // check every quarter of a second. This does make input delayed.

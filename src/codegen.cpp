@@ -104,8 +104,8 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL), PeriodicCallbac
 }
 
 bool CodeGen::compileFile(std::string fileName) {
-    Message::log(Twine("Compiling file \"") + fileName + "\".");
     std::string path = TuringCommon::includeFilePath(fileName, CurFile);
+    Message::log(Twine("Compiling file \"") + path + "\". Included from " + CurFile + ".");
     ASTNode *fileRoot = TheSource->parseFile(path);
     
     if (fileRoot == NULL) {

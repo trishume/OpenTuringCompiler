@@ -68,4 +68,10 @@ void LibManager::checkForFunctions(const std::string &libName) {
     if (funcPtr != NULL) {
         InitRunFunctions.push_back((InitRunFunction)funcPtr);
     }
+    
+    funcName = (Twine("Turing_") + libName + "_FinalizeRun").str();
+    funcPtr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(funcName);
+    if (funcPtr != NULL) {
+        FinalizeRunFunctions.push_back((FinalizeRunFunction)funcPtr);
+    }
 }

@@ -24,7 +24,6 @@ set(StdLibSFMLHeaders
 # here so they can be edited in the xcode project
 set(StdLibSFMLIncludes
 	includes/stdlib-sfml.t
-	includes/stdlib-sfml-post.t
 	includes/Time.t
 	includes/Draw.t
 	includes/View.t

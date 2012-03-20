@@ -12,6 +12,7 @@ public:
     typedef void (*PeriodicCallbackFunction)();
     typedef void (*InitRunFunction)(const char *executionDir, 
                                     TuringCommon::StreamManager *streamManager);
+    typedef void (*FinalizeRunFunction)();
     
     LibManager() {}
     
@@ -27,6 +28,7 @@ public:
     //! vector of periodic callback function names
     std::vector<std::string> PeriodicCallbacks;
     std::vector<InitRunFunction> InitRunFunctions;
+    std::vector<FinalizeRunFunction> FinalizeRunFunctions;
 protected:
     //! get the full path of a library to load
     //! \param libName  the name of the dynamic library, no prefixes or suffixes

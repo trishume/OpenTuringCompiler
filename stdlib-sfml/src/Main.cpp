@@ -3,6 +3,8 @@
 #include "TuringCommon/StreamManager.h"
 #include "TuringCommon/RuntimeError.h"
 
+#include "WindowManager.h"
+
 std::string ExecutionDir;
 
 extern "C" {
@@ -10,6 +12,11 @@ extern "C" {
                                    TuringCommon::StreamManager *streamManager) {
         ExecutionDir = executionDir;
         TuringCommon::setErrorStreamManager(streamManager);
+        
+        Turing_StdlibSFML_Window_Init();
+    }
+    void Turing_StdlibSFML_FinalizeRun() {
+        Turing_StdlibSFML_Window_Cleanup();
     }
 }
 
