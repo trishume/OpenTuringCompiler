@@ -1679,8 +1679,6 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
     FunctionType *FT = FunctionType::get(funcRetType,argTypes, false);
     
     Function *f = Function::Create(FT, internal ? Function::InternalLinkage : Function::ExternalLinkage, name, TheModule);
-    FunctionSymbol *fSym = new FunctionSymbol(f,returnType,args);
-    fSym->IsSRet = structRet;
     
     // If F conflicted, there was already something named 'name'.  If it has a
     // body, don't allow redefinition or reextern.
@@ -1691,27 +1689,30 @@ FunctionSymbol *CodeGen::compilePrototype(const std::string &name, TuringType *r
         
         // If F already has a body, reject this.
         if (!f->empty()) {
-            throw Message::Exception("Redefinition of function.");
+            throw Message::Exception(Twine("Redefinition of function") + name + ".");
         }
         
         // If F took a different number of args, reject.
         if (f->arg_size() != args.size()) {
             throw Message::Exception("Redefinition of function with different # args.");
         }
+    } else {
+        // Set names for all arguments.
+        Function::arg_iterator ai = f->arg_begin();
+        // add the right attributes
+        if (structRet) {
+            ai->setName("returnVal");
+            ai->addAttr(Attribute::StructRet);
+            ++ai;
+        }
+        for (unsigned idx = 0;idx != args.size();
+             ++ai, ++idx) {
+            ai->setName(args[idx].Name);
+        }
     }
     
-    // Set names for all arguments.
-    Function::arg_iterator ai = f->arg_begin();
-    // add the right attributes
-    if (structRet) {
-        ai->setName("returnVal");
-        ai->addAttr(Attribute::StructRet);
-        ++ai;
-    }
-    for (unsigned idx = 0;idx != args.size();
-         ++ai, ++idx) {
-        ai->setName(args[idx].Name);
-    }
+    FunctionSymbol *fSym = new FunctionSymbol(f,returnType,args);
+    fSym->IsSRet = structRet;
     
     // add it to the LOCAL scope so that modules work
     // the parser prevents them from being defined

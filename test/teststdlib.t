@@ -17,9 +17,9 @@ proc TestStdlibIntEqual (val, correct : int, name : string)
 end TestStdlibIntEqual
 
 % Time
-var time := Time.Sec()
-% TestStdlib(Time.Date() = Time.SecDate(time),"Time.Date and Time.SecDate")
-TestStdlibIntEqual(Time.DateSec(Time.SecDate(time)),time, "Time.DateSec")
+var t := Time.Sec()
+% TestStdlib(Time.Date() = Time.SecDate(t),"Time.Date and Time.SecDate")
+TestStdlibIntEqual(Time.DateSec(Time.SecDate(t)),t, "Time.DateSec")
 
 var year, month, day, weekday, hour, minute, second : int
 var secTime := Time.PartsSec (1989, 12, 25, 9, 27, 0)

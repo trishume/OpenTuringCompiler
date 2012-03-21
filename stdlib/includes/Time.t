@@ -8,3 +8,16 @@ module Time
 	external "SecStr" fcn Turing_StdlibSFML_Time_SecStr(seconds : int, format : string) : string
 	external "Date" fcn Turing_StdlibSFML_Time_Date() : string
 end Time
+
+proc wallclock(var seconds : int)
+	seconds := Time.Sec
+end wallclock
+
+proc date(var t : string)
+	t := Time.SecStr(Time.Sec(),"%y %m %d")
+end date
+
+proc time(var t : string)
+	t := Time.SecStr(Time.Sec(),"%I:%M:%S")
+end time
+

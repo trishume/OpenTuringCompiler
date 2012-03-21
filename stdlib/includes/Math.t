@@ -127,6 +127,14 @@ module Rand
     Randomize
 end Rand
 
+proc rand(var r : real)
+    r := Rand.Real
+end rand
+proc randint (var i : int, low, high : int)
+    i := Rand.Int(low,high)
+end randint
+external "randomize" procedure Turing_Stdlib_Rand_Randomize()
+
 /* Math function exceptions */
 const excpRealOverflow := 51
 const excpTrigArgumentTooLarge := 100

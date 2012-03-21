@@ -16,7 +16,6 @@ public:
     ASTNode(ASTNode *other);
     ~ASTNode();
     int getLine();
-    std::string getFile();
     void setLine(int line);
     
     std::string stringTree(int indent = 0);

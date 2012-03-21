@@ -144,7 +144,7 @@ Sprite:
     - Sprite.Show 
 Str:
     - index - find pattern in string function
-    - length - of a string function
+    # - length - of a string function
     - repeat - make copies of string:function 
 Stream:
     - Stream.Flush
@@ -178,15 +178,15 @@ Text:
     - Text.maxcol
     - Text.maxrow 
 Time:
-    - Time.Date
-    - Time.DateSec
-    - Time.Delay
-    - Time.Elapsed
-    - Time.ElapsedCPU
-    - Time.PartsSec
-    - Time.Sec
-    - Time.SecDate
-    - Time.SecParts 
+    # - Time.Date
+    # - Time.DateSec
+    # - Time.Delay
+    # - Time.Elapsed
+    # - Time.ElapsedCPU
+    # - Time.PartsSec
+    # - Time.Sec
+    # - Time.SecDate
+    # - Time.SecParts 
 TypeConv:
     From Integer:
         # - intreal - integer-to-real function
@@ -234,7 +234,7 @@ Miscellaneous Subprograms:
         - addr - address of a variable
         - sizeof - size of a type 
     Arrays:
-        - lower - bound
+        # - lower - bound
     Bit Manipulation:
         - bits - extraction 
     Classes:
@@ -245,3 +245,58 @@ Miscellaneous Subprograms:
         - succ - successor function 
     Type Cheats:
         - cheat - type cheating 
+Student Routines:
+    - drawarc (x, y, xRadius, yRadius : int, initialAngle, finalAngle : int, drawColour : int)
+    - drawbox (x1, y1, x2, y2 : int, drawColour : int)
+    - drawdot (x, y : int, drawColour : int)
+    - drawfill (x, y : int, fillColour, borderColour : int)
+    - drawfillarc (x, y, xRadius, yRadius : int, initialAngle, finalAngle : int, drawColour : int)
+    - drawfillbox (x1, y1, x2, y2 : int, drawColour : int)
+    - drawfillmapleleaf (x1, y1, x2, y2 : int, drawColour : int)
+    - drawfilloval (x, y, xRadius, yRadius : int, drawColour : int)
+    - drawfillpolygon (x, y : array 1 .. * of int, n : int, drawColour : int)
+    - drawfillstar (x1, y1, x2, y2 : int, drawColour : int)
+    - drawline (x1, y1, x2, y2 : int, drawColour : int)
+    - drawmapleleaf (x1, y1, x2, y2 : int, drawColour : int)
+    - drawoval (x, y, xRadius, yRadius : int, drawColour : int)
+    - drawpolygon (x, y : array 1 .. * of int, n : int, drawColour : int)
+    - drawstar (x1, y1, x2, y2 : int, drawColour : int)
+    - drawpic (x, y : int, buffer : array 1 .. * of int, drawMode : int)
+    - sizepic (x1, y1, x2, y2 : int) : int
+    - takepic (x1, y1, x2, y2 : int, var buffer : array 1 .. * of int)
+    # - cls
+    - color (newColour : int)
+    - colour (newColour : int)
+    - colorback (newColour : int)
+    - colourback (newColour : int)
+    - locate (row, column : int)
+    - locatexy (x, y : int)
+    - whatcolor : int
+    - whatcolour : int
+    - whatcolorback : int
+    - whatcolourback : int
+    - whatcol : int
+    - whatrow : int
+    - whatdotcolor (x, y : int) : int
+    - whatdotcolour (x, y : int) : int
+    # - setscreen (modes : string)
+    # - rand (var r : real)
+    # - randint (var i : int, low, high : int)
+    # - randomize
+    - nargs : int
+    - fetcharg (i : int) : string
+    - system (str : string, var ret : int)
+    - datetime : string
+    # - clock (var c : int)
+    # - sysclock (var c : int)
+    # - wallclock (var c : int)
+    # - delay (duration : int)
+    - play (music : string)
+    - playdone : boolean
+    - sound (frequency, duration : int)
+    - buttonchoose (chooseStr : string)
+    - buttonmoved (motionStr : string) : boolean
+    - buttonwait (motionStr : string, var x, y : int,var btnNumber, buttonUpDown : int)
+    - mousewhere (var x, y, buttonUpDown : int)
+    - mousehide
+    - mouseshow
