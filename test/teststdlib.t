@@ -32,3 +32,32 @@ TestStdlibIntEqual(hour,9, "Time.PartsSec and Time.SecParts hour")
 TestStdlibIntEqual(minute,27, "Time.PartsSec and Time.SecParts minute")
 TestStdlibIntEqual(second,0, "Time.PartsSec and Time.SecParts second")
 TestStdlib(Time.SecStr(secTime,"%B %d, %Y at %I:%M") = "December 25, 1989 at 09:27", "Time.PartsSec and Time.SecParts date string")
+
+% Typeconv
+
+assert ceil(0.25) = 1
+assert floor(1.2) = 1
+assert round(5.5) = 6
+assert floor (-8.43) = -9
+assert ceil (-8.43) = -8
+assert round (-8.43) = -8
+
+assert intstr(-43) = "-43"
+assert realstr(25.0,4) = "  25"
+assert realstr(12.2,4) = "12.2"
+assert frealstr (25.0, 5, 1) = " 25.0"
+
+assert strint(intstr(5)) = 5
+assert strreal("0.25 ") = 0.25
+assert strreal(" -55.55") = -55.55
+assert strreal("5") = 5.0
+assert not strrealok("saoethu")
+assert strrealok(" 55.0 ")
+assert strrealok("55")
+
+assert strint("-123") = -123
+assert strint("  1  ") = 1
+assert not strintok("asoethusao")
+assert strintok(" 5 ")
+
+assert ord(chr(5)) = 5

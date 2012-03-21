@@ -71,7 +71,7 @@ bool TypeManager::isArrayRef(llvm::Type *llvmType) {
 void TypeManager::addDefaultTypes(LLVMContext &c) {
     // ints
     addTypeLLVM("int",(Type*)Type::getInt32Ty(c));
-    addTypeLLVM("int8",(Type*)Type::getInt8Ty(c));
+    addTypeLLVM("char",(Type*)Type::getInt8Ty(c));
     addTypeLLVM("int64",(Type*)Type::getInt64Ty(c));
     
     addTypeLLVM("boolean",(Type*)Type::getInt1Ty(c));
@@ -79,7 +79,7 @@ void TypeManager::addDefaultTypes(LLVMContext &c) {
     addTypeLLVM("real",(Type*)Type::getDoubleTy(c));
     
     //addTypeLLVM("string",(Type*)ArrayType::get((Type*)Type::getInt8Ty(c),TURING_STRING_SIZE)); // char[255]
-    TuringArrayType *strType = new TuringArrayType(getType("int8"),256);
+    TuringArrayType *strType = new TuringArrayType(getType("char"),256);
     strType->setName("string");
     addType("string",strType); // char*
     

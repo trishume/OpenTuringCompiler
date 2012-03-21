@@ -189,28 +189,23 @@ Time:
     - Time.SecParts 
 TypeConv:
     From Integer:
-        - intreal - integer-to-real function
-        - intstr - integer-to-string function 
-    From Nat:
-        - natreal - natural number to real function
-        - natstr - natural-number-to-string function 
+        # - intreal - integer-to-real function
+        # - intstr - integer-to-string function 
     From Real:
-        - ceil - real-to-integer function
+        # - ceil - real-to-integer function
         - erealstr - real-to-string function
-        - floor - real-to-integer function
-        - frealstr - real-to-string function
-        - realstr - real-to-string function
-        - round - real-to-integer function 
+        # - floor - real-to-integer function
+        # - frealstr - real-to-string function
+        # - realstr - real-to-string function
+        # - round - real-to-integer function 
     From String:
-        - strint - string-to-integer:function
-        - strintok - string-to-integer:function
-        - strnat - string to natural number function
-        - strnatok - string to natural number function
-        - strreal - string-to-real function
-        - strrealok - string-to-real function 
+        # - strint - string-to-integer:function
+        # - strintok - string-to-integer:function
+        # - strreal - string-to-real function
+        # - strrealok - string-to-real function 
     To/From ASCII:
-        - chr - integer-to-character function
-        - ord - character-to-integer function 
+        # - chr - integer-to-character function
+        # - ord - character-to-integer function 
 View:
     - View.ClipAdd
     - View.ClipOff

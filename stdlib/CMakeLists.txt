@@ -3,6 +3,7 @@ include_directories (src includes ../ ${CommonLibIncludeDir})
 set(StdLibSources 
     src/Math.cpp
     src/Time.cpp
+    src/Typeconv.cpp
 	)
 
 set(StdLibHeaders
@@ -13,6 +14,7 @@ set(StdLibIncludes
 	includes/stdlib.t
 	includes/Math.t
 	includes/Time.t
+	includes/Typeconv.t
 	)
 
 # module builds a plugin-like library
