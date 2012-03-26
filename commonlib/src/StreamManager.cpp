@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <limits>
 
 // copy-pasted from the internet. Stops stupid behaviour with stream buffering
 template <typename CharT>

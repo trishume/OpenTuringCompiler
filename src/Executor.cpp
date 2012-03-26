@@ -20,6 +20,7 @@
 #include <llvm/Support/CodeGen.h>
 #include <llvm/ExecutionEngine/JIT.h>
 #include <llvm/ExecutionEngine/JITMemoryManager.h>
+#include <llvm/Target/TargetOptions.h>
 
 #include "TuringCommon/LibDefs.h"
 #include "Message.h"
@@ -57,13 +58,11 @@ Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
     TheStreamManager->setSpecialStream(-3, errStream);
     // do a crapton of JIT initialization
     InitializeNativeTarget();
+    llvm::JITExceptionHandling = true;
     std::string errStr;    
-    llvm::TargetOptions Opts;
-    Opts.JITExceptionHandling = true;
     llvm::EngineBuilder factory(TheModule);
     factory.setEngineKind(llvm::EngineKind::JIT);
     factory.setAllocateGVsWithCode(false);
-    factory.setTargetOptions(Opts);
     factory.setOptLevel(CodeGenOpt::Aggressive);
     factory.setErrorStr(&errStr);
     TheExecutionEngine = factory.create();
