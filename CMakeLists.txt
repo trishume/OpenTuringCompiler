@@ -1,4 +1,4 @@
-#Specify the version being used aswell as the language
+#Specify the version being used as well as the language
 cmake_minimum_required(VERSION 2.8)
 #Name your project here
 project(TuringCompiler)
@@ -16,6 +16,11 @@ endif()
 
 include_directories( ${LLVM_INCLUDE_DIR} )
 link_directories( ${LLVM_LIB_DIR} )
+
+#DParser
+set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /usr/local/lib)
+link_directories(/usr/local/lib)
+include_directories(/usr/local/include)
 
 set(INSTALL_DIR ${PROJECT_SOURCE_DIR}/dist)
 

@@ -58,7 +58,7 @@ Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
     TheStreamManager->setSpecialStream(-3, errStream);
     // do a crapton of JIT initialization
     InitializeNativeTarget();
-    llvm::JITExceptionHandling = true;
+    //llvm::JITExceptionHandling = true;
     std::string errStr;    
     llvm::EngineBuilder factory(TheModule);
     factory.setEngineKind(llvm::EngineKind::JIT);
