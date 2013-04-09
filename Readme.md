@@ -42,35 +42,79 @@ I will eventually though, once the compiler is in a state where I have tested it
 Here is an example the compiler is capable of running:
 
 ```
+
 % The 13 printing test
 % As I develop the compiler I use the new features
 % to print 13 in increasingly complex ways...
 
-% test string length.
-var bob := length("123456")
+% test constants
+const threeConst := 3
+% test parsing weird constants
+const testConst := -6.90460016972063023e-05
+const oneConst : real := 1
 
-var lolArr,lolArr2 : array 1..13 of int
+% test type declarations, records and multi-dimensional arrays
+type recType :  record
+                    mat : array 1..threeConst, 1..boolean of boolean
+                    hovering : real
+                end record
+
+var rec,otherRec : recType
+
+% test alternate multi-dimensional array index syntax
+rec.mat(1,2) := true
+
+% test string length and 'var' parameters
+var bob : int
+proc SetBob(var bob : int)
+    %get bob
+    bob := length("123456")
+end SetBob
+SetBob(bob)
+
+% test case statements and string concatenation
+var prinString := "P"
+proc TestCaseStat(bob : int)
+    case bob of
+    label 7,9:
+        prinString += "I"
+    label 5:
+        prinString += "R"
+    label:
+        prinString += "N"
+    end case
+end TestCaseStat
+TestCaseStat(5)
+TestCaseStat(9)
+TestCaseStat(839)
 
 % test complex type returns
 fcn RetPrintingStr () : string
-    result "PRINTING "
+    result prinString + "TING "
 end RetPrintingStr
 
 var assignStr : string
 assignStr := RetPrintingStr()
 
-var hovering : real := 7.0
-hovering := 0.1 * 3 / 3 + 0.9
+%test no parenthesis procedures
+procedure SetHovering
+    rec.hovering := 0.1 * threeConst / threeConst + 0.9 * oneConst
+end SetHovering
+SetHovering
 
 % test modules
 module Print13
-    %test equality checking
-    if bob = 6 and 9 ~= 7 and "bob" = "bob" and "lol" ~= "hi" and hovering = 1 then
+
+    %test equality checking and code inside a module
+    if bob = 6 and ~(-9 > 7) & "bob" = "bob" and "lol" ~= "hi" and rec.hovering = 1 and rec.mat(1)(2) then
         %test no newline
         put assignStr ..
         %test multi-expr
-        put 13,"..."
+        put 13,"...\n" ..
     end if
+    
+    % test module variables
+    var lolArr,lolArr2 : flexible array 1..0 of int
 
     fcn CalcStuff(num1 : int, num2 : int) : int
         result num1 - num2**2
@@ -93,28 +137,48 @@ module Print13
     end PutStuff
 end Print13
 
-fcn Second( arr : array 1..2 of int ) : int
+fcn Second( arr : array 1..* of int ) : int
     result arr(2)
 end Second
 
-for i : 1..upper(lolArr)
-    lolArr(i) := i
+% test weird lower bounds
+var inittedArr : array 4..7 of int := init(5,6,13,9)
+for i : 1..inittedArr(6)
+    new Print13.lolArr, upper(Print13.lolArr) + 1
+    Print13.lolArr(i) := i
 end for
+if upper(Print13.lolArr) ~= 13 or lower(inittedArr) ~= 4 then
+    put "FAILED flexible arrays or array initialization"
+end if
 % lolArr = 1,2,3,4...
 
 
 loop
-    lolArr(2) += 1
-    exit when lolArr(2) >= 4
+    Print13.lolArr(2) += 1
+    exit when Print13.lolArr(2) >= 4
 end loop
 
 
-% test implicit copy
-lolArr2 := lolArr
-
+% test implicit copy of arrays
+new Print13.lolArr2, upper(Print13.lolArr)
+Print13.lolArr2 := Print13.lolArr
 
 % set bob to 5
-bob := lolArr2(9) - Second(lolArr2)
+bob := Print13.lolArr2(9) - Second(Print13.lolArr2)
+
+% test implicit copy of records
+otherRec := rec
+
+% test passing and returning records
+fcn RetAndPassRec(passRec : recType) : recType
+    result passRec
+end RetAndPassRec
+rec := RetAndPassRec(otherRec)
+
+%check record copy and test comparison
+if rec ~= otherRec then
+    put rec.hovering, " is not equal to ", otherRec.hovering, " after copy."
+end if
 
 if bob <= 5 or bob > 7 then
     var ed := 6
