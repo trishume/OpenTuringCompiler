@@ -44,7 +44,7 @@ extern "C" {
 }
 
 WindowManager::WindowManager() : Windows("Window"), CurWin(0){
-    Settings.AntialiasingLevel = 2;  // Request 2 levels of antialiasing
+    //Settings.AntialiasingLevel = 2;  // Request 2 levels of antialiasing
     
     TInt mainWin = newWin("");
     setCurWin(mainWin);

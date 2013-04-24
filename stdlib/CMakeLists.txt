@@ -1,6 +1,7 @@
 include_directories (src includes ../ ${CommonLibIncludeDir})
 
 set(StdLibSources 
+    src/Main.cpp
     src/Math.cpp
     src/Time.cpp
     src/Typeconv.cpp

@@ -65,6 +65,11 @@ Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
     factory.setAllocateGVsWithCode(false);
     factory.setOptLevel(CodeGenOpt::Aggressive);
     factory.setErrorStr(&errStr);
+    // Setup exception handling
+    llvm::TargetOptions opts;
+    opts.JITExceptionHandling = true;
+    factory.setTargetOptions(opts);
+    
     TheExecutionEngine = factory.create();
     if (!TheExecutionEngine) {
         fprintf(stderr, "Could not create ExecutionEngine: %s\n", errStr.c_str());

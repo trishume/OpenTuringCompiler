@@ -134,7 +134,7 @@ extern "C" {
 
 	    if (*pmDateTimeStr == 0) 
 	    {
-			TuringCommon::runtimeError("Invalid time string.");
+			TuringCommon::runtimeError("Empty time string given to Time.DateSec.");
 	    }
 
 	    if (pmDateTimeStr [2] == ':') 
