@@ -8,6 +8,7 @@ set(TEST_FILES
 	sierpinskidraw.t
 	3DSphere.t
 	testGetAndPut.t
+  testFlexibleArr.t
 	icon.jpg)
 
 enable_testing()

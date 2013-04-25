@@ -55,7 +55,19 @@ var picId := Pic.New(70,70,150,150)
 Pic.Draw(picId,400,50,picMerge)
 Pic.Free(picId)
 
+% Draw Text
+var font1, font2, font3, font4 : int
+font1 := Font.New ("serif:50")
+font2 := Font.New ("sans serif:18:bold")
+font3 := Font.New ("mono:12")
+
+Draw.FillBox(300,300,350,350,5)
+Font.Draw("OMG!",300,300,font1,6)
+Font.Draw("OMG!",20,40,font2,4)
+Font.Draw("OMG!",20,60,font3,5)
+
+
 View.Update
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
-delay(5000)
+delay(15000)

@@ -18,6 +18,7 @@ namespace TuringCommon {
         
         // life cycle
         TInt getNew();
+        TInt insertNew(T *newItem);
         void remove(TInt id);
     protected:
         void assertExists(TInt id);
@@ -51,6 +52,11 @@ namespace TuringCommon {
     template <class T>
     TInt IDManager<T>::getNew() {
         T *newItem = new T();
+        return insertNew(newItem);
+    }
+    
+    template <class T>
+    TInt IDManager<T>::insertNew(T *newItem) {
         LastId += 1;
         Items[LastId] = newItem;
         return LastId;
