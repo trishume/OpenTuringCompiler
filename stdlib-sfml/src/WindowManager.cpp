@@ -132,7 +132,13 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     win->Win.Create(sf::VideoMode(win->Width,win->Height), win->Title,sf::Style::Close,Settings);
     
     //set up OpenGL
+    setupOpenGL(win);
+    clearWin(winId);
+}
+
+void WindowManager::setupOpenGL(TuringWindow *win) {
     win->Win.SetActive();
+    win->Win.PreserveOpenGLStates(true);
     //glViewport( 0, 0, win->Width, win->Height );
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
@@ -142,9 +148,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     glLoadIdentity();
     // Displacement trick for exact pixelization
     glTranslatef(0.375, 0.375, 0);
-    
     curWin()->Win.SetActive();
-    clearWin(winId);
 }
 
 void WindowManager::updateWindow(TInt winId, bool force) {

@@ -42,6 +42,7 @@ public:
     void closeWin(TInt winId);
     
     void setWinParams(TInt winId, const std::string &params);
+    void setupOpenGL(TuringWindow *win);
     
     //! this is called after every draw function with the force parameter false.
     //! \param force    wether to draw the buffer even if the window is not set to offscreenonly.

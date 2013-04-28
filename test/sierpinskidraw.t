@@ -44,8 +44,9 @@ var y := init (100, 150, 185, 150, 150, 100, 65, 65)
 Draw.FillPolygon (x, y, 8, 48)
 Draw.Polygon (x, y, 8, 3)
 
+% dots for testing picMerge
 for i : 1..300
-	Draw.Dot(Rand.Int(400,450),Rand.Int(50,70),32)
+	Draw.Dot(Rand.Int(400,450),Rand.Int(50,70),5)
 end for
 
 % draw open turing logo
@@ -57,7 +58,7 @@ Pic.Free(picId)
 
 % Draw Text
 var font1, font2, font3, font4 : int
-font1 := Font.New ("serif:50")
+font1 := Font.New ("serif:50:underline,italic")
 font2 := Font.New ("sans serif:18:bold")
 font3 := Font.New ("mono:12")
 
@@ -65,6 +66,10 @@ Draw.FillBox(300,300,350,350,5)
 Font.Draw("OMG!",300,300,font1,6)
 Font.Draw("OMG!",20,40,font2,4)
 Font.Draw("OMG!",20,60,font3,5)
+
+for i : 1..300
+  Draw.Dot(i,round(sin(i/10)*20) + 40,6)
+end for
 
 
 View.Update
