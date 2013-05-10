@@ -76,7 +76,12 @@ TInt WindowManager::newWin(const std::string &params) {
     
     setWinParams(id, params);
     newWin->Win.UseVerticalSync(true);
+    // clear both buffers
     clearWin(id);
+    updateWindow(id, true);
+    clearWin(id);
+    // activate
+    newWin->Win.Show(true);
     setCurWin(id);
     
     return id;
@@ -162,6 +167,7 @@ void WindowManager::updateWindow(TInt winId, bool force) {
 void WindowManager::updateCurWin() {
     TuringWindow* win = curWin();
     if (!win->OffScreenOnly) {
+        surface();
         doWinUpdate(win);
         
     }
@@ -217,8 +223,6 @@ void WindowManager::surface() {
 #pragma mark Protected and Private Methods
 
 void WindowManager::doWinUpdate(TuringWindow *win) {
-    win->Win.Show(true);
-    
     void *pixBuf = malloc(win->Width * win->Height * sizeof(GLfloat) * 4);
     glReadPixels(0, 0, win->Width, win->Width, GL_RGBA, GL_FLOAT, pixBuf);
     win->Win.Display();
