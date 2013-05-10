@@ -1,4 +1,5 @@
 linklibrary "StdlibSFML"
+include "Window.t"
 include "Time.t"
 include "View.t"
 include "Draw.t"

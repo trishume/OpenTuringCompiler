@@ -46,8 +46,8 @@ extern "C" {
 WindowManager::WindowManager() : Windows("Window"), CurWin(0){
     //Settings.AntialiasingLevel = 2;  // Request 2 levels of antialiasing
     
-    TInt mainWin = newWin("");
-    setCurWin(mainWin);
+    MainWin = newWin("");
+    setCurWin(MainWin);
 }
 
 WindowManager::~WindowManager() {}
@@ -76,6 +76,7 @@ TInt WindowManager::newWin(const std::string &params) {
     
     setWinParams(id, params);
     newWin->Win.UseVerticalSync(true);
+    clearWin(id);
     setCurWin(id);
     
     return id;
@@ -89,7 +90,7 @@ void WindowManager::closeWin(TInt winId) {
     
     // set the active window to the main one if we just closed it
     if (CurWin == winId) {
-        CurWin = 0;
+        CurWin = MainWin;
     }
 }
 
@@ -133,7 +134,7 @@ void WindowManager::setWinParams(TInt winId, const std::string &params) {
     
     //set up OpenGL
     setupOpenGL(win);
-    clearWin(winId);
+//    clearWin(winId);
 }
 
 void WindowManager::setupOpenGL(TuringWindow *win) {
@@ -167,7 +168,9 @@ void WindowManager::updateCurWin() {
 }
 
 void WindowManager::clearWin(TInt winId) {
-    getWin(winId)->Win.Clear(sf::Color(255,255,255));
+    TuringWindow *win = getWin(winId);
+    win->Win.Clear(sf::Color(255,255,255));
+    win->PutLine = 1;
 }
 
 void WindowManager::surface() {

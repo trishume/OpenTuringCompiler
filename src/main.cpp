@@ -46,11 +46,14 @@ void run(CodeGen &gen, LibManager *libManager, const std::string &execDir) {
     streamManager.initWithStandardStreams();
     // if everything get the finalized module
     llvm::Module *mainModule = gen.getFinalizedModule();
+#ifdef DEBUG_PRINT_BYTECODE
     std::cout << "Final Module (unoptimized)";
     mainModule->dump();
+#endif
     // run it!
     std::cout << "JIT compiling and optimizing...\n";
     Executor jit(mainModule,&streamManager, libManager, execDir);
+    jit.StallOnEnd = true;
     jit.optimize();
     std::cout << "RUNNING...\n";
     jit.run();

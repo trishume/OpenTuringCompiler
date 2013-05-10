@@ -71,6 +71,7 @@ protected:
     void compileInitializeComplex(Symbol *declared);
     
     TuringType *getType(ASTNode *node);
+    llvm::Constant *getConstantValue(llvm::Value *constant);
     int getConstantIntValue(llvm::Value *constant);
     TuringType *getArrayType(ASTNode *node);
     TuringType *getRecordType(ASTNode *node);

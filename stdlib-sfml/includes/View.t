@@ -1,6 +1,13 @@
 external "cls" proc Turing_StdlibSFML_View_Cls()
-external "setscreen" proc Turing_StdlibSFML_View_Set(format : string)
 module View
 	external "Update" proc Turing_StdlibSFML_View_Update()
-	external "Set" proc Turing_StdlibSFML_View_Set(format : string)
+	external "SetExt" proc Turing_StdlibSFML_View_Set(format : string)
+  proc Set(format : string)
+    SetExt(format)
+    Window.UpdateDimensions
+  end Set
 end View
+
+proc setscreen(format : string)
+  View.Set(format)
+end setscreen

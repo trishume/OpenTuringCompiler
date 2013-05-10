@@ -474,16 +474,25 @@ TuringType *CodeGen::getRecordType(ASTNode *node) {
     return new TuringRecordType(decls);
 }
 
-int CodeGen::getConstantIntValue(Value *constant) {
+Constant *CodeGen::getConstantValue(Value *constant) {
     // this is fancy. It checks if the upper bound is a loaded const variable.
     // if it is, it sets upperVal to the Constant initializer instead of the load instruction
-    if(isa<LoadInst>(constant) && 
+    if(isa<LoadInst>(constant) &&
        isa<GlobalVariable>(cast<LoadInst>(constant)->getPointerOperand())) {
         GlobalVariable *globalVar = cast<GlobalVariable>(cast<LoadInst>(constant)->getPointerOperand());
         if (globalVar->isConstant()) {
             constant = globalVar->getInitializer();
         }
     }
+    // check if it is actually a constant
+    if(!isa<Constant>(constant)) {
+        throw Message::Exception("Value must be a compile time constant.");
+    }
+    return cast<Constant>(constant);
+}
+
+int CodeGen::getConstantIntValue(Value *constant) {
+    constant = getConstantValue(constant);
     
     // we don't want someone putting "array bob..upper(bob) of int" because
     // we have to know the size at compile time.
@@ -1429,15 +1438,13 @@ void CodeGen::compileConstDecl(ASTNode *node) {
     
     initializer = promoteType(initializer, type);
     
-    if(!isa<Constant>(initializer->getVal())) {
-        throw Message::Exception("Constant declaration does not have a constant initializer.");
-    }
+    Constant *constInitializer = getConstantValue(initializer->getVal());
     
     Value *gvar = new GlobalVariable(/*Module=*/*TheModule,
                                      /*Type=*/type->getLLVMType(false),
                                      /*isConstant=*/true,
                                      /*Linkage=*/GlobalValue::InternalLinkage,
-                                     /*Initializer=*/cast<Constant>(initializer->getVal()),
+                                     /*Initializer=*/constInitializer,
                                      "constDecl");
     
     Scopes->curScope()->setVar(node->children[0]->str, new VarSymbol(gvar,type));

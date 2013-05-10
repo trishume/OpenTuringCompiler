@@ -61,6 +61,7 @@ void LibManager::checkForFunctions(const std::string &libName) {
     funcPtr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(funcName);
     if (funcPtr != NULL) {
         PeriodicCallbacks.push_back(funcName);
+        PeriodicCallbackFunctions.push_back((PeriodicCallbackFunction)funcPtr);
     }
     
     funcName = (Twine("Turing_") + libName + "_InitRun").str();

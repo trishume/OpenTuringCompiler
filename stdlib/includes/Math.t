@@ -46,7 +46,7 @@ external "sind" function Turing_Stdlib_Math_Sind (r : real) : real
 %
 % Determine the square root of the given value.
 %
-external function sqrt (r : real) : real
+external "sqrt" function sqrt (r : real) : real
 
 module Math
     % Constants

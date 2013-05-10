@@ -55,16 +55,16 @@ extern "C" {
         
         glColor4f(1.0,1.0,1.0,1.0);
         glBegin(GL_QUADS);
-            // Top left
+            // Bottom left
             glTexCoord2f(0.0, 0.0);
             glVertex2i(x, y);
-            // Top right
+            // Bottom right
             glTexCoord2f(1.0, 0.0);
             glVertex2i(x + pic->Width, y);
-            // Bottom right
+            // Top right
             glTexCoord2f(1.0, 1.0);
             glVertex2i(x + pic->Width, y + pic->Height);
-            // Bottom left
+            // Top left
             glTexCoord2f(0.0, 1.0);
             glVertex2i(x, y + pic->Height);
         glEnd();

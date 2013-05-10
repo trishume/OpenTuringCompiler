@@ -22,14 +22,14 @@ for i : 1..1000000
 	var v : point := verts(randomvert)
 	p.x := (p.x + v.x) div 2
 	p.y := (p.y + v.y) div 2
-	Draw.Dot(p.x,p.y,7) % has to be reversed. Probably a bug in the program.
+	Draw.Dot(p.x,p.y,colourfg)
 end for
 
 % test drawing functions
 Draw.Box(10,70,80,20,44)
 
 Draw.FillBox(300,200,320,370,52)
-Draw.Line(10,70,320,370,48)
+drawline(10,70,320,370,48)
 Draw.ThickLine(100,100,10,450,6,9)
 
 Draw.Oval(200,300,20,30,3)
@@ -62,17 +62,19 @@ font1 := Font.New ("serif:50:underline,italic")
 font2 := Font.New ("sans serif:18:bold")
 font3 := Font.New ("mono:12")
 
-Draw.FillBox(300,300,350,350,5)
-Font.Draw("OMG!",300,300,font1,6)
-Font.Draw("OMG!",20,40,font2,4)
-Font.Draw("OMG!",20,60,font3,5)
+drawfillbox(300,300,350,350,brightgreen)
+Font.Draw("OMG!",300,300,font1,magenta)
+Font.Draw("OMG!",20,40,font2,purple)
+%Font.Draw("OMG!",2,maxy - 2 - 12,defFontID,black)
+%Font.Draw("OMG!",2,maxy - 2 - 13 - 13,defFontID,black)
+
+Font.Free(font3)
 
 for i : 1..300
-  Draw.Dot(i,round(sin(i/10)*20) + 40,6)
+  Draw.Dot(i,round(sin(i/10)*20) + 40,brightred)
 end for
 
 
-View.Update
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
-delay(15000)
+View.Update

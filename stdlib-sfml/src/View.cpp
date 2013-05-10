@@ -5,8 +5,6 @@
 #include "WindowManager.h"
 #include "RGB.h"
 
-static sf::Color clearColor(255,255,255);
-
 extern "C" {
     void Turing_StdlibSFML_View_Cls() {
     	WinMan->clearWin(WinMan->curWinID());

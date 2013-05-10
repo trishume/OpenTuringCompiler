@@ -13,11 +13,13 @@ set(StdLibSFMLSources
     src/Font.cpp
     src/RGB.cpp
     src/Pic.cpp
+    src/Window.cpp
     src/WindowManager.cpp
 	)
 
 set(StdLibSFMLHeaders
 	src/Main.h
+  src/Font.h
     src/WindowManager.h
     src/RGB.h
 	)
@@ -30,6 +32,7 @@ set(StdLibSFMLIncludes
   includes/Font.t
 	includes/View.t
 	includes/Pic.t
+  includes/Window.t
 	)
 
 set(StdLibSFMLFonts

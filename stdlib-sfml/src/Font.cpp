@@ -1,7 +1,9 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/String.hpp>
 #include <cstring>
+#include <iostream>
 
+#include "Font.h"
 #include "TuringCommon/IDManager.h"
 #include "WindowManager.h"
 #include "RGB.h"
@@ -14,6 +16,10 @@ struct TuringFont {
 };
 
 static TuringCommon::IDManager<TuringFont> Fonts("Font");
+
+static const int defFontID = 0;
+static const int putPadding = 2;
+static const int putLineHeight = 15;
 
 extern "C" {
     TInt Turing_StdlibSFML_Font_New(TString *description) {
@@ -74,7 +80,7 @@ extern "C" {
     void Turing_StdlibSFML_Font_Draw(TString *str, TInt x, TInt y, TInt fontId, TInt colour) {
         TuringFont *font = Fonts.get(fontId);
         TuringWindow *win = WinMan->curWin();
-        sf::String text(str->strdata,font->font,font->size);
+        sf::String text(str->strdata,font->font,font->size + 4.0);
         
         text.SetStyle(font->style);
         const char *rgb = getRGBColourFromNum(colour);
@@ -92,4 +98,29 @@ extern "C" {
     void Turing_StdlibSFML_Font_Free(TInt id) {
         Fonts.remove(id);
     }
+}
+
+void Turing_StdlibSFML_Font_Init() {
+    TString descript;
+    strcpy(descript.strdata, "mono:10");
+    Turing_StdlibSFML_Font_New(&descript);
+}
+
+void Turing_StdlibSFML_Put_Line(const std::string &line) {
+    TuringWindow *cur = WinMan->curWin();
+    int y = cur->Height - putPadding - (cur->PutLine * putLineHeight);
+    
+    // reset to top on overflow
+    if(y < 0) {
+        WinMan->clearWin(WinMan->curWinID());
+        y = cur->Height - putPadding - putLineHeight; // recalculate
+    }
+    
+    TString draw;
+    strcpy(draw.strdata, line.c_str());
+    Turing_StdlibSFML_Font_Draw(&draw, putPadding, y, defFontID, 7); // 7 is black
+    
+    std::cout << "puts: " << draw.strdata << " y: " << y << std::endl;
+    
+    cur->PutLine += 1;
 }

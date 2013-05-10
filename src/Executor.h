@@ -19,6 +19,8 @@
 
 #include "LibManager.h"
 
+//#define DEBUG_PRINT_BYTECODE
+
 class Executor {
 public:
     Executor(llvm::Module *mod, TuringCommon::StreamManager *streamManager,
@@ -26,6 +28,8 @@ public:
     
     void optimize();
     bool run();
+    
+    bool StallOnEnd;
 private:
     llvm::Module *TheModule;
     llvm::ExecutionEngine *TheExecutionEngine;
@@ -33,6 +37,8 @@ private:
     LibManager *TheLibManager;
     
     std::string ExecutionDir;
+    
+    void stall();
 };
 
 #endif

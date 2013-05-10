@@ -52,7 +52,7 @@ void Executor_RuntimeRuntimeErrorStream(TInt streamNum, const char *error) {
 }
 
 Executor::Executor(Module *mod, TuringCommon::StreamManager *streamManager,
-                   LibManager *libManager, const std::string &executionDir) : TheModule(mod), TheStreamManager(streamManager), TheLibManager(libManager), ExecutionDir(executionDir) {
+                   LibManager *libManager, const std::string &executionDir) : StallOnEnd(false), TheModule(mod), TheStreamManager(streamManager), TheLibManager(libManager), ExecutionDir(executionDir) {
     // add the error stream
     TInt errStream = TheStreamManager->registerStream(&Executor_RuntimeRuntimeErrorStream, NULL);
     TheStreamManager->setSpecialStream(-3, errStream);
@@ -110,11 +110,12 @@ void Executor::optimize() {
     
     // Run these optimizations on our Module
     bool changed = p.run(*TheModule);
-    
+#ifdef DEBUG_PRINT_BYTECODE
     if (changed) {
         Message::log("Optimized code:");
         TheModule->dump();
     }
+#endif
     
 }
 
@@ -141,6 +142,11 @@ bool Executor::run() {
         Message::error(Twine("Execution failed with error code ") + Twine(errCode));
     }
     
+    // maybe stall
+    if (StallOnEnd) {
+        stall();
+    }
+    
     // close windows and stuff
     for (unsigned int i = 0; i < TheLibManager->FinalizeRunFunctions.size(); ++i) {
         LibManager::FinalizeRunFunction finalizeFunc = TheLibManager->FinalizeRunFunctions[i];
@@ -148,4 +154,16 @@ bool Executor::run() {
     }
     
     return true;
+}
+
+void Executor::stall() {
+    while (true) {
+        // call periodic callbacks like UI active
+        for (unsigned int i = 0; i < TheLibManager->PeriodicCallbackFunctions.size(); ++i) {
+            LibManager::PeriodicCallbackFunction periodicFunc = TheLibManager->PeriodicCallbackFunctions[i];
+            (*periodicFunc)(); // call function pointer
+        }
+        // sleep for a bit
+        usleep(100000);
+    }
 }

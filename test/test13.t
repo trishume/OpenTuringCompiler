@@ -85,7 +85,7 @@ module Print13
             return
         end if
 
-        var ed := bob - 1    
+        var ed := bob - 1
         put ed
         return
         put 9
@@ -144,3 +144,5 @@ elsif 5 >= 5 and 6 div 2 < 3 then
 else
     put 5 >= 4
 end if
+
+View.Update

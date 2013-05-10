@@ -15,7 +15,7 @@
 
 struct TuringWindow {
     TuringWindow() :  Title(DEFAULT_WINDOW_TITLE), Width(DEFAULT_WINDOW_WIDTH),
-    Height(DEFAULT_WINDOW_HEIGHT),OffScreenOnly(false) {}
+    Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false) {}
     
     ~TuringWindow() {
         Win.Close();
@@ -24,6 +24,7 @@ struct TuringWindow {
     
     std::string Title;
     TInt Width,Height;
+    int PutLine;
     
     bool OffScreenOnly;
 };
@@ -61,6 +62,7 @@ protected:
     
     TuringCommon::IDManager<TuringWindow> Windows;
     TInt CurWin;
+    TInt MainWin;
     sf::WindowSettings Settings;
     sf::Sprite BufferSprite;
     

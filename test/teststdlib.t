@@ -61,3 +61,8 @@ assert not strintok("asoethusao")
 assert strintok(" 5 ")
 
 assert ord(chr(5)) = 5
+
+%assert min(5,2) = 2
+%assert min(3,9) = 3
+%assert max(10,3) = 10
+%assert max(20, 4) = 20

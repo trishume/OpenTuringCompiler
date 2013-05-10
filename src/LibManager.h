@@ -27,6 +27,7 @@ public:
     
     //! vector of periodic callback function names
     std::vector<std::string> PeriodicCallbacks;
+    std::vector<PeriodicCallbackFunction> PeriodicCallbackFunctions;
     std::vector<InitRunFunction> InitRunFunctions;
     std::vector<FinalizeRunFunction> FinalizeRunFunctions;
 protected:
