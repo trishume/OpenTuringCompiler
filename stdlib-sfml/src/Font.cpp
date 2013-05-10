@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/String.hpp>
 #include <cstring>
-#include <iostream>
+//#include <iostream>
 
 #include "Font.h"
 #include "TuringCommon/IDManager.h"
@@ -120,7 +120,7 @@ void Turing_StdlibSFML_Put_Line(const std::string &line) {
     strcpy(draw.strdata, line.c_str());
     Turing_StdlibSFML_Font_Draw(&draw, putPadding, y, defFontID, 7); // 7 is black
     
-    std::cout << "puts: " << draw.strdata << " y: " << y << std::endl;
+    //std::cout << "puts: " << draw.strdata << " y: " << y << std::endl;
     
     cur->PutLine += 1;
 }

@@ -55,7 +55,7 @@ void run(CodeGen &gen, LibManager *libManager, const std::string &execDir) {
     Executor jit(mainModule,&streamManager, libManager, execDir);
     jit.StallOnEnd = true;
     jit.optimize();
-    std::cout << "RUNNING...\n";
+    std::cout << "Running...\n";
     jit.run();
 }
 
