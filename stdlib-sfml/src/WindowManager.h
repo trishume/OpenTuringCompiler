@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <set>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Sprite.hpp>
 
@@ -15,11 +16,38 @@
 
 struct TuringWindow {
     TuringWindow() :  Title(DEFAULT_WINDOW_TITLE), Width(DEFAULT_WINDOW_WIDTH),
-    Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false) {}
+    Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false),
+    MouseX(0), MouseY(0), KeysDown() {}
     
     ~TuringWindow() {
         Win.Close();
     }
+    
+    void buttonEvent(sf::Mouse::Button b, bool state) {
+        switch (b) {
+            case sf::Mouse::Left:
+                Left = state;
+                break;
+            case sf::Mouse::Middle:
+                Middle = state;
+                break;
+            case sf::Mouse::Right:
+                Right = state;
+                break;
+            default:
+                break;
+        }
+    }
+    
+    void keyEvent(sf::Key::Code k, bool state) {
+        if (state) {
+            KeysDown.insert(k);
+        } else {
+            KeysDown.erase(k);
+        }
+    }
+    
+    
     sf::RenderWindow Win;
     
     std::string Title;
@@ -27,6 +55,10 @@ struct TuringWindow {
     int PutLine;
     
     bool OffScreenOnly;
+    // Event attributes
+    TInt MouseX, MouseY;
+    bool Left,Middle,Right;
+    std::set<sf::Key::Code> KeysDown;
 };
 
 class WindowManager {
@@ -57,12 +89,14 @@ public:
     //! this can be called to check events and stop the system
     //! from thinking the app is frozen.
     void surface();
+    
+    //! the id of the main window
+    TInt MainWin;
 protected:
     void doWinUpdate(TuringWindow *win);
     
     TuringCommon::IDManager<TuringWindow> Windows;
     TInt CurWin;
-    TInt MainWin;
     sf::WindowSettings Settings;
     sf::Sprite BufferSprite;
     

@@ -175,9 +175,42 @@ void WindowManager::clearWin(TInt winId) {
 
 void WindowManager::surface() {
     sf::Event Event;
-    while (curWin()->Win.GetEvent(Event))
-    {
-        // Process event
+    std::map<TInt, TuringWindow*>::iterator iter;
+    // process all events for every window
+    for(iter=Windows.Items.begin(); iter != Windows.Items.end(); ++iter) {
+        TuringWindow *cur = iter->second;
+        TInt curId = iter->first;
+        while (cur->Win.GetEvent(Event))
+        {
+            switch (Event.Type) {
+                case sf::Event::Closed:
+                    if (curId == MainWin) {
+                        exit(0); // we're done here, user closed main window
+                    }
+                    break;
+                case sf::Event::MouseMoved:
+                    cur->MouseX = Event.MouseMove.X;
+                    cur->MouseY = Event.MouseMove.Y;
+                    break;
+                case sf::Event::MouseButtonPressed:
+                    cur->MouseX = Event.MouseButton.X;
+                    cur->MouseY = Event.MouseButton.Y;
+                    cur->buttonEvent(Event.MouseButton.Button, true);
+                    break;
+                case sf::Event::MouseButtonReleased:
+                    cur->buttonEvent(Event.MouseButton.Button, false);
+                    break;
+                case sf::Event::KeyPressed:
+                    cur->keyEvent(Event.Key.Code, true);
+                    break;
+                case sf::Event::KeyReleased:
+                    cur->keyEvent(Event.Key.Code, false);
+                    break;
+                    
+                default:
+                    break;
+            }
+        }
     }
 }
 

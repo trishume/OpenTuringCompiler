@@ -20,10 +20,11 @@ namespace TuringCommon {
         TInt getNew();
         TInt insertNew(T *newItem);
         void remove(TInt id);
+        
+        // public so it can be iterated
+        std::map<TInt,T *> Items;
     protected:
         void assertExists(TInt id);
-        
-        std::map<TInt,T *> Items;
         TInt LastId;
         std::string TypeName;
     };
