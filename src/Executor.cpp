@@ -164,6 +164,6 @@ void Executor::stall() {
             (*periodicFunc)(); // call function pointer
         }
         // sleep for a bit
-        usleep(100000);
+        usleep(1000);
     }
 }
