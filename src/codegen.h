@@ -107,6 +107,7 @@ protected:
     void compileVarDecl(ASTNode *node);
     void compileConstDecl(ASTNode *node);
     
+    TuringValue *symbolToValue(Symbol *var);
     TuringValue *abstractCompileVarReference(Symbol *var,const std::string &name = "");
     Symbol *compileIndex(Symbol *indexed,ASTNode *node);
     Symbol *compileRecordFieldRef(Symbol *record, std::string fieldName);

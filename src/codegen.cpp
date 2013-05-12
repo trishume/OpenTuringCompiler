@@ -1450,6 +1450,14 @@ void CodeGen::compileConstDecl(ASTNode *node) {
     Scopes->curScope()->setVar(node->children[0]->str, new VarSymbol(gvar,type));
 }
 
+TuringValue *CodeGen::symbolToValue(Symbol *var) {
+    if (var->getType()->isComplexTy()) {
+        return new TuringValue(Builder.CreateBitCast(var->getVal(),var->getType()->getLLVMType(true),"complexref"), var->getType());
+    }
+    
+    return new TuringValue(var->getVal(),var->getType());
+}
+
 TuringValue *CodeGen::abstractCompileVarReference(Symbol *var,const std::string &name) {
     // TODO maybe do as clang does and alloca and assign all params instead of this
     if (!(var->getVal()->getType()->isPointerTy())) {
@@ -1557,19 +1565,19 @@ TuringValue *CodeGen::compileCall(ASTNode *node, bool wantReturn) {
     return compileCall(compileLHS(node->children[0]),node,wantReturn);
 }
 
-TuringValue *CodeGen::compileCall(Symbol *callee,ASTNode *node, bool wantReturn) {
+TuringValue *CodeGen::compileCall(Symbol *callee, ASTNode *node, bool wantReturn) {
     if (!callee->isFunction()) {
         throw Message::Exception("Only functions and procedures can be called.");
     }
     FunctionSymbol *funcSym = static_cast<FunctionSymbol*>(callee);
     std::vector<TuringValue*> params;
-    for (unsigned int i = 1; i < node->children.size(); ++i) {
+    for (unsigned int i = 1U; i < node->children.size(); ++i) {
         bool isVarRef = funcSym->getArgDecl(i-1).IsVarRef;
         TuringValue *argVal;
         //  handle 'var' parameters as symbols
         if (isVarRef) {
             Symbol *argSym = compileLHS(node->children[i]);
-            argVal = new TuringValue(argSym->getVal(),argSym->getType());
+            argVal = symbolToValue(argSym);
         } else {
             argVal = compile(node->children[i]);
         }

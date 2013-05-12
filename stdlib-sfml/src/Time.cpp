@@ -13,7 +13,7 @@ extern "C" {
 	}
     // TODO event checking is not timed so delays will be imprecise
 	void Turing_StdlibSFML_Time_Delay(TInt milliseconds) {
-        unsigned int incr = milliseconds > 100 ? 50 : 2;        
+        unsigned int incr = milliseconds > 100 ? 50 : 2;
         for (int i = 0; i < milliseconds; i+=incr) {
             WinMan->surface();
             sf::Sleep(incr/1000.0);

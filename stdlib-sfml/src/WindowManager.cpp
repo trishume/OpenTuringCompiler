@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <iostream>
 
 #include <SFML/Window.hpp>
 #include <SFML/System.hpp>
@@ -191,6 +192,7 @@ void WindowManager::surface() {
             switch (Event.Type) {
                 case sf::Event::Closed:
                     if (curId == MainWin) {
+                        std::cout << "Main Window Closed" << std::endl;
                         exit(0); // we're done here, user closed main window
                     }
                     break;

@@ -13,6 +13,7 @@ set(StdLibSFMLSources
     src/Font.cpp
     src/RGB.cpp
     src/Pic.cpp
+    src/Input.cpp
     src/Window.cpp
     src/WindowManager.cpp
 	)
@@ -29,6 +30,7 @@ set(StdLibSFMLIncludes
 	includes/stdlib-sfml.t
 	includes/Time.t
 	includes/Draw.t
+  includes/Input.t
   includes/Font.t
 	includes/View.t
 	includes/Pic.t

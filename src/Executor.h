@@ -19,7 +19,7 @@
 
 #include "LibManager.h"
 
-//#define DEBUG_PRINT_BYTECODE
+#define DEBUG_PRINT_BYTECODE
 
 class Executor {
 public:

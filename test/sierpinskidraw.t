@@ -78,3 +78,10 @@ end for
 % takes 4395ms in open turing 1.1.0 alpha (on an amazing computer)
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
 View.Update
+
+loop
+  var x,y,btn : int
+  Mouse.Where(x,y,btn)
+  Draw.FillBox(x-2,y-2,x+2,y+2,Rand.Int(1,50))
+  View.Update
+end loop

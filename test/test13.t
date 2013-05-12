@@ -135,6 +135,20 @@ if rec ~= otherRec then
     put rec.hovering, " is not equal to ", otherRec.hovering, " after copy."
 end if
 
+% check passing var arrays
+var arr2 : array 1..3 of int := init(5,6,7)
+proc ArrStuff(var a : array 1..* of int)
+  if a(1) ~= 5 then
+    put "Array var parameters brokes."
+  end if
+  a(3) := 42
+end ArrStuff
+%var dummy := Second(arr2)
+ArrStuff(arr2)
+if arr2(3) ~= 42 then
+  put "Array var parameter setting brokes."
+end if
+
 if bob <= 5 or bob > 7 then
     var ed := 6
     Print13.PutStuff (ed) % this one returns early and never prints
