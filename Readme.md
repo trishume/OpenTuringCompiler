@@ -28,14 +28,8 @@ I will eventually though, once the compiler is in a state where I have tested it
  * Arrays and strings
  * Modules
  * Logic and math
-
-##To Do:
+ * OpenGL Based Graphics
  * Records
- * Classes
- * Pointers
- * Reference (var) parameters
- * Link in Turing Standard library
- * Implement graphics
 
 ##Sample Program
 
