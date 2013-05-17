@@ -106,12 +106,18 @@ Builder(llvm::getGlobalContext()), RetVal(NULL), RetBlock(NULL), PeriodicCallbac
 bool CodeGen::compileFile(std::string fileName) {
     std::string path = TuringCommon::includeFilePath(fileName, CurFile);
     Message::log(Twine("Compiling file \"") + path + "\". Included from " + CurFile + ".");
-    ASTNode *fileRoot = TheSource->parseFile(path);
     
-    if (fileRoot == NULL) {
-        Message::error(Twine("Failed to parse file \"") + fileName + "\". Either there was a syntax error or the file does not exist.");
+    ASTNode *fileRoot;
+    try {
+        fileRoot = TheSource->parseFile(path);
+    } catch (Message::Exception e) {
+        if(!e.Message.empty()) Message::error(e.Message);
         return false;
+        
     }
+    
+    if(!fileRoot) return false;
+    
     return compileRootNode(fileRoot,path);
 }
 

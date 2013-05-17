@@ -8,8 +8,9 @@
 #include "Message.h"
 
 #include <iostream>
+#include <sstream>
 
-static void MyDefaultErrorCallBack(std::string message, std::string file, 
+static void MyDefaultErrorCallBack(std::string message, std::string file,
                                    int line, bool isWarning, int lineRange) {
     std::string messageType(isWarning ? "WARNING" : "ERROR");
     if (line < 1 || file.empty()) {
@@ -26,11 +27,23 @@ static void MyDefaultErrorCallBack(std::string message, std::string file,
     std::cerr << message << std::endl;
 }
 
+static void MyEditorCompatibleErrorCallBack(std::string message, std::string file,
+                                   int line, bool isWarning, int lineRange) {
+    std::ostringstream output;
+    output << "Error on line ";
+    output << line;
+    output << " [0] of ";
+    output << file;
+    output << ": ";
+    output << message;
+    std::cout << output.str() << std::endl;
+}
+
 namespace Message {
     static int curLine = 0;
     static int LineRange = 1; // line number is within n lines of curLine
     static std::string curFile = "";
-    static ErrorCallback curErrCallback = &MyDefaultErrorCallBack;
+    static ErrorCallback curErrCallback = &MyEditorCompatibleErrorCallBack;
     
     void setCurLine(int line,std::string fileName, int lineRange) {
         curLine = line;
