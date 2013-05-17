@@ -11,3 +11,8 @@ end View
 proc setscreen(format : string)
   View.Set(format)
 end setscreen
+
+module RGB
+    external "SetColor" proc Turing_StdlibSFML_RGB_SetColor(num : int, r,g,b : real)
+    external "SetColour" proc Turing_StdlibSFML_RGB_SetColor(num : int, r,g,b : real)
+end RGB

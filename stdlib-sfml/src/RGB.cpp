@@ -1,4 +1,8 @@
 #include "RGB.h"
+#include "TuringCommon/Libdefs.h"
+#include "TuringCommon/RuntimeError.h"
+
+#define FAST_RGB_SET
 
 char TuringPalette[256][3] = {
     {255, 255, 255},	// 0  = white
@@ -259,10 +263,29 @@ char TuringPalette[256][3] = {
     {  0,   0,   0}	// 255
 };
 
+void setRGBCoulourForNum(TInt num, char r, char g, char b) {
+    TuringPalette[num][0] = r;
+    TuringPalette[num][1] = g;
+    TuringPalette[num][2] = b;
+}
 
 char *getRGBColourFromNum(TInt num) {
     if (num < 0 || num > 255) {
         TuringCommon::runtimeError("Colour number out of range.");
     }
     return TuringPalette[num];
+}
+
+extern "C" {
+    void Turing_StdlibSFML_RGB_SetColor(TInt num, TReal r, TReal g, TReal b) {
+#ifndef FAST_RGB_SET
+        if (r > 1.0 || g > 1.0 || b > 1.0 || r < 0.0 || g < 0.0 || b < 0.0) {
+            TuringCommon::runtimeError("Color component out of range in RGB.SetColor");
+        }
+        if (num < 0 || num > 255) {
+            TuringCommon::runtimeError("Color number out of range in RGB.SetColor");
+        }
+#endif
+        setRGBCoulourForNum(num, r*255, g*255, b*255);
+    }
 }

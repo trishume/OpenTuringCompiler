@@ -16,8 +16,10 @@
 
 struct TuringWindow {
     TuringWindow() :  Title(DEFAULT_WINDOW_TITLE), Width(DEFAULT_WINDOW_WIDTH),
-    Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false),
-    MouseX(0), MouseY(0), KeysDown() {}
+    Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false), KeysDown() {
+        Left = Right = Middle = false;
+        MouseX = MouseY = 0;
+    }
     
     ~TuringWindow() {
         Win.Close();

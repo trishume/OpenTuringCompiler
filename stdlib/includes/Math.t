@@ -249,3 +249,39 @@ function tand (r : real) : real
         result sind (r) / cosd (r)
     end if
 end tand
+
+function abs(n : int) : int
+    if n < 0 then
+        result -n
+    else
+        result n
+    end if
+end abs
+fcn min(a,b : int) : int
+    if a < b then
+        result a
+    else
+        result b
+    end if
+end min
+fcn max(a,b : int) : int
+    if a > b then
+        result a
+    else
+        result b
+    end if
+end max
+fcn minr(a,b : real) : real
+    if a < b then
+        result a
+    else
+        result b
+    end if
+end minr
+fcn maxr(a,b : real) : real
+    if a > b then
+        result a
+    else
+        result b
+    end if
+end maxr

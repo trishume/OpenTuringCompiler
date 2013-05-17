@@ -25,6 +25,8 @@ for i : 1..1000000
 	Draw.Dot(p.x,p.y,colourfg)
 end for
 
+RGB.SetColor(250,1.0,0.0,1.0)
+
 % test drawing functions
 Draw.Box(10,70,80,20,44)
 
@@ -33,7 +35,7 @@ drawline(10,70,320,370,48)
 Draw.ThickLine(100,100,10,450,6,9)
 
 Draw.Oval(200,300,20,30,3)
-Draw.FillOval(400,300,100,50,3)
+Draw.FillOval(400,300,100,50,250)
 
 Draw.Arc(200,300,40,40,50,100,5)
 Draw.FillArc(400,400,100,50,0,180,5)
