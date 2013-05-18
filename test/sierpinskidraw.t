@@ -81,9 +81,12 @@ end for
 put "Done drawing. Took ", Time.Elapsed - start, "ms"
 View.Update
 
+var chars : array 1..char of int
 loop
   var x,y,btn : int
   Mouse.Where(x,y,btn)
   Draw.FillBox(x-2,y-2,x+2,y+2,Rand.Int(1,50))
   View.Update
+  Input.KeyDown(chars)
+  exit when chars('q') = 1
 end loop

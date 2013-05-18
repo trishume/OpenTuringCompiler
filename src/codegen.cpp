@@ -529,7 +529,7 @@ TuringType *CodeGen::getArrayType(ASTNode *node) {
                 upperVal = getConstantInt(0);
                 isAnySize = true;
             } else if (specialEnd->str.compare("char") == 0) {
-                upperVal = getConstantInt(255); // char array size
+                upperVal = getConstantInt(256); // char array size
             } else if (specialEnd->str.compare("boolean") == 0) {
                 upperVal = getConstantInt(2); // char array size
             } else {
@@ -802,8 +802,13 @@ TuringValue *CodeGen::compile(ASTNode *node) {
             // apint can convert a string
             return new TuringValue(ConstantInt::get(getGlobalContext(), APInt(32,node->str,10)),
                                    Types.getType("int"));
+        case Language::CHAR_LITERAL:
+        {
+            char c = node->str[0];
+            return new TuringValue(ConstantInt::get(getGlobalContext(), APInt(32,c,true)),
+                                   Types.getType("int"));
+        }
         case Language::REAL_LITERAL:
-            // apint can convert a string
             return new TuringValue(ConstantFP::get(Types.getType("real")->getLLVMType(), node->str),
                                    Types.getType("real"));
         case Language::BOOL_LITERAL:
