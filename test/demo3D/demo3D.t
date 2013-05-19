@@ -49,7 +49,7 @@ proc MoveProjectile (var m : missile)
     m.c.p.z += m.v.z
 end MoveProjectile
 
-var pro : array 1 .. 40 of missile
+var pro : array 1 .. 100 of missile
 for i : 1 .. upper (pro)
     pro (i) := RandomMissile ()
 end for
@@ -78,17 +78,17 @@ loop
 	end if
     if chars (KEY_RIGHT_ARROW) = 1 or chars (KEY_LEFT_ARROW) = 1 then
         if chars (KEY_LEFT_ARROW) = 1 then
-            rx -= 0.6
+            rx -= 1.0
         else % right arrow key
-            rx += 0.6           
+            rx += 1.0           
         end if
         viewMat1 := rotateXZ(rx)
     end if
     if chars (KEY_UP_ARROW) = 1 or chars (KEY_DOWN_ARROW) = 1 then
         if chars (KEY_UP_ARROW) = 1 then
-            ry -= 0.6
+            ry -= 1.0
         else % right arrow key
-            ry += 0.6           
+            ry += 1.0           
         end if
         viewMat2 := rotateYZ(ry)
     end if
@@ -111,9 +111,10 @@ loop
     
     DrawFastCube3D(bounds)
     
-    Draw.FillBox(0,0,10,10,Rand.Int(2,30))
+    var fps := View.GetFPS()
+    Font.Draw(intstr(fps),10,10,defFontId,black)
     View.Update
-    Time.DelaySinceLast (10)
+    Time.DelaySinceLast (15)
     cls
     exit when chars('q')=1
 end loop

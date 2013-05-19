@@ -232,6 +232,11 @@ void WindowManager::doWinUpdate(TuringWindow *win) {
     glWindowPos2i(0, 0);
     glDrawPixels(win->Width, win->Height, GL_RGBA, GL_FLOAT, pixBuf);
     free(pixBuf);
+    // recalculate fps
+    float frameTime = win->FrameClock.GetElapsedTime();
+    win->FrameClock.Reset();;
+    float newFps = win->Fps*0.95 + (1.0/frameTime)*0.05;
+    win->Fps = newFps;
 }
 
 void WindowManager::split(std::vector<std::string>& lst, const std::string& input, const std::string& separators, bool remove_empty)

@@ -12,6 +12,9 @@ extern "C" {
     void Turing_StdlibSFML_View_Update() {
         WinMan->updateWindow(WinMan->curWinID(),true);
     }
+    int Turing_StdlibSFML_View_GetFPS() {
+        return WinMan->curWin()->Fps;
+    }
     void Turing_StdlibSFML_View_Set(TString *format) {
         WinMan->setWinParams(WinMan->curWinID(),format->strdata);
     }

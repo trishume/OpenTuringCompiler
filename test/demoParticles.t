@@ -92,10 +92,14 @@ loop
     % comment out for full trails:
     cls
     % draw a massive dark rectangle if necessary
+    var fpsColor := black
     if darkBack then
       Draw.FillBox(0,0,maxx,maxy,black)
+      fpsColor := white
     end if
-    Draw.FillBox(0,0,10,10,Rand.Int(2,30))
+    % fps counter
+    var fps := View.GetFPS()
+    Font.Draw(intstr(fps),10,10,defFontId,fpsColor)
     
     Update(x,y,button)
     DrawParticles

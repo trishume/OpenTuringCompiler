@@ -18,7 +18,7 @@ struct TuringWindow {
     TuringWindow() :  Title(DEFAULT_WINDOW_TITLE), Width(DEFAULT_WINDOW_WIDTH),
     Height(DEFAULT_WINDOW_HEIGHT),PutLine(1),OffScreenOnly(false), KeysDown() {
         Left = Right = Middle = false;
-        MouseX = MouseY = 0;
+        MouseX = MouseY = Fps = 0;
     }
     
     ~TuringWindow() {
@@ -61,6 +61,9 @@ struct TuringWindow {
     TInt MouseX, MouseY;
     bool Left,Middle,Right;
     std::set<sf::Key::Code> KeysDown;
+    // frame time calculation
+    sf::Clock FrameClock;
+    TInt Fps;
 };
 
 class WindowManager {

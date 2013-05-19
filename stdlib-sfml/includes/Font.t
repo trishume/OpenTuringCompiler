@@ -5,3 +5,4 @@ module Font
 end Font
 
 const defFontID := 0
+const defFontId := 0
