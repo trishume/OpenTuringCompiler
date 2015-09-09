@@ -1,19 +1,11 @@
 #The New Open Turing Compiler - by Tristan Hume
 
 A compiler for Turing written using LLVM for code generation and Dparser for parsing.
+10x faster than the most popular implementation *and* cross-platform.
 
-####If you want to compile it yourself you have to:
- * Install the dependencies:
-   * dparser from http://http://dparser.sourceforge.net/
-   * LLVM from SVN head. It should work with regular 3.0 but I don't test it regularly http://llvm.org/
-   * SFML 1.6 http://www.sfml-dev.org/
-   * Cmake (so that you can build it)
- * Build it
-   * Run 'cmake' and then 'make' (or figure out how to make it build a VC++ project or something)
- * Check the dist folder for the "compiler" executable and then run that, passing the file to compile as a parameter
+Unfortunately abandoned because although I have the resources to debug a compiler (with all the common features) I don't have the time to implement the thousand library methods present in regular Turing (though I made an effort and this compiler implements hundreds). The other issue is that Turing is a learning language where the possibility of compiler bugs would be devastating to the confidence of newbies, and it takes years to fully debug a compiler.
 
-If any of this goes wrong it's your problem. I haven't made any effort to make it easy for other people to contribute yet.
-I will eventually though, once the compiler is in a state where I have tested it and it is usable.
+Instead see [OpenTuring](http://tristan.hume.ca/openturing) my fork of Turing for Windows with some minor tune-ups.
 
 ##Differences from the normal Turing *interpreter*
  * Fast, like C kind of fast.
@@ -30,6 +22,18 @@ I will eventually though, once the compiler is in a state where I have tested it
  * Logic and math
  * OpenGL Based Graphics
  * Records
+
+####If you want to compile it yourself you have to:
+ * Install the dependencies:
+   * dparser from http://http://dparser.sourceforge.net/
+   * LLVM from SVN head. It should work with regular 3.0 but I don't test it regularly http://llvm.org/
+   * SFML 1.6 http://www.sfml-dev.org/
+   * Cmake (so that you can build it)
+ * Build it
+   * Run 'cmake' and then 'make' (or figure out how to make it build a VC++ project or something)
+ * Check the dist folder for the "compiler" executable and then run that, passing the file to compile as a parameter
+
+Unfortunately it's very difficult to actually assemble all the dependencies, that's C++ for you.
 
 ##Sample Program
 
