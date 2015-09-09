@@ -91,6 +91,9 @@ loop
             ry += 1.0           
         end if
         viewMat2 := rotateYZ(ry)
+    else
+        ry += 0.3
+        viewMat2 := rotateYZ(ry)
     end if
     
     % iterate projectiles

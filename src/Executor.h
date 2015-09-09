@@ -19,7 +19,8 @@
 
 #include "LibManager.h"
 
-#define DEBUG_PRINT_BYTECODE
+//#define DEBUG_PRINT_BYTECODE
+#define DEBUG_PRINTING
 
 class Executor {
 public:

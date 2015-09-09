@@ -8,7 +8,7 @@ type particle : record
     vel : vector2D
    end record
    
-View.Set("offscreenonly")
+View.Set("offscreenonly,graphics:700;700")
 
 const maxParticles := 30000 % maximum number of particles
 const darkBack := true
@@ -20,7 +20,7 @@ proc Update(mx,my,btn : int)
   for i : 1..numParticles
     % attract to mouse
     if btn > 0 then
-      var factor := -1.0
+      var factor := -3.0
       if btn = 100 then
         factor := 3.0
       elsif btn = 101 then
@@ -49,8 +49,8 @@ proc DrawParticles
       if r > 1.0 then
         r := 1.0
       end if
-      RGB.SetColor(250,r,0.0,1-r)
-      %RGB.SetColor(250,r,-r**2.0+r*2.0,1-r)
+      %RGB.SetColor(250,r,0.0,1-r)
+      RGB.SetColor(250,r,-r**2.0+r*2.0,1-r)
       Draw.Dot(round(p(i).pos.x), round(p(i).pos.y), 250)
   end for
 end DrawParticles
@@ -88,6 +88,9 @@ end for
 loop
     var x,y,button : int
     Mouse.Where(x,y,button)
+    %x := maxx div 2
+    %y := maxy div 2 + round(sin(Time.Elapsed() / 1000)*50)
+    %button := 1
     
     % comment out for full trails:
     cls
@@ -104,5 +107,5 @@ loop
     Update(x,y,button)
     DrawParticles
     View.Update
-    Time.DelaySinceLast(15)
+    %Time.DelaySinceLast(15)
 end loop

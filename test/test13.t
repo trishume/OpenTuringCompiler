@@ -67,7 +67,7 @@ module Print13
         %test multi-expr
         put 13,"...\n" ..
     end if
-    
+
     % test module variables
     var lolArr,lolArr2 : flexible array 1..0 of int
 

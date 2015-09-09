@@ -60,7 +60,9 @@ namespace Message {
         return true;
     }
     bool log(const llvm::Twine &message) {
+#ifdef DEBUG_PRINTING
         std::cout << "LOG: " << message.str() << std::endl;
+#endif
         return false;
     }
     

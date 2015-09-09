@@ -6,6 +6,8 @@
 #include "WindowManager.h"
 #include "Font.h"
 
+const bool GraphicalStandardStreams = true;
+
 std::string ExecutionDir;
 void Turing_StdlibSFML_StandardOutputStream(TInt streamNum, const char *error);
 
@@ -20,7 +22,11 @@ extern "C" {
         
         // set up put to screen
         TInt stream = streamManager->registerStream(&Turing_StdlibSFML_StandardOutputStream, NULL);
-        streamManager->setSpecialStream(TURINGCOMMON_STREAM_STDOUT, stream);
+      
+        if (GraphicalStandardStreams) {
+          streamManager->setSpecialStream(TURINGCOMMON_STREAM_STDOUT, stream);
+        }
+      
     }
     void Turing_StdlibSFML_FinalizeRun() {
         Turing_StdlibSFML_Window_Cleanup();

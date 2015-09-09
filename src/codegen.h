@@ -96,7 +96,7 @@ protected:
     TuringValue *compileUnaryOp(ASTNode *node);
     void compileArrayCopy(TuringValue *from, Symbol *to);
     void compileRecordCopy(TuringValue *from, Symbol *to);
-    TuringValue *compileLogicOp(ASTNode *node);
+    TuringValue *compileLogicOp(ASTNode *node, TuringValue *cond1);
     TuringValue *compileEqualityOp(ASTNode *node);
     TuringValue *abstractCompileEqualityOp(TuringValue *L,TuringValue *R,bool isNotEquals = false);
     

@@ -920,11 +920,13 @@ TuringValue *CodeGen::compileArrayLiteral(ASTNode *node) {
 
 // Compiles binary operators.
 TuringValue *CodeGen::compileBinaryOp(ASTNode *node) {
-    if (node->str.compare("and") == 0 || node->str.compare("or") == 0 || 
-        node->str.compare("&") == 0 || node->str.compare("|") == 0) {
-        return compileLogicOp(node);
+    TuringValue *L = compile(node->children[0]);
+    if (Types.isType(L,"boolean") && (node->str.compare("and") == 0 ||
+                                      node->str.compare("or") == 0 ||
+                                      node->str.compare("&") == 0 ||
+                                      node->str.compare("|") == 0)) {
+        return compileLogicOp(node,L);
     } else {
-        TuringValue *L = compile(node->children[0]);
         TuringValue *R = compile(node->children[1]);
         return abstractCompileBinaryOp(L,R,node->str);
     }
@@ -984,10 +986,14 @@ TuringValue *CodeGen::abstractCompileBinaryOp(TuringValue *L, TuringValue *R, st
         }
         binOp = Instruction::SDiv;
     } else if (op.compare("xor") == 0) {
-        if (fp) { // TODO resolve this
-            throw Message::Exception("Can't use 'xor' on real numbers.");
-        }
+        if (fp) throw Message::Exception("Can't use 'xor' on real numbers.");
         binOp = Instruction::Xor;
+    } else if (op.compare("or") == 0) {
+        if (fp) throw Message::Exception("Can't use 'or' on real numbers.");
+        binOp = Instruction::Or;
+    } else if (op.compare("and") == 0) {
+        if (fp) throw Message::Exception("Can't use 'and' on real numbers.");
+        binOp = Instruction::And;
     } else if (op.compare("mod") == 0) {
         binOp = fp ? Instruction::FRem : Instruction::SRem;
     } else if (op.compare("**") == 0) {
@@ -1043,11 +1049,10 @@ TuringValue *CodeGen::compileUnaryOp(ASTNode *node) {
 
 //! compiles a properly short-circuiting logic operator
 //! \param isAnd false for 'or' true for 'and'
-TuringValue *CodeGen::compileLogicOp(ASTNode *node) {
-    TuringValue *cond1 = compile(node->children[0]);
-    
+TuringValue *CodeGen::compileLogicOp(ASTNode *node, TuringValue *cond1) {
     if (!Types.isType(cond1,"boolean")) {
-        throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
+        throw Message::Exception(Twine("Both arguments of logical ") + node->str +
+                                 " must be of type boolean");
     }
     
     BasicBlock *startBlock = Builder.GetInsertBlock();
@@ -1073,7 +1078,8 @@ TuringValue *CodeGen::compileLogicOp(ASTNode *node) {
     TuringValue *cond2 = compile(node->children[1]);
     
     if (!Types.isType(cond2,"boolean")) {
-        throw Message::Exception(Twine("Arguments of logical ") + node->str + " must be of type boolean");
+        throw Message::Exception(Twine("Both arguments of logical ") + node->str +
+                                 " must be of type boolean");
     }
     
     Builder.CreateBr(mergeBB);
