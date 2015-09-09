@@ -7,6 +7,14 @@ Unfortunately abandoned because although I have the resources to debug a compile
 
 Instead see [OpenTuring](http://tristan.hume.ca/openturing) my fork of Turing for Windows with some minor tune-ups.
 
+## Screenshots
+#### Test of drawing functions and computation
+![drawing test](https://raw.githubusercontent.com/trishume/OpenTuringCompiler/master/screenshots/drawtest.png)
+#### The Qt-based editor hooked up to the compiler
+![editor](https://raw.githubusercontent.com/trishume/OpenTuringCompiler/master/screenshots/editor.png)
+#### Stress-test of the OpengGL drawing and tight inner compiled loops doing 30,000 particles at 60fps
+![particles](https://raw.githubusercontent.com/trishume/OpenTuringCompiler/master/screenshots/particles.png)
+
 ##Differences from the normal Turing *interpreter*
  * Fast, like C kind of fast.
  * Cross-platform
@@ -110,7 +118,7 @@ module Print13
         %test multi-expr
         put 13,"...\n" ..
     end if
-    
+
     % test module variables
     var lolArr,lolArr2 : flexible array 1..0 of int
 
@@ -128,7 +136,7 @@ module Print13
             return
         end if
 
-        var ed := bob - 1    
+        var ed := bob - 1
         put ed
         return
         put 9
