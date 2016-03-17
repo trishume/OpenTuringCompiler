@@ -122,10 +122,10 @@
 
 // first rule is root
 program     
-    :   LT* instructionsOrDefs LT* 
+    :   instructionsOrDefs 
     {
-        if($1 != NULL) {
-            treeRoot = $1;
+        if($0 != NULL) {
+            treeRoot = $0;
         } else {
           std::cerr << "null ast!" << std::endl;
         }
@@ -133,31 +133,21 @@ program
     ;
 
 instructions
-    :   ('unchecked' LT*)? instruction ((LT+) instruction)*
+    :   ('unchecked')? (instruction)*
     {
         $$ = new ASTNode(Language::BLOCK);
-        if ($1 != NULL) $$->addChild($1); // first instruction
-        addParseGroupItems(&$n2,$$,1); // rest of them
+        addParseGroupItems(&$n1,$$,0); // rest of them
         if(d_get_number_of_children(&$n0) > 0) {
             $$->str = "unchecked";
         }
     }
-    | LT*
-    {
-        $$ = new ASTNode(Language::BLOCK);
-    }
     ;
 
 instructionsOrDefs
-    :   instructionOrDef ((LT+) instructionOrDef)*
+    :   (instructionOrDef)*
     {
         $$ = new ASTNode(Language::BLOCK);
-        if ($0 != NULL) $$->addChild($0); // first instruction
-        addParseGroupItems(&$n1,$$,1); // rest of them
-    }
-    | LT*
-    {
-        $$ = new ASTNode(Language::BLOCK);
+        addParseGroupItems(&$n0,$$,0); // rest of them
     }
     ;
 
@@ -215,11 +205,11 @@ type
             $$->str = "flexible";
         }
     }
-    |   'record' (LT*) decls ((LT+) decls)* LT* 'end' 'record'
+    |   'record' decls (decls)* 'end' 'record'
     { 
         $$ = new ASTNode(Language::RECORD_TYPE,$n0.start_loc.line);
-        $$->addChild($2); // first decls
-        addParseGroupItems(&$n3,$$,1); // rest of them
+        $$->addChild($1); // first decls
+        addParseGroupItems(&$n2,$$,0); // rest of them
     }
     ;
 
@@ -314,11 +304,11 @@ constdecl
     }
     ;
 typedecl
-    :   'type' ID ':' LT* type
+    :   'type' ID ':' type
     { 
         $$ = new ASTNode(Language::TYPE_DECL,$n0.start_loc.line);
         $$->str = nodeString($n1); // new type name
-        $$->addChild($4); // type to alias
+        $$->addChild($3); // type to alias
     }
     ;
 
@@ -343,34 +333,34 @@ range
 
 // control structures
 ifstat
-    :   'if' expr 'then' LT+ instructions LT* (elsifstat?) 'end' 'if'
+    :   'if' expr 'then' instructions (elsifstat?) 'end' 'if'
     { 
         $$ = new ASTNode(Language::IF_STAT,$n0.start_loc.line);
         $$->addChild($1); // cond
-        $$->addChild($4); // block
-        addParseTokens(&$n6,$$); // elsif
+        $$->addChild($3); // block
+        addParseTokens(&$n4,$$); // elsif
     }
     ;
 // semantically equivelant to (if then (else (if cond ...
 elsifstat   
-    :   'elsif' expr 'then' LT* instructions LT* (elsifstat?)
+    :   'elsif' expr 'then' instructions (elsifstat?)
     { 
         ASTNode *innerIf = new ASTNode(Language::IF_STAT,$n0.start_loc.line);
         innerIf->addChild($1); // cond
-        innerIf->addChild($4); // block
-        addParseTokens(&$n6,innerIf); // elsif
+        innerIf->addChild($3); // block
+        addParseTokens(&$n4,innerIf); // elsif
 
         $$ = new ASTNode(Language::BLOCK,$n0.start_loc.line);
         $$->addChild(innerIf);
     }
-    |   'else' LT* instructions LT*
+    |   'else' instructions
     { 
-        $$ = $2;
+        $$ = $1;
     }
     ;
 
 forstat 
-    :   'for' ('decreasing')? ID ':' range ('by' expr)? LT+ instructions LT* 'end' 'for'
+    :   'for' ('decreasing')? ID ':' range ('by' expr)? instructions 'end' 'for'
     { 
         $$ = new ASTNode(Language::FOR_STAT,$n0.start_loc.line);
         $$->str = nodeString($n2); // loop variable
@@ -392,39 +382,39 @@ forstat
             $$->addChild(oneLiteral);
         }
 
-        $$->addChild($7); // block
+        $$->addChild($6); // block
     }
     ;
 loopstat
-    :   'loop' LT* instructions LT* 'end' 'loop'
+    :   'loop' instructions 'end' 'loop'
     { 
         $$ = new ASTNode(Language::LOOP_STAT,$n0.start_loc.line);
-        $$->addChild($2); // block
+        $$->addChild($1); // block
     }
     ;
 
 caselabel
-    :   'label' expr (',' (LT*) expr)* ':' LT* instructions LT* (caselabel?) LT*
+    :   'label' expr (',' expr)* ':' instructions (caselabel?)
     { 
         $$ = new ASTNode(Language::CASE_LABEL,$n0.start_loc.line);
-        $$->addChild($5); // block
-        addParseTokens(&$n7,$$); // next caselabel
+        $$->addChild($4); // block
+        addParseTokens(&$n5,$$); // next caselabel
         $$->addChild($1);
-        addParseGroupItems(&$n2,$$,2); // rest of args
+        addParseGroupItems(&$n2,$$,1); // rest of args
     }
-    |   'label' ':'  LT* instructions LT*
+    |   'label' ':'  instructions
     { 
         $$ = new ASTNode(Language::CASE_LABEL,$n0.start_loc.line);
-        $$->addChild($3); // block
+        $$->addChild($2); // block
     }
     ;
 
 casestat
-    :   'case' expr 'of' LT* caselabel LT* 'end' 'case'
+    :   'case' expr 'of' caselabel 'end' 'case'
     { 
         $$ = new ASTNode(Language::CASE_STAT,$n0.start_loc.line);
         $$->addChild($1);
-        $$->addChild($4);
+        $$->addChild($3);
     }
     ;
 exitstat
@@ -472,11 +462,11 @@ formalargs
     ;
 
 decls  
-    :   decl (',' (LT*) decl)* 
+    :   decl (',' decl)* 
     {
         $$ = new ASTNode(Language::DECLARATIONS);
         $$->addChild($0); // first instruction
-        addParseGroupItems(&$n1,$$,2); // rest of them
+        addParseGroupItems(&$n1,$$,1); // rest of them
 
         // TYPE TRANSFORM
         typeTransform($$);
@@ -538,27 +528,30 @@ libdecl
     ;
 
 funcdef 
-    :   prototype LT+ instructions LT+ 'end' ID
+    :   prototype instructions 'end' ID
+    /*[
+        if($1->str.compare(nodeString($n3)) != 0) {
+            ${reject};
+        }
+    ]*/
     {
         $$ = new ASTNode(Language::FUNC_DEF,$n0.start_loc.line);
         $$->addChild($0);
-        $$->addChild($2);
+        $$->addChild($1);
     }
     ;
 moduledef
-    :  'module' ID LT+ instructionsOrDefs LT+ 'end' ID
+    :  'module' ID instructionsOrDefs 'end' ID
     {
         $$ = new ASTNode(Language::MODULE_DEF,$n0.start_loc.line);
         $$->str = nodeString($n1); // module name
-        $$->addChild($3);
+        $$->addChild($2);
     }
     ;
 
 //lexer
 ID  :   "[a-zA-Z_][a-zA-Z0-9_]*"
     [
-        // otherwise else is parsed as a function call
-        // TODO make it reject all keywords
         std::string ident = nodeString($n0);
         if (isKeyword(ident)) {
             ${reject};
@@ -573,7 +566,8 @@ REAL:   "-?[0-9]*\.[0-9]+"
     |   "-?[0-9]*\.[0-9]+[eE]-?[0-9]+"
     ;
 
-whitespace: ( "[ \t]+" | COMMENT )*;
+WS: "[ \t]+" | COMMENT | LT;
+whitespace: WS*;
 
 COMMENT
     :   '%' "[^\n]*"
@@ -607,17 +601,17 @@ BIN_OP
     :   '**' $binary_op_left 70
     |   '*' $binary_op_left 60
     |   '/' $binary_op_left 60
-    |   'div' $binary_op_left 60
-    |   'mod' $binary_op_left 60
+    |   'div' WS $binary_op_left 60
+    |   'mod' WS $binary_op_left 60
     |   '+' $binary_op_left 50
     |   '-' $binary_op_left 50
-    |   'xor' $binary_op_left 50
+    |   'xor' WS $binary_op_left 50
     |   '<=' $binary_op_left 40
     |   '>=' $binary_op_left 40
     |   '<' $binary_op_left 40
     |   '>' $binary_op_left 40
-    |   'or' $binary_op_left 20
-    |   'and' $binary_op_left 20
+    |   'or' WS $binary_op_left 20
+    |   'and' WS $binary_op_left 20
     |   '|' $binary_op_left 20
     |   '&' $binary_op_left 20
     ;
@@ -661,26 +655,26 @@ expr
         $$->str = nodeString($n0); // op string
         $$->addChild($1);
     }
-    | expr LT* BIN_OP LT* expr 
+    | expr BIN_OP expr 
     {
         $$ = new ASTNode(Language::BIN_OP,$n0.start_loc.line);
-        $$->str = nodeString($n2); // op string
+        $$->str = nodeString($n1); // op string
         $$->addChild($0);
-        $$->addChild($4);
+        $$->addChild($2);
     }
-    | expr LT* EQUALITY_OP LT* expr
+    | expr EQUALITY_OP expr
     {
         $$ = new ASTNode(Language::EQUALITY_OP,$n0.start_loc.line);
-        $$->str = nodeString($n2); // op string
+        $$->str = nodeString($n1); // op string
         $$->addChild($0);
-        $$->addChild($4);
+        $$->addChild($2);
     }
-    | assignableExpression LT* ASSIGN_OP LT* expr
+    | assignableExpression ASSIGN_OP expr
     {
         $$ = new ASTNode(Language::ASSIGN_OP,$n0.start_loc.line);
-        $$->str = nodeString($n2); // op string
+        $$->str = nodeString($n1); // op string
         $$->addChild($0);
-        $$->addChild($4);
+        $$->addChild($2);
     }
     ;
     
@@ -713,11 +707,11 @@ primaryExpression
         $$ = new ASTNode(Language::ARRAY_LOWER,$n0.start_loc.line);
         $$->addChild($2);
     }
-    |   'init' '(' expr (',' (LT*) expr)* ')'
+    |   'init' '(' expr (',' expr)* ')'
     {
         $$ = new ASTNode(Language::ARRAY_INIT,$n0.start_loc.line);
         $$->addChild($2);
-        addParseGroupItems(&$n3,$$,2); // rest of args
+        addParseGroupItems(&$n3,$$,1); // rest of args
     }
     |   assignableExpression '(' ')' // function call with no args
     {
@@ -734,12 +728,12 @@ assignableExpression
         $$ = new ASTNode(Language::PTRDEREF,$n0.start_loc.line);
         $$->addChild($1);
     }
-    |   assignableExpression '(' expr (',' (LT*) expr)* ')' // function call with args or array index
+    |   assignableExpression '(' expr (',' expr)* ')' // function call with args or array index
     {
         $$ = new ASTNode(Language::CALL,$n0.start_loc.line);
         $$->addChild($0);
         $$->addChild($2);
-        addParseGroupItems(&$n3,$$,2); // rest of args
+        addParseGroupItems(&$n3,$$,1); // rest of args
     }
     |   possibleProcedureIdentifier {$$ = $0; /* pass up */}
     ;
